@@ -1,0 +1,83 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.page-header h1 {
+  margin-bottom: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.refresh-note {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  margin: calc(-1 * var(--space-4)) 0 var(--space-4);
+}
+
+.symbol-check {
+  display: flex;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.symbol-check input {
+  flex: 1;
+}
+
+.price-check-result {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.as-of-small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-tertiary);
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+.summary {
+  display: flex;
+  gap: var(--space-10);
+  flex-wrap: wrap;
+}
+
+.summary .label {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+}
+
+.big-number {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.symbol {
+  font-weight: 600;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

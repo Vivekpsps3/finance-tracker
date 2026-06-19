@@ -1,0 +1,24 @@
+.ui-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--text-secondary);
+}
+
+.ui-empty__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ui-empty__message {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  max-width: 36ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ui-empty__action:empty {
+  display: none;
+}

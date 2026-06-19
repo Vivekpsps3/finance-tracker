@@ -1,0 +1,69 @@
+/**
+ * Design tokens — dark-only v1 (see docs/FRONTEND.md). Sync with tailwind.config.js.
+ * Prefer Tailwind utilities (bg-card, text-muted) in new UI; legacy rules still use var(--*).
+ */
+:root {
+  --bg: #0f0f0f;
+  --card-bg: #1a1a1a;
+  --surface-2: #222222;
+  --surface-hover: #2a2a2a;
+  --text: #f5f5f5;
+  --text-secondary: #b8b8b8;
+  --text-tertiary: #8a8a8a;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --border: #333333;
+  --border-subtle: #2a2a2a;
+  --surface-elevated: #242424;
+  --text-primary: #f5f5f5;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --warning: #f59e0b;
+  --on-accent: #ffffff;
+  --border-strong: #444444;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.28);
+
+  --chart-1: #3b82f6;
+  --chart-2: #22c55e;
+  --chart-3: #ef4444;
+  --chart-4: #f59e0b;
+  --chart-5: #8b5cf6;
+  --chart-6: #ec4899;
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+}
+
+/* Light theme hooks (v1 dark-only; enable via data-theme="light" later) */
+[data-theme='light'] {
+  --bg: #f8fafc;
+  --card-bg: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-hover: #e2e8f0;
+  --text: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --border: #e2e8f0;
+}

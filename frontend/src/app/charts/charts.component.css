@@ -1,0 +1,35 @@
+.section-heading {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.charts-section.embedded,
+.charts-section:not(.page) {
+  margin-top: var(--space-6);
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-6);
+}
+
+.chart-wide {
+  grid-column: 1 / -1;
+}
+
+.chart-wrap.tall {
+  height: 320px;
+}
+
+.chart-note {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.chart-sub {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  margin-top: 0;
+}

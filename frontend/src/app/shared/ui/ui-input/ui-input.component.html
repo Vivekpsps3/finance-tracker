@@ -1,0 +1,16 @@
+<div class="ui-field">
+  @if (label()) {
+    <label class="ui-field__label" [for]="resolvedId()">{{ label() }}</label>
+  }
+  <input
+    class="ui-field__control"
+    [id]="resolvedId()"
+    [type]="type()"
+    [placeholder]="placeholder() ?? ''"
+    [disabled]="disabled()"
+    [required]="required()"
+    [attr.autocomplete]="autocomplete()"
+    [attr.aria-describedby]="describedBy()"
+    [value]="value()"
+    (input)="value.set($any($event.target).value)" />
+</div>

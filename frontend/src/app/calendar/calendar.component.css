@@ -1,0 +1,131 @@
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.calendar-month {
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.nav-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.calendar-toolbar ui-button:last-child {
+  margin-left: auto;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 640px) {
+  .calendar-grid {
+    gap: var(--space-1);
+    padding: var(--space-2);
+  }
+
+  .day-btn {
+    font-size: var(--text-sm);
+  }
+}
+
+.weekday {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: var(--space-2);
+}
+
+.day-btn {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  font: inherit;
+  padding: 0;
+}
+
+.day-btn:hover {
+  background: var(--surface-hover);
+}
+
+.day-btn.today {
+  border-color: var(--accent);
+}
+
+.day-btn.selected {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--accent);
+}
+
+.day-btn.has-tx .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  position: absolute;
+  bottom: var(--space-2);
+}
+
+.empty-day {
+  aspect-ratio: 1;
+}
+
+.selected-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.day-net {
+  color: var(--text-secondary);
+}
+
+.tx-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.tx-item .desc {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}

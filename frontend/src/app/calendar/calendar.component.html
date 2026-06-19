@@ -1,0 +1,71 @@
+<div class="page calendar-page">
+  <ui-page-header title="Calendar" subtitle="Browse transactions by day" />
+
+  <div class="calendar-toolbar">
+    <ui-button variant="secondary" size="sm" ariaLabel="Previous month" (clicked)="prevMonth()">←</ui-button>
+    <h2 class="calendar-month">{{ getMonthName() }}</h2>
+    <ui-button variant="secondary" size="sm" ariaLabel="Next month" (clicked)="nextMonth()">→</ui-button>
+    <ui-button variant="secondary" size="sm" (clicked)="goToday()">Today</ui-button>
+  </div>
+
+  <div class="calendar-grid" role="grid" aria-label="Calendar month view">
+    @for (day of weekdays; track day) {
+      <div class="weekday" role="columnheader">{{ day }}</div>
+    }
+
+    @for (day of daysInMonth; track $index; let i = $index) {
+      @if (!day.date) {
+        <div class="day empty-day" role="gridcell"></div>
+      } @else {
+        <button
+          type="button"
+          class="day day-btn"
+          role="gridcell"
+          [class.has-tx]="day.hasTransactions"
+          [class.selected]="day.date === selectedDate"
+          [class.today]="day.isToday"
+          [attr.aria-label]="day.date + (day.hasTransactions ? ', has transactions' : '')"
+          [attr.aria-selected]="day.date === selectedDate"
+          (click)="selectDay(day)"
+          (keydown)="onDayKeydown($event, day, i)"
+        >
+          <span class="day-number">{{ day.date.split('-')[2] }}</span>
+          @if (day.hasTransactions) {
+            <span class="dot" aria-hidden="true"></span>
+          }
+        </button>
+      }
+    }
+  </div>
+
+  @if (selectedDate) {
+    <ui-card>
+      <div class="selected-header">
+        <h3>Transactions on {{ selectedDate }}</h3>
+        <a class="btn btn-primary" routerLink="/transactions">Add transaction</a>
+      </div>
+      @if (selectedTransactions.length) {
+        <p class="day-net">
+          Net for day:
+          <span [class.positive]="dayTotal() >= 0" [class.negative]="dayTotal() < 0">
+            {{ dayTotal() >= 0 ? '+' : '' }}${{ dayTotal() | number: '1.2-2' }}
+          </span>
+        </p>
+      }
+      @if (selectedTransactions.length > 0) {
+        @for (tx of selectedTransactions; track tx.id) {
+          <div class="tx-item">
+            <ui-badge [variant]="tx.type === 'income' ? 'success' : 'danger'">{{ tx.type }}</ui-badge>
+            <span class="category">{{ tx.category }}</span>
+            <span class="amount" [class.positive]="tx.type === 'income'">
+              {{ tx.type === 'income' ? '+' : '-' }}${{ tx.amount | number: '1.2-2' }}
+            </span>
+            <span class="desc">{{ tx.description }}</span>
+          </div>
+        }
+      } @else {
+        <ui-empty-state message="No transactions on this day." />
+      }
+    </ui-card>
+  }
+</div>

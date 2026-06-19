@@ -1,0 +1,159 @@
+<div class="page">
+  <ui-page-header title="Portfolio" subtitle="Holdings, live prices, and unrealized gains">
+    <div uiPageActions class="header-actions">
+      <ui-button
+        variant="secondary"
+        [disabled]="refreshingPrices || holdings.length === 0"
+        ariaLabel="Refresh all share prices"
+        (clicked)="refreshAllPrices()"
+      >
+        @if (refreshingPrices) {
+          <span class="spinner-inline" aria-hidden="true"></span>
+        }
+        Refresh prices
+      </ui-button>
+      <ui-button variant="primary" (clicked)="openAddModal()">Add Holding</ui-button>
+    </div>
+  </ui-page-header>
+  <p class="refresh-note" *ngIf="lastPortfolioRefresh">Last price refresh: {{ lastPortfolioRefresh }}</p>
+
+  @if (holdings.length > 0) {
+  <ui-card class="summary-card">
+    <div class="summary">
+      <div>
+        <div class="label">Total Portfolio Value</div>
+        <div class="big-number">${{ getTotalValue() | number: '1.2-2' }}</div>
+      </div>
+      <div>
+        <div class="label">Total Unrealized Gain/Loss</div>
+        <div class="big-number" [class.positive]="getTotalGain() >= 0" [class.negative]="getTotalGain() < 0">
+          {{ getTotalGain() >= 0 ? '+' : '' }}${{ getTotalGain() | number: '1.2-2' }}
+        </div>
+      </div>
+    </div>
+  </ui-card>
+  }
+
+  <ui-card title="Holdings">
+    <div uiCardActions class="table-actions table-actions--toolbar">
+        <input
+          type="search"
+          [(ngModel)]="searchTerm"
+          (input)="onSearchChange()"
+          placeholder="Search symbol..."
+          class="search-input"
+          aria-label="Search holdings"
+        />
+        <ui-button variant="secondary" size="sm" (clicked)="refreshAllPrices()" [disabled]="refreshingPrices || holdings.length === 0">
+          Refresh prices
+        </ui-button>
+        <ui-button variant="secondary" size="sm" (clicked)="exportToCsv()">Export CSV</ui-button>
+    </div>
+
+    <div *ngIf="loading" class="loading-overlay" role="status">
+      <span class="spinner-inline" aria-hidden="true"></span> Loading holdings…
+    </div>
+
+    <div class="table-scroll" *ngIf="filteredHoldings.length > 0; else empty">
+      <table class="data-table portfolio-table" aria-label="Portfolio holdings">
+        <caption class="sr-only">Stock holdings with market values</caption>
+        <thead>
+          <tr>
+            <th scope="col">Symbol</th>
+            <th scope="col">Shares</th>
+            <th scope="col">Cost Basis</th>
+            <th scope="col">Current</th>
+            <th scope="col">Value</th>
+            <th scope="col">Gain</th>
+            <th scope="col">%</th>
+            <th scope="col">Price</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let h of filteredHoldings; trackBy: trackByHoldingId">
+            <td class="symbol">{{ h.symbol }}</td>
+            <td>{{ h.shares }}</td>
+            <td>${{ h.purchase_price | number: '1.2-2' }}</td>
+            <td>${{ h.current_price | number: '1.2-2' }}</td>
+            <td>${{ h.value | number: '1.2-2' }}</td>
+            <td [class.positive]="getGain(h) >= 0" [class.negative]="getGain(h) < 0">
+              {{ getGain(h) >= 0 ? '+' : '' }}${{ getGain(h) | number: '1.2-2' }}
+            </td>
+            <td [class.positive]="getGainPercent(h) >= 0" [class.negative]="getGainPercent(h) < 0">
+              {{ getGainPercent(h) | number: '1.1-1' }}%
+            </td>
+            <td>
+              <ui-badge [variant]="h.price_source === 'live' ? 'success' : 'warning'">{{ priceFreshness(h) }}</ui-badge>
+              <span class="as-of-small">{{ formatPriceTime(h.price_as_of) }}</span>
+            </td>
+            <td class="actions">
+              <button type="button" class="btn-edit" (click)="refreshHoldingPrice(h)" [attr.aria-label]="'Refresh price for ' + h.symbol">↻</button>
+              <button type="button" class="btn-edit" (click)="editHolding(h)" [attr.aria-label]="'Edit ' + h.symbol">Edit</button>
+              <button type="button" class="btn-delete" (click)="deleteHolding(h)" [attr.aria-label]="'Delete ' + h.symbol">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #empty>
+      @if (!loading) {
+        <ui-empty-state message="No holdings yet.">
+          <ui-button variant="primary" (clicked)="openAddModal()">Add your first</ui-button>
+        </ui-empty-state>
+      }
+    </ng-template>
+  </ui-card>
+</div>
+
+<div class="modal-backdrop" *ngIf="showModal" role="dialog" aria-modal="true" aria-labelledby="holding-modal-title">
+  <div class="modal-panel form-card">
+    <h3 id="holding-modal-title">{{ editingId ? 'Edit Holding' : 'Add Holding' }}</h3>
+    <form (ngSubmit)="addOrUpdateHolding()" #holdingForm="ngForm">
+      <div class="form-row">
+        <div class="form-group symbol-row">
+          <label for="h-symbol">Symbol</label>
+          <div class="symbol-check">
+            <input id="h-symbol" type="text" [(ngModel)]="newHolding.symbol" name="symbol" required pattern="[A-Za-z0-9.\-]+" />
+            <button type="button" class="btn btn-secondary" (click)="checkSharePrice()" [disabled]="checkingPrice">
+              <span *ngIf="checkingPrice" class="spinner-inline" aria-hidden="true"></span>
+              Check price
+            </button>
+          </div>
+          <p class="price-check-result" *ngIf="priceCheck">
+            <ng-container *ngIf="priceCheck.valid; else badQuote">
+              <strong>{{ priceCheck.symbol }}</strong>: ${{ priceCheck.price | number: '1.2-2' }}
+              <span class="freshness-badge" [class.stale]="priceCheck.price_source !== 'live'">{{ priceCheck.price_source }}</span>
+              <span class="as-of-small">{{ formatPriceTime(priceCheck.price_as_of) }}</span>
+            </ng-container>
+            <ng-template #badQuote>
+              Could not fetch a live price for {{ priceCheck.symbol }}. Check the ticker or try again.
+            </ng-template>
+          </p>
+        </div>
+        <div class="form-group">
+          <label for="h-shares">Shares</label>
+          <input id="h-shares" type="number" [(ngModel)]="newHolding.shares" name="shares" step="0.0001" min="0.0001" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="h-cost">Cost basis (per share)</label>
+          <input id="h-cost" type="number" [(ngModel)]="newHolding.purchase_price" name="purchase_price" step="0.01" min="0.01" required />
+        </div>
+        <div class="form-group">
+          <label for="h-date">Purchase date</label>
+          <input id="h-date" type="date" [(ngModel)]="newHolding.purchase_date" name="purchase_date" required />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="!holdingForm.form.valid || saving">
+          <span *ngIf="saving" class="spinner-inline" aria-hidden="true"></span>
+          {{ editingId ? 'Update' : 'Add' }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>

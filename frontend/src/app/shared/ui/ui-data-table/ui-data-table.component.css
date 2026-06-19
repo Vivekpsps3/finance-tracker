@@ -1,0 +1,54 @@
+.ui-data-table {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+}
+
+.ui-data-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.ui-data-table__caption {
+  caption-side: top;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.ui-data-table__table ::ng-deep thead th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: var(--surface-2);
+}
+
+.ui-data-table__table ::ng-deep tbody td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.ui-data-table__table ::ng-deep tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ui-data-table__table ::ng-deep tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.ui-data-table__table ::ng-deep tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.ui-data-table--sticky ::ng-deep thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}

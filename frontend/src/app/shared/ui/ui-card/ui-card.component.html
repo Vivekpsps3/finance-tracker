@@ -1,0 +1,13 @@
+<div class="ui-card" [class.ui-card--flat]="padding() === 'none'">
+  @if (title()) {
+    <div class="ui-card__header">
+      <h3 class="ui-card__title">{{ title() }}</h3>
+      <div class="ui-card__actions">
+        <ng-content select="[uiCardActions]" />
+      </div>
+    </div>
+  }
+  <div class="ui-card__body">
+    <ng-content />
+  </div>
+</div>

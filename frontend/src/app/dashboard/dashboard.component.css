@@ -1,0 +1,245 @@
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.dashboard-header h1 {
+  margin: 0 0 var(--space-1);
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.net-worth-card {
+  background: linear-gradient(145deg, var(--card-bg) 0%, var(--surface-elevated) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-card);
+}
+
+.animate-in {
+  animation: page-enter 0.4s ease;
+}
+
+.filter-hint {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.filter-card {
+  margin-bottom: var(--space-6);
+}
+
+:host ::ng-deep .filter-card.ui-card {
+  margin-bottom: var(--space-6);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+}
+
+.hero-note {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.price-refresh-hint {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.price-refresh-hint a {
+  color: var(--accent);
+}
+
+.net-worth-details {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.net-worth-details summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.filter-native {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.filter-native__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.net-worth-value {
+  font-size: clamp(2.5rem, 8vw, 3.75rem);
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.as-of {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  margin: 0 0 var(--space-6);
+}
+
+.net-worth-breakdown {
+  display: flex;
+  gap: var(--space-10);
+  flex-wrap: wrap;
+}
+
+.breakdown-item .label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.breakdown-item .value {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.net-worth-note {
+  margin-top: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.loading-card {
+  min-height: 220px;
+}
+
+.skeleton-header,
+.skeleton-value,
+.skeleton-breakdown {
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-header {
+  height: 20px;
+  width: 120px;
+  margin-bottom: var(--space-4);
+}
+
+.skeleton-value {
+  height: 56px;
+  width: min(280px, 100%);
+  margin-bottom: var(--space-6);
+}
+
+.skeleton-breakdown {
+  height: 40px;
+  width: 200px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.error-text {
+  color: var(--danger);
+  margin-bottom: var(--space-4);
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.insights-list {
+  margin: 0;
+  padding-left: var(--space-6);
+  color: var(--text-secondary);
+}
+
+.insights-list li {
+  margin-bottom: var(--space-2);
+}
+
+.filter-bar {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-right: var(--space-1);
+}
+
+.filter-row select,
+.filter-row input[type="month"],
+.filter-row input[type="number"],
+.filter-row input[type="date"] {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  font-size: var(--text-sm);
+  min-width: 140px;
+}
+
+.filter-row input[type="number"] {
+  width: 100px;
+}
+
+.filter-row .range-sep {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.filter-summary {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+}

@@ -1,0 +1,98 @@
+<div [class.page]="!embedded" [class.embedded]="embedded" class="charts-section">
+  @if (!embedded) {
+    <h1>Charts &amp; Insights</h1>
+  } @else {
+    <h2 class="section-heading">Charts</h2>
+  }
+
+  @if (!embedded && savingsRate !== null) {
+    <p class="chart-note">
+      Savings rate: <strong>{{ savingsRate }}%</strong> (income minus expenses, based on logged transactions)
+    </p>
+  }
+
+  @if (loading) {
+    <div class="loading-overlay" role="status">
+      <span class="spinner-inline" aria-hidden="true"></span> Loading chart data…
+    </div>
+  }
+
+  <div class="charts-grid">
+    <ui-card title="Spending by Category">
+      @if (spendingRows.length) {
+        <div class="chart-wrap">
+          <canvas #spendingChart role="img" aria-label="Doughnut chart of spending by category"></canvas>
+        </div>
+        <div class="chart-fallback">
+          <table aria-label="Spending by category data table">
+            <thead><tr><th>Category</th><th>Amount</th></tr></thead>
+            <tbody>
+              @for (row of spendingRows; track row.label) {
+                <tr><td>{{ row.label }}</td><td>${{ row.value | number:'1.2-2' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <ui-empty-state message="No expense data yet." />
+      }
+    </ui-card>
+
+    <ui-card title="Income vs Expenses">
+      @if (hasTxData) {
+        <div class="chart-wrap">
+          <canvas #incomeExpenseChart role="img" aria-label="Bar chart comparing income and expenses"></canvas>
+        </div>
+      } @else {
+        <ui-empty-state message="Add transactions to compare income and expenses." />
+      }
+    </ui-card>
+
+    <ui-card [title]="embedded ? 'Portfolio allocation (current)' : 'Portfolio Allocation'">
+      @if (allocationRows.length) {
+        <div class="chart-wrap">
+          <canvas #portfolioChart role="img" aria-label="Portfolio allocation by symbol"></canvas>
+        </div>
+        <div class="chart-fallback">
+          <table aria-label="Portfolio allocation data table">
+            <thead><tr><th>Symbol</th><th>Value</th><th>%</th></tr></thead>
+            <tbody>
+              @for (row of allocationRows; track row.label) {
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td>${{ row.value | number:'1.2-2' }}</td>
+                  <td>{{ row.pct | number:'1.1-1' }}%</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <ui-empty-state message="Add holdings to see allocation." />
+      }
+    </ui-card>
+
+    <div class="chart-wide">
+    <ui-card title="Net Worth Over Time">
+      <p class="chart-sub">Daily cash from your transaction dates plus portfolio value for holdings owned by each date.</p>
+      @if (netWorthRows.length) {
+        <div class="chart-wrap tall">
+          <canvas #netWorthChart role="img" aria-label="Line chart of net worth over time"></canvas>
+        </div>
+        <div class="chart-fallback">
+          <table aria-label="Net worth history data table">
+            <thead><tr><th>Date</th><th>Total</th></tr></thead>
+            <tbody>
+              @for (row of netWorthTableRows; track row.date) {
+                <tr><td>{{ row.date }}</td><td>${{ row.total | number:'1.2-2' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <ui-empty-state message="Net worth history appears after your first data change." />
+      }
+    </ui-card>
+    </div>
+  </div>
+</div>

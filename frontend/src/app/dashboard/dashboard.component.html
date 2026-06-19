@@ -1,0 +1,142 @@
+<div class="page dashboard">
+  <ui-page-header title="Dashboard" subtitle="Your financial overview at a glance" />
+
+  <ui-card class="filter-card">
+    <p class="filter-hint">
+      Period filter applies to <strong>insights and charts</strong> below. Net worth is always your
+      <strong>current</strong> total.
+    </p>
+    <div class="filter-row">
+      <ui-select
+        label="Period"
+        [options]="periodOptions"
+        [(value)]="filter.mode"
+        (valueChange)="onFilterChange()" />
+
+      @switch (filter.mode) {
+        @case ('month') {
+          <label class="filter-native">
+            <span class="filter-native__label">Month</span>
+            <input
+              type="month"
+              [(ngModel)]="filter.month"
+              (ngModelChange)="onFilterChange()"
+              aria-label="Select month" />
+          </label>
+        }
+        @case ('year') {
+          <label class="filter-native">
+            <span class="filter-native__label">Year</span>
+            <input
+              type="number"
+              [(ngModel)]="filter.year"
+              (ngModelChange)="onFilterChange()"
+              min="1990"
+              max="2035"
+              placeholder="Year"
+              aria-label="Select year" />
+          </label>
+        }
+        @case ('custom') {
+          <label class="filter-native">
+            <span class="filter-native__label">From</span>
+            <input
+              type="date"
+              [(ngModel)]="filter.start"
+              (ngModelChange)="onFilterChange()"
+              aria-label="Start date" />
+          </label>
+          <span class="range-sep">to</span>
+          <label class="filter-native">
+            <span class="filter-native__label">To</span>
+            <input
+              type="date"
+              [(ngModel)]="filter.end"
+              (ngModelChange)="onFilterChange()"
+              aria-label="End date" />
+          </label>
+        }
+      }
+
+      @if (filter.mode !== 'all') {
+        <ui-button variant="ghost" size="sm" (clicked)="resetFilter()">Reset</ui-button>
+      }
+    </div>
+    @if (filterSummary) {
+      <div class="filter-summary">
+        Showing: <strong>{{ filterSummary }}</strong> ({{ filteredTransactions.length }} transactions)
+      </div>
+    }
+  </ui-card>
+
+  @if (!isLoading && !error && netWorth) {
+    <div class="net-worth-card animate-in">
+      <div class="card-header">
+        <div>
+          <h2>Current net worth</h2>
+          <p class="hero-note">Not affected by the period filter above.</p>
+        </div>
+        <ui-badge [variant]="freshnessBadgeVariant()">{{ portfolioFreshness() }}</ui-badge>
+      </div>
+      <div class="net-worth-value" aria-live="polite">
+        ${{ netWorth.total | number: '1.2-2' }}
+      </div>
+      <p class="as-of">As of {{ asOfLabel }}</p>
+      <div class="net-worth-breakdown">
+        <div class="breakdown-item">
+          <span class="label">Cash</span>
+          <span class="value positive">${{ netWorth.cash | number: '1.2-2' }}</span>
+        </div>
+        <div class="breakdown-item">
+          <span class="label">Portfolio</span>
+          <span class="value">${{ netWorth.portfolio | number: '1.2-2' }}</span>
+        </div>
+      </div>
+      @if (portfolioFreshness() !== 'Live prices' && portfolioFreshness() !== 'No holdings') {
+        <p class="price-refresh-hint">
+          <a routerLink="/portfolio">Portfolio</a> → Refresh prices for live quotes.
+        </p>
+      }
+      <details class="net-worth-details">
+        <summary>How is this calculated?</summary>
+        <p>
+          Total = cash from income/expenses plus current market value of holdings. Cash does not
+          auto-adjust when you add holdings—log transfers as expenses if you model them that way.
+        </p>
+      </details>
+    </div>
+  } @else if (isLoading) {
+    <ui-card class="loading-card">
+      <ui-skeleton variant="block" height="1.25rem" width="120px" />
+      <ui-skeleton variant="block" height="3.5rem" width="min(280px, 100%)" />
+      <ui-skeleton variant="lines" [lines]="2" />
+    </ui-card>
+  } @else if (error) {
+    <ui-card>
+      <p class="error-text">{{ error }}</p>
+      <ui-button variant="primary" (clicked)="retryLoad()">Retry</ui-button>
+    </ui-card>
+  }
+
+  <ui-card title="Insights (selected period)">
+    @if (savingsRate !== null) {
+      <ul class="insights-list">
+        <li>Savings rate: <strong>{{ savingsRate }}%</strong> of income in this period</li>
+        <li>
+          Portfolio share of <em>current</em> net worth:
+          @if (netWorth && netWorth.total > 0) {
+            <strong>{{ (netWorth.portfolio / netWorth.total * 100) | number:'1.1-1' }}%</strong>
+          }
+        </li>
+      </ul>
+    } @else {
+      <ui-empty-state message="Add income transactions in this period to see savings insights." />
+    }
+  </ui-card>
+
+  <app-charts
+    [embedded]="true"
+    [dataReady]="chartsReady"
+    [overrideTransactions]="filteredTransactions"
+    [overrideHistory]="filteredHistory"></app-charts>
+</div>

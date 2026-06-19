@@ -1,0 +1,208 @@
+<div class="page">
+  <ui-page-header title="Transactions" subtitle="Search, import, and manage income and expenses">
+    <div uiPageActions class="header-actions">
+      <ui-button variant="secondary" (clicked)="openImportModal()">Import from bank</ui-button>
+      <ui-button variant="primary" (clicked)="openAddModal()">Add Transaction</ui-button>
+    </div>
+  </ui-page-header>
+
+  <ui-card title="History">
+    <div uiCardActions class="table-actions table-actions--toolbar">
+      <input
+        type="search"
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()"
+        placeholder="Search category or description..."
+        class="search-input"
+        aria-label="Search transactions"
+      />
+      <ui-button variant="secondary" size="sm" (clicked)="exportToCsv()">Export CSV</ui-button>
+    </div>
+
+    <div *ngIf="loading" class="loading-overlay" role="status">
+      <span class="spinner-inline" aria-hidden="true"></span> Loading transactions…
+    </div>
+
+    <div class="table-scroll" *ngIf="filteredTransactions.length > 0; else empty">
+      <table class="data-table tx-table" role="table" aria-label="Transactions history">
+        <caption class="sr-only">Income and expense transactions</caption>
+        <thead>
+          <tr>
+            <th scope="col" (click)="toggleSort('date')" class="sortable" [attr.aria-sort]="sortColumn === 'date' ? sortDirection + 'ending' : 'none'">
+              Date <span class="sort-indicator">{{ sortIcon('date') }}</span>
+            </th>
+            <th scope="col">Type</th>
+            <th scope="col">Account</th>
+            <th scope="col" (click)="toggleSort('category')" class="sortable" [attr.aria-sort]="sortColumn === 'category' ? sortDirection + 'ending' : 'none'">
+              Category <span class="sort-indicator">{{ sortIcon('category') }}</span>
+            </th>
+            <th scope="col">Description</th>
+            <th scope="col" (click)="toggleSort('amount')" class="sortable amount-col" [attr.aria-sort]="sortColumn === 'amount' ? sortDirection + 'ending' : 'none'">
+              Amount <span class="sort-indicator">{{ sortIcon('amount') }}</span>
+            </th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let tx of filteredTransactions; trackBy: trackByTxId">
+            <td>{{ tx.date }}</td>
+            <td>
+              <ui-badge [variant]="tx.type === 'income' ? 'success' : 'danger'">{{ tx.type }}</ui-badge>
+              <span class="import-tag" *ngIf="tx.source === 'import'">import</span>
+            </td>
+            <td class="account-cell">{{ tx.account_display || '—' }}</td>
+            <td>{{ tx.category }}</td>
+            <td class="desc">{{ tx.description || '—' }}</td>
+            <td class="amount-col" [class.positive]="tx.type === 'income'">
+              {{ tx.type === 'income' ? '+' : '-' }}${{ tx.amount | number: '1.2-2' }}
+            </td>
+            <td class="actions">
+              <button type="button" class="btn-edit" (click)="editTransaction(tx)" [attr.aria-label]="'Edit ' + tx.category">Edit</button>
+              <button type="button" class="btn-delete" (click)="deleteTransaction(tx)" [attr.aria-label]="'Delete ' + tx.category">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #empty>
+      @if (!loading) {
+        <ui-empty-state title="No transactions yet">
+          <ui-button variant="primary" (clicked)="openAddModal()">Add your first</ui-button>
+        </ui-empty-state>
+      }
+    </ng-template>
+  </ui-card>
+</div>
+
+<div class="modal-backdrop" *ngIf="showImportModal" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+  <div class="modal-panel form-card import-panel">
+    <h3 id="import-modal-title">Import bank statement</h3>
+
+    <ng-container *ngIf="importStep === 'upload'">
+      <div class="form-group">
+        <label for="import-bank">Bank</label>
+        <select
+          id="import-bank"
+          [(ngModel)]="selectedImportBankSlug"
+          (ngModelChange)="onImportBankChange()"
+          name="importBank"
+          [disabled]="importBanks.length === 0"
+        >
+          <option *ngFor="let bank of importBanks" [value]="bank.slug">{{ bank.name }}</option>
+        </select>
+      </div>
+      <p class="import-hint" *ngIf="selectedImportBank">{{ selectedImportBank.hint }}</p>
+      <div class="form-group">
+        <label for="import-file">Statement file</label>
+        <input id="import-file" type="file" accept=".csv,text/csv" (change)="onImportFileSelected($event)" />
+        <p class="file-name" *ngIf="importFile">{{ importFile.name }}</p>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" (click)="runImportPreview()" [disabled]="!importFile || importParsing">
+          <span *ngIf="importParsing" class="spinner-inline" aria-hidden="true"></span>
+          Preview import
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closeImportModal()">Cancel</button>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="importStep === 'preview' && importPreview">
+      <p class="import-summary">
+        {{ importPreview.summary.new }} new · {{ importPreview.summary.duplicate }} already imported
+      </p>
+      <div class="import-preview-actions">
+        <button type="button" class="btn btn-ghost" (click)="selectAllNewImportRows()">Select all new</button>
+      </div>
+      <div class="import-table-scroll">
+        <table class="data-table import-table" aria-label="Import preview">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">Date</th>
+              <th scope="col">Account</th>
+              <th scope="col">Category</th>
+              <th scope="col">Description</th>
+              <th scope="col" class="amount-col">Debit</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of importPreview.rows" [class.duplicate-row]="row.status === 'duplicate'">
+              <td>
+                <input
+                  type="checkbox"
+                  [checked]="isImportRowSelected(row)"
+                  [disabled]="row.status === 'duplicate'"
+                  (change)="toggleImportRow(row)"
+                  [attr.aria-label]="'Import ' + row.description"
+                />
+              </td>
+              <td>{{ row.date }}</td>
+              <td>{{ row.account_display }}</td>
+              <td>{{ row.category }}</td>
+              <td class="desc">{{ row.description }}</td>
+              <td class="amount-col">-${{ row.amount | number: '1.2-2' }}</td>
+              <td><span class="badge" [class.duplicate]="row.status === 'duplicate'">{{ row.status }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="importStep = 'upload'">Back</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="commitImport()"
+          [disabled]="importCommitting || importSelected.size === 0"
+        >
+          <span *ngIf="importCommitting" class="spinner-inline" aria-hidden="true"></span>
+          Import {{ importSelected.size }} transaction(s)
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closeImportModal()">Cancel</button>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="showModal" role="dialog" aria-modal="true" aria-labelledby="tx-modal-title">
+  <div class="modal-panel form-card">
+    <h3 id="tx-modal-title">{{ editingTxId ? 'Edit Transaction' : 'Add Transaction' }}</h3>
+    <form (ngSubmit)="saveTransaction()" #txForm="ngForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="tx-date">Date</label>
+          <input id="tx-date" type="date" [(ngModel)]="newTx.date" name="date" required />
+        </div>
+        <div class="form-group">
+          <label for="tx-type">Type</label>
+          <select id="tx-type" [(ngModel)]="newTx.type" name="type">
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="tx-category">Category</label>
+          <input id="tx-category" type="text" [(ngModel)]="newTx.category" name="category" required />
+        </div>
+        <div class="form-group">
+          <label for="tx-amount">Amount</label>
+          <input id="tx-amount" type="number" [(ngModel)]="newTx.amount" name="amount" step="0.01" min="0.01" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="tx-desc">Description (optional)</label>
+        <input id="tx-desc" type="text" [(ngModel)]="newTx.description" name="description" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="!txForm.form.valid || saving">
+          <span *ngIf="saving" class="spinner-inline" aria-hidden="true"></span>
+          {{ editingTxId ? 'Update' : 'Add' }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>

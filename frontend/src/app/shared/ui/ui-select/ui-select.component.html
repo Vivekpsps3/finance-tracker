@@ -1,0 +1,16 @@
+<div class="ui-field">
+  @if (label()) {
+    <label class="ui-field__label" [for]="resolvedId()">{{ label() }}</label>
+  }
+  <select
+    class="ui-field__control"
+    [id]="resolvedId()"
+    [disabled]="disabled()"
+    [required]="required()"
+    [value]="value()"
+    (change)="value.set($any($event.target).value)">
+    @for (opt of options(); track opt.value) {
+      <option [value]="opt.value" [disabled]="opt.disabled ?? false">{{ opt.label }}</option>
+    }
+  </select>
+</div>

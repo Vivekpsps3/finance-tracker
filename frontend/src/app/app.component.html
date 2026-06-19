@@ -1,0 +1,22 @@
+<router-outlet />
+
+<app-confirm-dialog />
+
+<div class="toast-host" aria-live="polite" aria-atomic="true">
+  @if (toast) {
+    <div
+      class="toast"
+      [class.success]="toast.kind === 'success'"
+      [class.error]="toast.kind === 'error'"
+      [class.info]="toast.kind === 'info'"
+    >
+      <span>{{ toast.message }}</span>
+      <div class="toast-actions">
+        @if (toast.undo) {
+          <button type="button" class="btn btn-ghost" (click)="undoToast()">Undo</button>
+        }
+        <button type="button" class="btn btn-ghost" (click)="dismissToast()">Dismiss</button>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,11 @@
+<div class="ui-data-table" [class.ui-data-table--sticky]="stickyHeader()">
+  <table
+    class="ui-data-table__table"
+    [attr.aria-label]="ariaLabel()"
+    [attr.aria-describedby]="caption() ? 'ui-table-caption' : null">
+    @if (caption()) {
+      <caption id="ui-table-caption" class="ui-data-table__caption">{{ caption() }}</caption>
+    }
+    <ng-content />
+  </table>
+</div>
