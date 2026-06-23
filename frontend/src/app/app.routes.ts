@@ -25,6 +25,14 @@ export const routes: Routes = [
           import('./portfolio/portfolio.component').then(m => m.PortfolioComponent),
       },
       {
+        path: 'balance-sheet',
+        title: 'Balance sheet · Finance',
+        loadComponent: () =>
+          import('./assets-liabilities/assets-liabilities.component').then(
+            m => m.AssetsLiabilitiesComponent
+          ),
+      },
+      {
         path: 'calendar',
         title: 'Calendar · Finance',
         loadComponent: () =>

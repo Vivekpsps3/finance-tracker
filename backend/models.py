@@ -22,6 +22,24 @@ class TransactionType(str, enum.Enum):
     expense = "expense"
 
 
+class AssetCategory(str, enum.Enum):
+    cash = "cash"
+    checking = "checking"
+    savings = "savings"
+    real_estate = "real_estate"
+    vehicle = "vehicle"
+    other = "other"
+
+
+class LiabilityCategory(str, enum.Enum):
+    mortgage = "mortgage"
+    auto_loan = "auto_loan"
+    student_loan = "student_loan"
+    credit_card = "credit_card"
+    personal_loan = "personal_loan"
+    other = "other"
+
+
 class Bank(Base):
     __tablename__ = "banks"
     id = Column(Integer, primary_key=True, index=True)
@@ -82,10 +100,36 @@ class TickerQuote(Base):
     source = Column(String, default="sqlite_eod", nullable=False)
 
 
+class Asset(Base):
+    __tablename__ = "assets"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    category = Column(Enum(AssetCategory), nullable=False)
+    current_value = Column(Float, nullable=False)
+    as_of_date = Column(Date, nullable=False)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Liability(Base):
+    __tablename__ = "liabilities"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    category = Column(Enum(LiabilityCategory), nullable=False)
+    balance_owed = Column(Float, nullable=False)
+    as_of_date = Column(Date, nullable=False)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class NetWorthSnapshot(Base):
     __tablename__ = "net_worth_snapshots"
     id = Column(Integer, primary_key=True, index=True)
     recorded_at = Column(DateTime, index=True, default=datetime.utcnow)
     cash = Column(Float)
+    other_assets = Column(Float, default=0.0)
     portfolio = Column(Float)
+    liabilities = Column(Float, default=0.0)
     total = Column(Float)

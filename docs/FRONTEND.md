@@ -14,7 +14,8 @@ Angular 19 standalone app under `frontend/src/app/`.
 | Path | Component |
 |------|-----------|
 | `/` | Dashboard (lazy) |
-| `/transactions` | Transactions |
+| `/transactions` | Transactions (income, expenses, import) |
+| `/balance-sheet` | Balance sheet |
 | `/portfolio` | Portfolio |
 | `/calendar` | Calendar |
 
@@ -60,7 +61,7 @@ Use **OnPush** on new components; feature pages should use OnPush + `markForChec
 ## Dashboard behavior
 
 - **Period filter** applies to insights and charts only.
-- **Net worth hero** is always **current** total (labeled in UI).
+- **Net worth hero** is always **current** balance-sheet total (labeled in UI).
 - Embedded charts: `[embedded]="true"`, `[dataReady]`, `[overrideTransactions]`, `[overrideHistory]`.
 
 ## Build

@@ -1,14 +1,65 @@
 <div class="page dashboard">
-  <ui-page-header title="Dashboard" subtitle="Your financial overview at a glance" />
+  <ui-page-header title="Dashboard" subtitle="Current wealth and period trends" />
+
+  @if (!isLoading && !error && netWorth) {
+    <section class="net-worth-card animate-in" aria-labelledby="nw-heading">
+      <p class="section-eyebrow">Net worth</p>
+      <div class="card-header">
+        <div>
+          <h2 id="nw-heading" class="sr-only">Current net worth</h2>
+        </div>
+        <ui-badge [variant]="freshnessBadgeVariant()">{{ portfolioFreshness() }}</ui-badge>
+      </div>
+      <div class="net-worth-value money" aria-live="polite">
+        ${{ netWorth.total | number: '1.2-2' }}
+      </div>
+      <p class="as-of">As of {{ asOfLabel }}</p>
+      <div class="net-worth-breakdown">
+        <div class="breakdown-item">
+          <span class="breakdown-icon"><ui-icon name="building" size="sm" /></span>
+          <span class="label">Other assets</span>
+          <span class="value money">${{ netWorth.other_assets | number: '1.2-2' }}</span>
+        </div>
+        <div class="breakdown-item">
+          <span class="breakdown-icon"><ui-icon name="trending" size="sm" /></span>
+          <span class="label">Investments</span>
+          <span class="value money">${{ netWorth.portfolio | number: '1.2-2' }}</span>
+        </div>
+        <div class="breakdown-item">
+          <span class="breakdown-icon"><ui-icon name="credit-card" size="sm" /></span>
+          <span class="label">Liabilities</span>
+          <span class="value money negative">−${{ netWorth.liabilities | number: '1.2-2' }}</span>
+        </div>
+      </div>
+      @if (portfolioFreshness() !== 'Live prices' && portfolioFreshness() !== 'No holdings') {
+        <p class="price-refresh-hint">
+          <a routerLink="/portfolio">Refresh portfolio prices</a> for live quotes.
+        </p>
+      }
+      <p class="net-worth-note">
+        <a routerLink="/balance-sheet">Edit balance sheet</a>
+        · Transactions do not change this total.
+      </p>
+    </section>
+  } @else if (isLoading) {
+    <ui-card class="loading-card">
+      <ui-skeleton variant="block" height="1.25rem" width="120px" />
+      <ui-skeleton variant="block" height="3.5rem" width="min(280px, 100%)" />
+      <ui-skeleton variant="lines" [lines]="2" />
+    </ui-card>
+  } @else if (error) {
+    <ui-card>
+      <p class="error-text">{{ error }}</p>
+      <ui-button variant="primary" (clicked)="retryLoad()">Retry</ui-button>
+    </ui-card>
+  }
 
   <ui-card class="filter-card">
-    <p class="filter-hint">
-      Period filter applies to <strong>insights and charts</strong> below. Net worth is always your
-      <strong>current</strong> total.
-    </p>
+    <p class="section-eyebrow">Period</p>
+    <p class="filter-hint">Applies to insights and charts only.</p>
     <div class="filter-row">
       <ui-select
-        label="Period"
+        label="Range"
         [options]="periodOptions"
         [(value)]="filter.mode"
         (valueChange)="onFilterChange()" />
@@ -64,79 +115,38 @@
     </div>
     @if (filterSummary) {
       <div class="filter-summary">
-        Showing: <strong>{{ filterSummary }}</strong> ({{ filteredTransactions.length }} transactions)
+        {{ filterSummary }} · {{ filteredTransactions.length }} transactions
       </div>
     }
   </ui-card>
 
-  @if (!isLoading && !error && netWorth) {
-    <div class="net-worth-card animate-in">
-      <div class="card-header">
-        <div>
-          <h2>Current net worth</h2>
-          <p class="hero-note">Not affected by the period filter above.</p>
+  <ui-card title="Insights">
+    @if (periodIncomeTotal > 0 || (netWorth && netWorth.total_assets > 0)) {
+      <div class="insight-tiles">
+        <div class="insight-tile">
+          <span class="insight-tile__label">Income in period</span>
+          <span class="insight-tile__value money">${{ periodIncomeTotal | number:'1.2-2' }}</span>
         </div>
-        <ui-badge [variant]="freshnessBadgeVariant()">{{ portfolioFreshness() }}</ui-badge>
+        @if (netWorth && netWorth.total_assets > 0) {
+          <div class="insight-tile">
+            <span class="insight-tile__label">Investments % of assets</span>
+            <span class="insight-tile__value money">
+              {{ (netWorth.portfolio / netWorth.total_assets * 100) | number:'1.1-1' }}%
+            </span>
+          </div>
+        }
       </div>
-      <div class="net-worth-value" aria-live="polite">
-        ${{ netWorth.total | number: '1.2-2' }}
-      </div>
-      <p class="as-of">As of {{ asOfLabel }}</p>
-      <div class="net-worth-breakdown">
-        <div class="breakdown-item">
-          <span class="label">Cash</span>
-          <span class="value positive">${{ netWorth.cash | number: '1.2-2' }}</span>
-        </div>
-        <div class="breakdown-item">
-          <span class="label">Portfolio</span>
-          <span class="value">${{ netWorth.portfolio | number: '1.2-2' }}</span>
-        </div>
-      </div>
-      @if (portfolioFreshness() !== 'Live prices' && portfolioFreshness() !== 'No holdings') {
-        <p class="price-refresh-hint">
-          <a routerLink="/portfolio">Portfolio</a> → Refresh prices for live quotes.
-        </p>
-      }
-      <details class="net-worth-details">
-        <summary>How is this calculated?</summary>
-        <p>
-          Total = cash from income/expenses plus current market value of holdings. Cash does not
-          auto-adjust when you add holdings—log transfers as expenses if you model them that way.
-        </p>
-      </details>
-    </div>
-  } @else if (isLoading) {
-    <ui-card class="loading-card">
-      <ui-skeleton variant="block" height="1.25rem" width="120px" />
-      <ui-skeleton variant="block" height="3.5rem" width="min(280px, 100%)" />
-      <ui-skeleton variant="lines" [lines]="2" />
-    </ui-card>
-  } @else if (error) {
-    <ui-card>
-      <p class="error-text">{{ error }}</p>
-      <ui-button variant="primary" (clicked)="retryLoad()">Retry</ui-button>
-    </ui-card>
-  }
-
-  <ui-card title="Insights (selected period)">
-    @if (savingsRate !== null) {
-      <ul class="insights-list">
-        <li>Savings rate: <strong>{{ savingsRate }}%</strong> of income in this period</li>
-        <li>
-          Portfolio share of <em>current</em> net worth:
-          @if (netWorth && netWorth.total > 0) {
-            <strong>{{ (netWorth.portfolio / netWorth.total * 100) | number:'1.1-1' }}%</strong>
-          }
-        </li>
-      </ul>
     } @else {
-      <ui-empty-state message="Add income transactions in this period to see savings insights." />
+      <ui-empty-state message="Add transactions in this period to see insights." />
     }
   </ui-card>
 
-  <app-charts
-    [embedded]="true"
-    [dataReady]="chartsReady"
-    [overrideTransactions]="filteredTransactions"
-    [overrideHistory]="filteredHistory"></app-charts>
+  <section class="trends-section">
+    <p class="section-eyebrow">Trends</p>
+    <app-charts
+      [embedded]="true"
+      [dataReady]="chartsReady"
+      [overrideTransactions]="filteredTransactions"
+      [overrideHistory]="filteredHistory"></app-charts>
+  </section>
 </div>

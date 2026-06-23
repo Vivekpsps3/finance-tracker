@@ -3,8 +3,11 @@
 <nav class="navbar" aria-label="Main navigation">
   <div class="nav-content">
     <a routerLink="/" class="logo" aria-label="Finance home">
-      <span class="logo-icon" aria-hidden="true">◎</span>
-      <span>Finance</span>
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="var(--accent-glow)" stroke="var(--accent)" stroke-width="1"/>
+        <path d="M8 22V10M14 22V6M20 22v-6M26 22H6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text">Finance</span>
     </a>
     <div class="nav-links">
       @for (item of navItems; track item.path) {
@@ -13,8 +16,10 @@
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: item.exact }"
           class="nav-link"
-        >
-          {{ item.label }}
+          [attr.title]="item.label">
+          <ui-icon [name]="item.icon" size="sm" />
+          <span class="nav-link__label">{{ item.label }}</span>
+          <span class="nav-link__short">{{ item.shortLabel }}</span>
         </a>
       }
     </div>
@@ -23,9 +28,8 @@
 
 @if (apiOffline) {
   <div class="api-banner" role="status">
-    API unreachable. Start the backend:
-    <code>cd backend && uvicorn main:app --reload --host 127.0.0.1 --port 8000</code>
-    and run <code>ng serve</code> with the dev proxy.
+    <ui-icon name="spark" size="sm" />
+    <span>API offline — start backend on port 8000 and use <code>ng serve</code> with proxy.</span>
   </div>
 }
 

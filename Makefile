@@ -15,7 +15,7 @@ WEB_HOST ?= 0.0.0.0
 WEB_PORT ?= 4200
 
 .PHONY: help install install-backend install-frontend dev backend frontend \
-        test test-backend test-frontend build build-frontend clean check
+        test test-backend test-frontend build build-frontend clean reset-db check
 
 help:
 	@echo "Finance Tracker"
@@ -27,6 +27,7 @@ help:
 	@echo "  make test             Backend + frontend unit tests"
 	@echo "  make build            Production Angular build"
 	@echo "  make clean            Remove caches, dist, __pycache__, *.bak"
+	@echo "  make reset-db         Delete backend/finance.db (fresh schema on next API start)"
 	@echo ""
 	@echo "First time: make install && make dev"
 	@echo "Open: http://localhost:$(WEB_PORT)"
@@ -77,6 +78,11 @@ build: build-frontend
 
 build-frontend:
 	cd $(FRONTEND_DIR) && npm run build
+
+reset-db:
+	rm -f $(BACKEND_DIR)/finance.db $(BACKEND_DIR)/finance.db-journal \
+		$(BACKEND_DIR)/finance.db-wal $(BACKEND_DIR)/finance.db-shm
+	@echo "Removed $(BACKEND_DIR)/finance.db. Restart the API to recreate an empty database."
 
 clean:
 	rm -rf $(BACKEND_DIR)/__pycache__ \

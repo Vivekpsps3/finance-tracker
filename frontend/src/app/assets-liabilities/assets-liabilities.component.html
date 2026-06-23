@@ -1,0 +1,143 @@
+<div class="page">
+  <ui-page-header
+    title="Balance sheet"
+    subtitle="Your assets and liabilities. Portfolio investments are separate.">
+    <div uiPageActions class="header-actions">
+      <ui-button variant="secondary" (clicked)="openAddLiability()">Add liability</ui-button>
+      <ui-button variant="primary" (clicked)="openAddAsset()">Add asset</ui-button>
+    </div>
+  </ui-page-header>
+
+  @if (netWorth) {
+    <ui-card class="summary-card">
+      <div class="summary-grid">
+        <div>
+          <span class="summary-label">Other assets</span>
+          <strong>${{ netWorth.other_assets | number: '1.2-2' }}</strong>
+        </div>
+        <div>
+          <span class="summary-label">Investments</span>
+          <strong>${{ netWorth.portfolio | number: '1.2-2' }}</strong>
+        </div>
+        <div>
+          <span class="summary-label">Liabilities</span>
+          <strong class="negative">${{ netWorth.liabilities | number: '1.2-2' }}</strong>
+        </div>
+        <div>
+          <span class="summary-label">Net worth</span>
+          <strong class="hero">${{ netWorth.total | number: '1.2-2' }}</strong>
+        </div>
+      </div>
+      <p class="hint">Income transactions do not change these totals—update balances here when they change.</p>
+    </ui-card>
+  }
+
+  <ui-card title="Assets">
+    @if (assets.length) {
+      <ui-data-table>
+      <table class="data-table" aria-label="Assets">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Value</th>
+            <th>As of</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of assets; track row.id) {
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.category | formatCategory }}</td>
+              <td>${{ row.current_value | number: '1.2-2' }}</td>
+              <td>{{ row.as_of_date }}</td>
+              <td class="actions">
+                <button type="button" class="btn-edit" (click)="openEditAsset(row)">Edit</button>
+                <button type="button" class="btn-delete" (click)="deleteAsset(row)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      </ui-data-table>
+    } @else {
+      <ui-empty-state message="Add checking, savings, property, or other asset balances.">
+        <ui-icon name="wallet" size="lg" style="display:block; margin: 0 auto 8px; opacity:.5;" />
+      </ui-empty-state>
+    }
+  </ui-card>
+
+  <ui-card title="Liabilities">
+    @if (liabilities.length) {
+      <ui-data-table>
+      <table class="data-table" aria-label="Liabilities">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Balance owed</th>
+            <th>As of</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of liabilities; track row.id) {
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.category | formatCategory }}</td>
+              <td>${{ row.balance_owed | number: '1.2-2' }}</td>
+              <td>{{ row.as_of_date }}</td>
+              <td class="actions">
+                <button type="button" class="btn-edit" (click)="openEditLiability(row)">Edit</button>
+                <button type="button" class="btn-delete" (click)="deleteLiability(row)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      </ui-data-table>
+    } @else {
+      <ui-empty-state message="Add mortgages, loans, or credit card balances you owe.">
+        <ui-icon name="credit-card" size="lg" style="display:block; margin: 0 auto 8px; opacity:.5;" />
+      </ui-empty-state>
+    }
+  </ui-card>
+</div>
+
+@if (showAssetModal) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-panel form-card">
+      <h3>{{ editingAssetId ? 'Edit asset' : 'Add asset' }}</h3>
+      <label>Name <input [(ngModel)]="assetForm.name" /></label>
+      <ui-select label="Category" [options]="assetCategoryOptions" [(value)]="assetForm.category" />
+      <label>Value <input type="number" min="0" step="0.01" [(ngModel)]="assetForm.current_value" /></label>
+      <label>As of <input type="date" [(ngModel)]="assetForm.as_of_date" /></label>
+      <label>Notes <input [(ngModel)]="assetForm.notes" /></label>
+      <div class="modal-actions">
+        <ui-button variant="ghost" (clicked)="closeModals()">Cancel</ui-button>
+        <ui-button variant="primary" [disabled]="saving" (clicked)="saveAsset()">Save</ui-button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showLiabilityModal) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-panel form-card">
+      <h3>{{ editingLiabilityId ? 'Edit liability' : 'Add liability' }}</h3>
+      <label>Name <input [(ngModel)]="liabilityForm.name" /></label>
+      <ui-select
+        label="Category"
+        [options]="liabilityCategoryOptions"
+        [(value)]="liabilityForm.category" />
+      <label>Balance owed <input type="number" min="0" step="0.01" [(ngModel)]="liabilityForm.balance_owed" /></label>
+      <label>As of <input type="date" [(ngModel)]="liabilityForm.as_of_date" /></label>
+      <label>Notes <input [(ngModel)]="liabilityForm.notes" /></label>
+      <div class="modal-actions">
+        <ui-button variant="ghost" (clicked)="closeModals()">Cancel</ui-button>
+        <ui-button variant="primary" [disabled]="saving" (clicked)="saveLiability()">Save</ui-button>
+      </div>
+    </div>
+  </div>
+}

@@ -67,9 +67,49 @@ export interface HoldingCreate {
   purchase_date: string;
 }
 
+export interface Asset {
+  id: number;
+  name: string;
+  category: string;
+  current_value: number;
+  as_of_date: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssetCreate {
+  name: string;
+  category: string;
+  current_value: number;
+  as_of_date: string;
+  notes?: string;
+}
+
+export interface Liability {
+  id: number;
+  name: string;
+  category: string;
+  balance_owed: number;
+  as_of_date: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LiabilityCreate {
+  name: string;
+  category: string;
+  balance_owed: number;
+  as_of_date: string;
+  notes?: string;
+}
+
 export interface NetWorth {
-  cash: number;
+  other_assets: number;
   portfolio: number;
+  liabilities: number;
+  total_assets: number;
   total: number;
   as_of?: string;
   portfolio_sources?: Record<string, string>;
@@ -85,8 +125,10 @@ export interface MarketPriceQuote {
 
 export interface NetWorthHistoryPoint {
   date: string;
-  cash: number;
+  other_assets: number;
   portfolio: number;
+  liabilities: number;
+  total_assets: number;
   total: number;
 }
 

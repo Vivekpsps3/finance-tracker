@@ -51,11 +51,18 @@ backend/
   schemas.py       # Pydantic
   routers/         # HTTP routes
   services/        # domain + market_data
-  import_parsers/  # bank CSV parsers
+  import_parsers/  # bank CSV parsers (wired via routers/imports.py)
   .env.example     # copy to .env (optional)
 ```
 
 Local DB default: `backend/finance.db` (gitignored).
+
+Wipe all local data and start fresh:
+
+```bash
+make reset-db   # stop the API first if it is running
+make backend    # creates empty tables via init_database()
+```
 
 ## Frontend layout
 
@@ -74,7 +81,21 @@ cd frontend && npm run debug:ui
 
 ## Environment
 
-Copy `backend/.env.example` → `backend/.env` if you need custom CORS, Redis, or log levels.
+Copy `backend/.env.example` → `backend/.env` if you need custom CORS, Redis, log levels, or Plaid credentials.
+
+### Plaid Integration
+
+Plaid is used for secure bank account linking.
+
+Required variables:
+
+- `PLAID_CLIENT_ID`
+- `PLAID_SECRET`
+- `PLAID_ENV` (sandbox | development | production)
+- `PLAID_PRODUCTS` (e.g. transactions)
+- `PLAID_COUNTRY_CODES` (e.g. US)
+
+See `backend/.env.example` for the full template. Never commit your real `.env` file.
 
 ## Tests
 

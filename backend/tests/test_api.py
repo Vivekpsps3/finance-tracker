@@ -49,7 +49,7 @@ def test_transaction_crud_and_net_worth(client):
 
     nw = client.get("/net-worth/")
     assert nw.status_code == 200
-    assert nw.json()["cash"] == 5000
+    assert nw.json()["total"] == 0
 
     update = client.put(f"/transactions/{tx_id}", json={"amount": 4500})
     assert update.status_code == 200
@@ -113,14 +113,15 @@ def test_market_price_and_refresh_holdings(client, monkeypatch):
 
 def test_net_worth_history(client):
     client.post(
-        "/transactions/",
+        "/assets/",
         json={
-            "date": "2026-01-01",
-            "type": "income",
-            "category": "Bonus",
-            "amount": 1000,
+            "name": "Savings",
+            "category": "savings",
+            "current_value": 1000,
+            "as_of_date": "2026-01-01",
         },
     )
     hist = client.get("/net-worth/history")
     assert hist.status_code == 200
     assert len(hist.json()) >= 1
+    assert hist.json()[0]["other_assets"] == 1000

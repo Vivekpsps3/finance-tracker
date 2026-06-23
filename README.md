@@ -1,6 +1,6 @@
 # Personal Finance Tracker
 
-Personal finance app: transactions, bank import, portfolio with cached/live prices, net worth, charts, and calendar—Angular 19 + FastAPI.
+Personal finance app: balance-sheet net worth (assets & liabilities), portfolio with cached/live prices, income logging, charts, and calendar—Angular 19 + FastAPI.
 
 ## Quick start
 
@@ -24,11 +24,10 @@ Details: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 ## Features
 
 - **Dashboard** — Current net worth, period-filtered insights/charts, coordinated loading
-- **Transactions** — CRUD, **bank import** (Capital One CSV; preview + dedupe), search/export
+- **Transactions** — Income & expenses, **bank import** (Capital One CSV; preview + dedupe), monthly totals on the tab
+- **Balance sheet** — Manual assets & liabilities that drive net worth (route: /balance-sheet)
 - **Portfolio** — Holdings CRUD, refresh prices, check symbol before add
 - **Calendar** — Daily transaction summary
-
-Adding banks: **[docs/ADDING_A_BANK_IMPORT.md](docs/ADDING_A_BANK_IMPORT.md)**
 
 ## Tech stack
 
@@ -62,12 +61,17 @@ Optional: `backend/.env` from **`backend/.env.example`**
 | `EOD_CACHE_HOURS` | `24` |
 | `REDIS_URL` | unset (SQLite `ticker_quotes` still used) |
 | `LOG_LEVEL` | `INFO` |
+| `PLAID_CLIENT_ID` | (required for Plaid) |
+| `PLAID_SECRET` | (required for Plaid) |
+| `PLAID_ENV` | `sandbox` |
 
 ## Data model
 
-- **Cash** = income − expenses from transactions (not auto-adjusted when you add holdings).
-- **Net worth** = cash + current portfolio market value.
-- **History** — snapshots on transaction/holding changes; charts can filter by period on the client.
+Adding banks: **[docs/ADDING_A_BANK_IMPORT.md](docs/ADDING_A_BANK_IMPORT.md)**. See **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)** and **[AGENTS.md](AGENTS.md)** for agents.
+
+- **Net worth** = manual assets + portfolio market value − liabilities.
+- **Transactions** — income, expenses, and card imports for tracking; not part of net worth.
+- **History** — snapshots on asset, liability, and holding changes.
 
 Local database: `backend/finance.db` (not committed; see `.gitignore`).
 

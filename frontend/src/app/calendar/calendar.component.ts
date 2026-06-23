@@ -11,6 +11,7 @@ import {
   UiCardComponent,
   UiEmptyStateComponent,
   UiPageHeaderComponent,
+  UiIconComponent,
 } from '../shared/ui';
 
 interface CalendarDay {
@@ -22,7 +23,16 @@ interface CalendarDay {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, RouterLink, UiPageHeaderComponent, UiButtonComponent, UiCardComponent, UiBadgeComponent, UiEmptyStateComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    UiPageHeaderComponent,
+    UiButtonComponent,
+    UiCardComponent,
+    UiBadgeComponent,
+    UiEmptyStateComponent,
+    UiIconComponent,
+  ],
   templateUrl: './calendar.component.html',
   styleUrl: './calendar.component.css',
 })

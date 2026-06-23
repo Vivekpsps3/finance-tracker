@@ -4,8 +4,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        bg: '#0f0f0f',
-        card: '#1a1a1a',
+        bg: '#0a0a0c',
+        card: '#141416',
         surface: {
           DEFAULT: '#222222',
           hover: '#2a2a2a',
@@ -61,6 +61,7 @@ module.exports = {
       borderRadius: {
         md: '8px',
         lg: '12px',
+        xl: '18px',
       },
       boxShadow: {
         card: '0 8px 24px rgba(0, 0, 0, 0.35)',
@@ -69,7 +70,7 @@ module.exports = {
         DEFAULT: '200ms',
       },
       maxWidth: {
-        page: '1100px',
+        page: '1180px',
       },
     },
   },

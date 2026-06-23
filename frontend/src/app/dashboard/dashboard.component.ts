@@ -22,6 +22,7 @@ import {
   UiSelectComponent,
   UiSelectOption,
   UiSkeletonComponent,
+  UiIconComponent,
 } from '../shared/ui';
 import { filterByDate, getDefaultDateFilter } from '../utils/date.util';
 
@@ -40,6 +41,7 @@ import { filterByDate, getDefaultDateFilter } from '../utils/date.util';
     UiSkeletonComponent,
     UiEmptyStateComponent,
     UiSelectComponent,
+    UiIconComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
@@ -52,7 +54,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isLoading = true;
   chartsReady = false;
   error: string | null = null;
-  savingsRate: number | null = null;
+  periodIncomeTotal = 0;
   asOfLabel = '';
 
   filter: DateFilter = getDefaultDateFilter();
@@ -114,13 +116,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private computeInsights() {
-    const income = this.filteredTransactions
+    this.periodIncomeTotal = this.filteredTransactions
       .filter(t => t.type === 'income')
       .reduce((s, t) => s + t.amount, 0);
-    const expense = this.filteredTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((s, t) => s + t.amount, 0);
-    this.savingsRate = income > 0 ? Math.round(((income - expense) / income) * 1000) / 10 : null;
 
     if (this.netWorth?.as_of) {
       const d = new Date(this.netWorth.as_of);

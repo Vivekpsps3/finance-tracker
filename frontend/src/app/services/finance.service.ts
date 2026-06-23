@@ -17,10 +17,14 @@ import {
   HoldingCreate,
   NetWorth,
   MarketPriceQuote,
+  Asset,
+  AssetCreate,
   BankImportOption,
   ImportCommitResult,
   ImportPreviewResult,
   ImportPreviewRow,
+  Liability,
+  LiabilityCreate,
   NetWorthHistoryPoint,
   Transaction,
   TransactionCreate,
@@ -41,11 +45,15 @@ export class FinanceService {
   private _holdings = new BehaviorSubject<Holding[]>([]);
   private _netWorth = new BehaviorSubject<NetWorth | null>(null);
   private _history = new BehaviorSubject<NetWorthHistoryPoint[]>([]);
+  private _assets = new BehaviorSubject<Asset[]>([]);
+  private _liabilities = new BehaviorSubject<Liability[]>([]);
 
   transactions$ = this._transactions.asObservable();
   holdings$ = this._holdings.asObservable();
   netWorth$ = this._netWorth.asObservable();
   netWorthHistory$ = this._history.asObservable();
+  assets$ = this._assets.asObservable();
+  liabilities$ = this._liabilities.asObservable();
 
   private isLoading = new BehaviorSubject<boolean>(false);
   isLoading$ = this.isLoading.asObservable();
@@ -90,9 +98,7 @@ export class FinanceService {
 
   private refreshAfterImport(): void {
     this.invalidateDashboardCache();
-    forkJoin([this.getTransactions(), this.getNetWorth(), this.getNetWorthHistory()])
-      .pipe(take(1))
-      .subscribe();
+    this.getTransactions().pipe(take(1)).subscribe();
   }
 
   /**
@@ -250,6 +256,80 @@ export class FinanceService {
   getNetWorthHistory(): Observable<NetWorthHistoryPoint[]> {
     return this.http.get<NetWorthHistoryPoint[]>(`${this.apiUrl}/net-worth/history`).pipe(
       tap(data => this._history.next(data))
+    );
+  }
+
+  getAssets(): Observable<Asset[]> {
+    return this.http.get<Asset[]>(`${this.apiUrl}/assets/`).pipe(
+      tap(data => this._assets.next(data))
+    );
+  }
+
+  addAsset(body: AssetCreate): Observable<Asset> {
+    return this.http.post<Asset>(`${this.apiUrl}/assets/`, body).pipe(
+      tap(created => {
+        this._assets.next([...this._assets.value, created]);
+        this.refreshDerivedMetrics();
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  updateAsset(id: number, body: Partial<AssetCreate>): Observable<Asset> {
+    return this.http.put<Asset>(`${this.apiUrl}/assets/${id}`, body).pipe(
+      tap(updated => {
+        this._assets.next(this._assets.value.map(a => (a.id === id ? updated : a)));
+        this.refreshDerivedMetrics();
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  deleteAsset(id: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`${this.apiUrl}/assets/${id}`).pipe(
+      tap(() => {
+        this._assets.next(this._assets.value.filter(a => a.id !== id));
+        this.refreshDerivedMetrics();
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  getLiabilities(): Observable<Liability[]> {
+    return this.http.get<Liability[]>(`${this.apiUrl}/liabilities/`).pipe(
+      tap(data => this._liabilities.next(data))
+    );
+  }
+
+  addLiability(body: LiabilityCreate): Observable<Liability> {
+    return this.http.post<Liability>(`${this.apiUrl}/liabilities/`, body).pipe(
+      tap(created => {
+        this._liabilities.next([...this._liabilities.value, created]);
+        this.refreshDerivedMetrics();
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  updateLiability(id: number, body: Partial<LiabilityCreate>): Observable<Liability> {
+    return this.http.put<Liability>(`${this.apiUrl}/liabilities/${id}`, body).pipe(
+      tap(updated => {
+        this._liabilities.next(
+          this._liabilities.value.map(li => (li.id === id ? updated : li))
+        );
+        this.refreshDerivedMetrics();
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  deleteLiability(id: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`${this.apiUrl}/liabilities/${id}`).pipe(
+      tap(() => {
+        this._liabilities.next(this._liabilities.value.filter(li => li.id !== id));
+        this.refreshDerivedMetrics();
+        this.invalidateDashboardCache();
+      })
     );
   }
 

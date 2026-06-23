@@ -27,6 +27,7 @@ import {
   UiCardComponent,
   UiEmptyStateComponent,
   UiPageHeaderComponent,
+  UiIconComponent,
 } from '../shared/ui';
 
 @Component({
@@ -40,6 +41,7 @@ import {
     UiCardComponent,
     UiBadgeComponent,
     UiEmptyStateComponent,
+    UiIconComponent,
   ],
   templateUrl: './transactions.component.html',
   styleUrl: './transactions.component.css',
@@ -51,6 +53,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   searchTerm = '';
   sortColumn: 'date' | 'category' | 'amount' = 'date';
   sortDirection: 'asc' | 'desc' = 'desc';
+
+  /** YYYY-MM — drives monthly totals on this page */
+  summaryMonth = this.currentMonthKey();
 
   showModal = false;
   showImportModal = false;
@@ -67,6 +72,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   newTx: TransactionCreate = this.emptyTx();
   editingTxId: number | null = null;
 
+  monthExpenseTotal = 0;
+  monthIncomeTotal = 0;
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -75,6 +83,11 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     private confirmService: ConfirmService,
     private cdr: ChangeDetectorRef
   ) {}
+
+  private currentMonthKey(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
 
   private emptyTx(): TransactionCreate {
     return {
@@ -110,13 +123,35 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     return this.importBanks.find(b => b.slug === this.selectedImportBankSlug);
   }
 
+  get summaryMonthLabel(): string {
+    const [y, m] = this.summaryMonth.split('-');
+    const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+    return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+  }
+
+  onSummaryMonthChange() {
+    this.computeMonthTotals();
+    this.cdr.markForCheck();
+  }
+
+  private computeMonthTotals() {
+    const prefix = `${this.summaryMonth}-`;
+    const inMonth = this.transactions.filter(t => t.date.startsWith(prefix));
+    this.monthExpenseTotal = inMonth
+      .filter(t => t.type === 'expense')
+      .reduce((s, t) => s + t.amount, 0);
+    this.monthIncomeTotal = inMonth
+      .filter(t => t.type === 'income')
+      .reduce((s, t) => s + t.amount, 0);
+  }
+
   openImportModal() {
     this.showImportModal = true;
-    this.cdr.markForCheck();
     this.importStep = 'upload';
     this.importFile = null;
     this.importPreview = null;
     this.importSelected.clear();
+    this.cdr.markForCheck();
     this.financeService.getImportBanks().pipe(takeUntil(this.destroy$)).subscribe({
       next: banks => {
         this.importBanks = banks;
@@ -149,7 +184,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     if (!file) return;
     const bank = this.selectedImportBank;
     if (bank?.file_extensions?.length) {
-      const ok = bank.file_extensions.some(ext => file.name.toLowerCase().endsWith(ext.toLowerCase()));
+      const ok = bank.file_extensions.some(ext =>
+        file.name.toLowerCase().endsWith(ext.toLowerCase())
+      );
       if (!ok) {
         this.toastService.error(`Please choose a file: ${bank.file_extensions.join(', ')}`);
         return;
@@ -164,32 +201,32 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       this.toastService.error('Choose a CSV file first.');
       return;
     }
-    this.importParsing = true;
     if (!this.selectedImportBankSlug) {
       this.toastService.error('Select a bank.');
       return;
     }
+    this.importParsing = true;
     this.financeService
       .previewBankImport(this.selectedImportBankSlug, this.importFile)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-      next: preview => {
-        this.importParsing = false;
-        this.importPreview = preview;
-        this.importStep = 'preview';
-        this.importSelected.clear();
-        for (const row of preview.rows) {
-          if (row.status === 'new') {
-            this.importSelected.add(row.dedupe_key);
+        next: preview => {
+          this.importParsing = false;
+          this.importPreview = preview;
+          this.importStep = 'preview';
+          this.importSelected.clear();
+          for (const row of preview.rows) {
+            if (row.status === 'new') {
+              this.importSelected.add(row.dedupe_key);
+            }
           }
-        }
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.importParsing = false;
-        this.cdr.markForCheck();
-      },
-    });
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.importParsing = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   toggleImportRow(row: ImportPreviewRow) {
@@ -213,6 +250,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
         this.importSelected.add(row.dedupe_key);
       }
     }
+    this.cdr.markForCheck();
   }
 
   commitImport() {
@@ -277,6 +315,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     });
 
     this.filteredTransactions = result;
+    this.computeMonthTotals();
     this.cdr.markForCheck();
   }
 
@@ -352,7 +391,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   async deleteTransaction(tx: Transaction) {
     const ok = await this.confirmService.ask(
       'Delete transaction?',
-      `Remove ${tx.category} (${tx.date}) permanently? You can undo right after.`,
+      `Remove ${tx.category} (${tx.date}) permanently?`,
       'Delete',
       'Cancel'
     );

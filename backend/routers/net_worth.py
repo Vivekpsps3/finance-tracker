@@ -6,22 +6,14 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from schemas import NetWorthHistoryPoint, NetWorthResponse
-from services.finance import build_net_worth_history, compute_cash, compute_portfolio
+from services.finance import build_net_worth_history, compute_net_worth
 
 router = APIRouter(tags=["net-worth"])
 
 
 @router.get("/net-worth/", response_model=NetWorthResponse)
 def get_net_worth(db: Session = Depends(get_db)):
-    cash = compute_cash(db)
-    portfolio, sources = compute_portfolio(db)
-    return NetWorthResponse(
-        cash=cash,
-        portfolio=portfolio,
-        total=round(cash + portfolio, 2),
-        as_of=datetime.utcnow(),
-        portfolio_sources=sources,
-    )
+    return compute_net_worth(db)
 
 
 @router.get("/net-worth/history", response_model=List[NetWorthHistoryPoint])

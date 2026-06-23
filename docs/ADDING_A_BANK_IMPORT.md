@@ -1,77 +1,39 @@
-# Adding a new bank statement import
+# Adding a bank CSV import
 
-This app imports bank transactions through a **registry** (`backend/import_registry.py`). The UI loads banks from `GET /imports/banks` and shows them in a dropdown.
+Bank imports create **expense** transactions (`source=import`). They **do not** change net worth; update liabilities on **Assets & liabilities** if you track balances there.
 
-## Checklist for a new bank
+## Registry
 
-### 1. Parser module
+Register parsers in `backend/import_registry.py` (`BANK_IMPORTS`). Each entry needs:
 
-Create `backend/import_parsers/<bank_slug>.py` (e.g. `chase.py`).
+- `slug`, `name`, `hint`, `file_extensions`
+- `parse(raw_csv: str) -> List[ParsedImportRow]`
+- `bank_slug` / `bank_name` for dedupe keys and account labels
 
-- Export constants: `BANK_SLUG`, `BANK_NAME`, `IMPORT_HINT` (one sentence for the UI).
-- Implement `parse_<bank>_csv(content: str) -> list[ParsedImportRow]`.
-- Each `ParsedImportRow` must include:
-  - `date` — transaction date (not posted date unless that is all you have)
-  - `account_mask` — last4 / card mask shown as `Bank Name ···1234`
-  - `description`, `category`, `amount` (positive number for expenses)
-  - `dedupe_key` — use `build_dedupe_key(BANK_SLUG, account_mask, date, amount, description)` from `import_parsers/dedupe.py`
+HTTP routes are generic: `POST /imports/{bank_slug}/preview` and `/commit` (see `backend/routers/imports.py`).
 
-Document which CSV columns you map and what you skip (e.g. credits, payments).
+## Parsed row shape
 
-### 2. Register the bank
+`import_parsers/types.py` — each row should provide:
 
-In `backend/import_registry.py`, add an entry to `BANK_IMPORTS`:
+- `dedupe_key` (via `build_dedupe_key` in `dedupe.py`)
+- `date`, `account_mask`, `description`, `category`, `amount` (positive number for expenses)
 
-```python
-from import_parsers.chase import BANK_SLUG as CHASE_SLUG, BANK_NAME as CHASE_NAME, IMPORT_HINT as CHASE_HINT, parse_chase_csv
+## Capital One (built-in)
 
-BANK_IMPORTS[CHASE_SLUG] = BankImportConfig(
-    slug=CHASE_SLUG,
-    name=CHASE_NAME,
-    hint=CHASE_HINT,
-    file_extensions=(".csv",),
-    parse=parse_chase_csv,
-    bank_slug=CHASE_SLUG,
-    bank_name=CHASE_NAME,
-)
-```
+Parser: `backend/import_parsers/capital_one.py`. Slug: `capital_one`. Credits/payments are skipped; debits become expenses.
 
-No frontend code changes are required if the slug is registered—the dropdown picks it up automatically.
+## Commit behavior
 
-### 3. Tests
+- `type = expense`
+- `source = import`
+- Dedupe on `dedupe_key` (preview shows new vs duplicate)
+- Does **not** call `record_net_worth_snapshot`
 
-Add `backend/tests/test_<bank>_import.py`:
+## Frontend
 
-- Parser unit test (sample row, skipped credits, bad headers).
-- API test: `POST /imports/<slug>/preview` with multipart file, then `POST /imports/<slug>/commit` with one row.
+Transactions page → **Import from bank**. Proxy must include `/imports` (`frontend/proxy.conf.js`).
 
-### 4. Database behavior (unchanged)
+## Tests
 
-Imports still write to `transactions` with:
-
-- `source = "import"`
-- `type = expense` (unless you extend the registry for income rows later)
-- `category` = bank category (current product rule)
-- `bank_account_id` → `banks` + `bank_accounts` (created on commit)
-
-### 5. API contract
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /imports/banks` | List `{ slug, name, hint, file_extensions }` |
-| `POST /imports/{slug}/preview` | `multipart/form-data` field `file` |
-| `POST /imports/{slug}/commit` | JSON `{ filename, rows: [...] }` |
-
-Legacy aliases `POST /imports/capital-one/preview` and `.../commit` remain for Capital One only.
-
-### 6. Agent notes
-
-- Keep parsers **pure** (string in → rows out); no DB access in parsers.
-- Validate headers early with clear `ValueError` messages (line numbers when possible).
-- Prefer **one row per purchase**; aggregate in parser only if the bank export requires it.
-- Do not change `dedupe_key` formula without a migration plan (re-imports would duplicate).
-- After adding a bank, run: `cd backend && python -m pytest tests/ -q`
-
-## Reference: Capital One
-
-See `backend/import_parsers/capital_one.py` for the canonical implementation.
+Add parser unit tests under `backend/tests/` and extend preview/commit tests similar to `test_capital_one_import.py` (assert net worth unchanged after import).

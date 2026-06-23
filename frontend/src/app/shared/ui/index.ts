@@ -7,3 +7,4 @@ export { UiSkeletonComponent, type UiSkeletonVariant } from './ui-skeleton/ui-sk
 export { UiEmptyStateComponent } from './ui-empty-state/ui-empty-state.component';
 export { UiPageHeaderComponent } from './ui-page-header/ui-page-header.component';
 export { UiDataTableComponent } from './ui-data-table/ui-data-table.component';
+export { UiIconComponent, type UiIconName } from './ui-icon/ui-icon.component';

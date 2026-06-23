@@ -25,15 +25,21 @@ describe('FinanceService', () => {
   });
 
   it('patches transactions on add', () => {
-    const created = { id: 2, date: '2026-01-02', type: 'expense', category: 'Food', amount: 20 };
+    const created = { id: 2, date: '2026-01-02', type: 'income', category: 'Bonus', amount: 20 };
     service.addTransaction({
       date: '2026-01-02',
-      type: 'expense',
-      category: 'Food',
+      type: 'income',
+      category: 'Bonus',
       amount: 20,
     }).subscribe();
     http.expectOne(`${environment.apiUrl}/transactions/`).flush(created);
-    http.expectOne(`${environment.apiUrl}/net-worth/`).flush({ cash: 0, portfolio: 0, total: 0 });
+    http.expectOne(`${environment.apiUrl}/net-worth/`).flush({
+      other_assets: 0,
+      portfolio: 0,
+      liabilities: 0,
+      total_assets: 0,
+      total: 0,
+    });
     http.expectOne(`${environment.apiUrl}/net-worth/history`).flush([]);
     service.transactions$.subscribe(list => expect(list[0].id).toBe(2));
   });

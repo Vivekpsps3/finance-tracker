@@ -1,3 +1,86 @@
+.section-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0 0 var(--space-3);
+}
+
+.month-hero {
+  background:
+    radial-gradient(ellipse 70% 50% at 80% 0%, color-mix(in srgb, var(--danger) 8%, transparent), transparent),
+    var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-card);
+}
+
+.month-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-end;
+}
+
+.month-picker__label {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.month-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.month-total__label {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.month-total--expense strong {
+  color: var(--danger);
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.month-total--income strong {
+  color: var(--success);
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.month-total--net strong {
+  font-size: var(--text-lg);
+  color: var(--text);
+}
+
+.month-picker__caption {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.month-total__hint {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .tx-table tbody tr {
   transition: background var(--motion-fast, 150ms) ease;
 }

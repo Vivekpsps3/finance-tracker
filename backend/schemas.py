@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 from constants import SYMBOL_PATTERN
-from models import TransactionType
+from models import AssetCategory, LiabilityCategory, TransactionType
 
 
 class TransactionCreate(BaseModel):
@@ -66,9 +66,81 @@ class HoldingResponse(BaseModel):
         from_attributes = True
 
 
+class AssetCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    category: AssetCategory
+    current_value: float = Field(..., ge=0)
+    as_of_date: date
+    notes: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("current_value")
+    @classmethod
+    def round_value(cls, v: float) -> float:
+        return round(v, 2)
+
+
+class AssetUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=120)
+    category: Optional[AssetCategory] = None
+    current_value: Optional[float] = Field(None, ge=0)
+    as_of_date: Optional[date] = None
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class AssetResponse(BaseModel):
+    id: int
+    name: str
+    category: str
+    current_value: float
+    as_of_date: date
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LiabilityCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    category: LiabilityCategory
+    balance_owed: float = Field(..., ge=0)
+    as_of_date: date
+    notes: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("balance_owed")
+    @classmethod
+    def round_balance(cls, v: float) -> float:
+        return round(v, 2)
+
+
+class LiabilityUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=120)
+    category: Optional[LiabilityCategory] = None
+    balance_owed: Optional[float] = Field(None, ge=0)
+    as_of_date: Optional[date] = None
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class LiabilityResponse(BaseModel):
+    id: int
+    name: str
+    category: str
+    balance_owed: float
+    as_of_date: date
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class NetWorthResponse(BaseModel):
-    cash: float
+    other_assets: float
     portfolio: float
+    liabilities: float
+    total_assets: float
     total: float
     as_of: datetime
     portfolio_sources: Dict[str, str]
@@ -76,8 +148,10 @@ class NetWorthResponse(BaseModel):
 
 class NetWorthHistoryPoint(BaseModel):
     date: str
-    cash: float
+    other_assets: float
     portfolio: float
+    liabilities: float
+    total_assets: float
     total: float
 
 

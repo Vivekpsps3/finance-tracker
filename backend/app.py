@@ -2,6 +2,10 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+
+load_dotenv()  # Load .env for local development (Plaid, DB, etc.)
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -9,7 +13,7 @@ from fastapi.responses import JSONResponse
 from logging_config import get_logger, redact_database_url, setup_logging, uvicorn_log_config
 from price_cache import EOD_MAX_AGE_HOURS, REDIS_URL
 from request_logging import RequestLoggingMiddleware
-from routers import health, holdings, imports, market, net_worth, transactions
+from routers import assets, health, holdings, imports, liabilities, market, net_worth, transactions
 
 setup_logging()
 logger = get_logger()
@@ -79,6 +83,8 @@ def create_app() -> FastAPI:
     application.include_router(health.router)
     application.include_router(imports.router)
     application.include_router(transactions.router)
+    application.include_router(assets.router)
+    application.include_router(liabilities.router)
     application.include_router(market.router)
     application.include_router(holdings.router)
     application.include_router(net_worth.router)

@@ -2,9 +2,9 @@
   <ui-page-header title="Calendar" subtitle="Browse transactions by day" />
 
   <div class="calendar-toolbar">
-    <ui-button variant="secondary" size="sm" ariaLabel="Previous month" (clicked)="prevMonth()">←</ui-button>
+    <ui-button variant="secondary" size="sm" ariaLabel="Previous month" (clicked)="prevMonth()"><ui-icon name="chevron-left" size="sm" /></ui-button>
     <h2 class="calendar-month">{{ getMonthName() }}</h2>
-    <ui-button variant="secondary" size="sm" ariaLabel="Next month" (clicked)="nextMonth()">→</ui-button>
+    <ui-button variant="secondary" size="sm" ariaLabel="Next month" (clicked)="nextMonth()"><ui-icon name="chevron-right" size="sm" /></ui-button>
     <ui-button variant="secondary" size="sm" (clicked)="goToday()">Today</ui-button>
   </div>
 
@@ -42,7 +42,7 @@
     <ui-card>
       <div class="selected-header">
         <h3>Transactions on {{ selectedDate }}</h3>
-        <a class="btn btn-primary" routerLink="/transactions">Add transaction</a>
+        <a class="calendar-cta" routerLink="/transactions">Add transaction</a>
       </div>
       @if (selectedTransactions.length) {
         <p class="day-net">

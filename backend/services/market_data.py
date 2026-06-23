@@ -61,7 +61,7 @@ class MarketDataService:
         started = time.perf_counter()
         try:
             ticker = yf.Ticker(symbol)
-            hist = ticker.history(period="5d", progress=False)
+            hist = ticker.history(period="5d")
             if hist is not None and not hist.empty:
                 close = float(hist["Close"].iloc[-1])
                 idx = hist.index[-1]

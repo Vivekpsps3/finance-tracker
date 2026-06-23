@@ -1,0 +1,53 @@
+.summary-card .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.summary-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.summary-grid .hero {
+  font-size: 1.25rem;
+}
+
+.negative {
+  color: var(--danger);
+}
+
+.hint {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.form-card label {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.form-card input {
+  width: 100%;
+  margin-top: 0.25rem;
+}

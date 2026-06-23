@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Transaction
 from schemas import TransactionCreate, TransactionResponse, TransactionUpdate
-from services.finance import record_net_worth_snapshot, transactions_to_responses
+from services.finance import transactions_to_responses
 
 router = APIRouter(tags=["transactions"])
 
@@ -18,7 +18,6 @@ def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db)):
     db.add(db_tx)
     db.commit()
     db.refresh(db_tx)
-    record_net_worth_snapshot(db)
     return transactions_to_responses(db, [db_tx])[0]
 
 
@@ -57,7 +56,6 @@ def update_transaction(tx_id: int, update: TransactionUpdate, db: Session = Depe
         setattr(tx, field, value)
     db.commit()
     db.refresh(tx)
-    record_net_worth_snapshot(db)
     return transactions_to_responses(db, [tx])[0]
 
 
@@ -68,5 +66,4 @@ def delete_transaction(tx_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Transaction not found")
     db.delete(tx)
     db.commit()
-    record_net_worth_snapshot(db)
     return {"ok": True}

@@ -19,7 +19,6 @@ import {
   CHART_COLORS,
   chartAccentColor,
   chartCartesianScales,
-  chartDangerColor,
   chartLegendBottom,
   chartSuccessColor,
   chartTooltipTheme,
@@ -42,7 +41,6 @@ type ChartConstructor = new (
 export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() embedded = false;
 
-  @ViewChild('spendingChart') spendingCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('incomeExpenseChart') incomeExpenseCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('portfolioChart') portfolioCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('netWorthChart') netWorthCanvas!: ElementRef<HTMLCanvasElement>;
@@ -52,14 +50,11 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
   history: NetWorthHistoryPoint[] = [];
   loading = true;
 
-  spendingRows: { label: string; value: number }[] = [];
   incomeTotal = 0;
-  expenseTotal = 0;
   allocationRows: { label: string; value: number; pct: number }[] = [];
   netWorthRows: { date: string; total: number }[] = [];
   netWorthTableRows: { date: string; total: number }[] = [];
 
-  private spendingChart?: ChartInstance;
   private incomeChart?: ChartInstance;
   private portfolioChart?: ChartInstance;
   private netWorthChart?: ChartInstance;
@@ -158,7 +153,6 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-    this.spendingChart?.destroy();
     this.incomeChart?.destroy();
     this.portfolioChart?.destroy();
     this.netWorthChart?.destroy();
@@ -185,19 +179,9 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     const txs = this.txOverride ?? this.transactions;
     const hists = this.histOverride ?? this.history;
 
-    const expenses = txs.filter(t => t.type === 'expense');
-    const categories: Record<string, number> = {};
-    expenses.forEach(tx => {
-      categories[tx.category] = (categories[tx.category] || 0) + tx.amount;
-    });
-    this.spendingRows = Object.entries(categories)
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value);
-
     this.incomeTotal = txs
       .filter(t => t.type === 'income')
       .reduce((s, t) => s + t.amount, 0);
-    this.expenseTotal = expenses.reduce((s, t) => s + t.amount, 0);
 
     const totalVal = this.holdings.reduce((s, h) => s + (h.value || 0), 0);
     this.allocationRows = [...this.holdings]
@@ -219,7 +203,6 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     const Chart = await this.ensureChartCtor();
-    this.updateSpending(Chart);
     this.updateIncomeExpense(Chart);
     this.updatePortfolio(Chart);
     this.updateNetWorth(Chart);
@@ -250,46 +233,21 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     return new Chart(ctx, config as never);
   }
 
-  private updateSpending(Chart: ChartConstructor) {
-    const canvas = this.spendingCanvas?.nativeElement;
-    if (!canvas || this.spendingRows.length === 0) {
-      this.spendingChart?.destroy();
-      this.spendingChart = undefined;
-      return;
-    }
-    this.spendingChart = this.upsertChart(Chart, this.spendingChart, canvas, {
-      type: 'doughnut',
-      data: {
-        labels: this.spendingRows.map(r => r.label),
-        datasets: [{ data: this.spendingRows.map(r => r.value), backgroundColor: this.chartColors(this.spendingRows.length) }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: chartLegendBottom(),
-          tooltip: {
-            ...chartTooltipTheme(),
-            callbacks: {
-              label: (ctx: TooltipCtx) => '$' + Number(ctx.raw).toLocaleString(),
-            },
-          },
-        },
-      },
-    });
-  }
-
   private updateIncomeExpense(Chart: ChartConstructor) {
     const canvas = this.incomeExpenseCanvas?.nativeElement;
-    if (!canvas) return;
+    if (!canvas || this.incomeTotal <= 0) {
+      this.incomeChart?.destroy();
+      this.incomeChart = undefined;
+      return;
+    }
     this.incomeChart = this.upsertChart(Chart, this.incomeChart, canvas, {
       type: 'bar',
       data: {
-        labels: ['Income', 'Expenses'],
+        labels: ['Income'],
         datasets: [{
           label: 'Amount',
-          data: [this.incomeTotal, this.expenseTotal],
-          backgroundColor: [chartSuccessColor(), chartDangerColor()],
+          data: [this.incomeTotal],
+          backgroundColor: [chartSuccessColor()],
           borderRadius: 6,
         }],
       },
@@ -383,8 +341,4 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  get savingsRate(): number | null {
-    if (this.incomeTotal <= 0) return null;
-    return Math.round(((this.incomeTotal - this.expenseTotal) / this.incomeTotal) * 1000) / 10;
-  }
 }

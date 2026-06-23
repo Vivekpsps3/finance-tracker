@@ -9,21 +9,26 @@ from import_parsers.dedupe import build_dedupe_key
 from import_registry import get_bank_import
 from logging_config import get_logger
 from models import (
+    Asset,
     Bank,
     BankAccount,
     Holding,
     ImportBatch,
+    Liability,
     NetWorthSnapshot,
     Transaction,
     TransactionType,
 )
 from schemas import (
+    AssetResponse,
     HoldingResponse,
     ImportCommitRequest,
     ImportCommitResponse,
     ImportPreviewResponse,
     ImportPreviewRow,
+    LiabilityResponse,
     NetWorthHistoryPoint,
+    NetWorthResponse,
     TransactionResponse,
 )
 from services.market_data import market_data
@@ -31,9 +36,63 @@ from services.market_data import market_data
 logger = get_logger()
 
 
-def compute_cash(db: Session) -> float:
-    txs = db.query(Transaction).all()
-    return round(sum(t.amount if t.type == TransactionType.income else -t.amount for t in txs), 2)
+def compute_other_assets(db: Session) -> float:
+    total = db.query(Asset).with_entities(Asset.current_value).all()
+    return round(sum(row[0] for row in total), 2)
+
+
+def compute_liabilities(db: Session) -> float:
+    total = db.query(Liability).with_entities(Liability.balance_owed).all()
+    return round(sum(row[0] for row in total), 2)
+
+
+def compute_net_worth(db: Session) -> NetWorthResponse:
+    other_assets = compute_other_assets(db)
+    portfolio, sources = compute_portfolio(db)
+    liabilities = compute_liabilities(db)
+    total_assets = round(other_assets + portfolio, 2)
+    total = round(total_assets - liabilities, 2)
+    return NetWorthResponse(
+        other_assets=other_assets,
+        portfolio=portfolio,
+        liabilities=liabilities,
+        total_assets=total_assets,
+        total=total,
+        as_of=datetime.utcnow(),
+        portfolio_sources=sources,
+    )
+
+
+def asset_to_response(asset: Asset) -> AssetResponse:
+    cat = asset.category.value if hasattr(asset.category, "value") else str(asset.category)
+    return AssetResponse(
+        id=asset.id,
+        name=asset.name,
+        category=cat,
+        current_value=round(asset.current_value, 2),
+        as_of_date=asset.as_of_date,
+        notes=asset.notes,
+        created_at=asset.created_at,
+        updated_at=asset.updated_at or asset.created_at,
+    )
+
+
+def liability_to_response(liability: Liability) -> LiabilityResponse:
+    cat = (
+        liability.category.value
+        if hasattr(liability.category, "value")
+        else str(liability.category)
+    )
+    return LiabilityResponse(
+        id=liability.id,
+        name=liability.name,
+        category=cat,
+        balance_owed=round(liability.balance_owed, 2),
+        as_of_date=liability.as_of_date,
+        notes=liability.notes,
+        created_at=liability.created_at,
+        updated_at=liability.updated_at or liability.created_at,
+    )
 
 
 def holding_to_response(
@@ -77,81 +136,55 @@ def compute_portfolio_as_of(db: Session, as_of: date) -> float:
     return round(total, 2)
 
 
+def _snapshot_to_history_point(snap: NetWorthSnapshot) -> NetWorthHistoryPoint:
+    other_assets = snap.other_assets if snap.other_assets is not None else (snap.cash or 0.0)
+    liabilities = snap.liabilities if snap.liabilities is not None else 0.0
+    portfolio = snap.portfolio or 0.0
+    total_assets = round(other_assets + portfolio, 2)
+    return NetWorthHistoryPoint(
+        date=snap.recorded_at.date().isoformat(),
+        other_assets=round(other_assets, 2),
+        portfolio=round(portfolio, 2),
+        liabilities=round(liabilities, 2),
+        total_assets=total_assets,
+        total=round(snap.total, 2) if snap.total is not None else round(total_assets - liabilities, 2),
+    )
+
+
 def build_net_worth_history(db: Session) -> List[NetWorthHistoryPoint]:
-    txs = db.query(Transaction).order_by(Transaction.date.asc(), Transaction.id.asc()).all()
-    holdings = db.query(Holding).all()
+    snaps = (
+        db.query(NetWorthSnapshot)
+        .order_by(NetWorthSnapshot.recorded_at.asc(), NetWorthSnapshot.id.asc())
+        .all()
+    )
+    if snaps:
+        points = [_snapshot_to_history_point(s) for s in snaps]
+        points.reverse()
+        return points
 
-    if not txs and not holdings:
-        return []
-
-    by_date: Dict[date, List[Transaction]] = {}
-    for tx in txs:
-        by_date.setdefault(tx.date, []).append(tx)
-
-    timeline: set = set(by_date.keys())
-    for h in holdings:
-        timeline.add(h.purchase_date)
-    dates = sorted(timeline)
-
-    cash = 0.0
-    points: List[NetWorthHistoryPoint] = []
-    for d in dates:
-        for tx in by_date.get(d, []):
-            cash += tx.amount if tx.type == TransactionType.income else -tx.amount
-        cash = round(cash, 2)
-        portfolio = compute_portfolio_as_of(db, d)
-        points.append(
-            NetWorthHistoryPoint(
-                date=d.isoformat(),
-                cash=cash,
-                portfolio=portfolio,
-                total=round(cash + portfolio, 2),
-            )
+    current = compute_net_worth(db)
+    today_iso = date.today().isoformat()
+    return [
+        NetWorthHistoryPoint(
+            date=today_iso,
+            other_assets=current.other_assets,
+            portfolio=current.portfolio,
+            liabilities=current.liabilities,
+            total_assets=current.total_assets,
+            total=current.total,
         )
-
-    today = date.today()
-    final_cash = compute_cash(db)
-    final_portfolio, _ = compute_portfolio(db)
-    final_total = round(final_cash + final_portfolio, 2)
-    today_iso = today.isoformat()
-
-    if not points:
-        points.append(
-            NetWorthHistoryPoint(
-                date=today_iso,
-                cash=final_cash,
-                portfolio=final_portfolio,
-                total=final_total,
-            )
-        )
-    else:
-        last = points[-1]
-        if last.date == today_iso:
-            if last.cash != final_cash or last.portfolio != final_portfolio:
-                points[-1] = NetWorthHistoryPoint(
-                    date=today_iso,
-                    cash=final_cash,
-                    portfolio=final_portfolio,
-                    total=final_total,
-                )
-        elif dates[-1] < today or last.total != final_total:
-            points.append(
-                NetWorthHistoryPoint(
-                    date=today_iso,
-                    cash=final_cash,
-                    portfolio=final_portfolio,
-                    total=final_total,
-                )
-            )
-
-    points.reverse()
-    return points
+    ]
 
 
 def record_net_worth_snapshot(db: Session) -> None:
-    cash = compute_cash(db)
-    portfolio, _ = compute_portfolio(db)
-    snap = NetWorthSnapshot(cash=cash, portfolio=portfolio, total=round(cash + portfolio, 2))
+    current = compute_net_worth(db)
+    snap = NetWorthSnapshot(
+        cash=current.other_assets,
+        other_assets=current.other_assets,
+        portfolio=current.portfolio,
+        liabilities=current.liabilities,
+        total=current.total,
+    )
     db.add(snap)
     db.commit()
 
@@ -368,8 +401,6 @@ def commit_bank_import(
 
     batch.rows_inserted = inserted
     db.commit()
-    if inserted:
-        record_net_worth_snapshot(db)
     logger.info(
         "import_commit_done bank=%s batch_id=%s inserted=%s skipped=%s filename=%s",
         bank_slug,
