@@ -40,7 +40,6 @@ describe('FinanceService', () => {
       total_assets: 0,
       total: 0,
     });
-    http.expectOne(`${environment.apiUrl}/net-worth/history`).flush([]);
     service.transactions$.subscribe(list => expect(list[0].id).toBe(2));
   });
 });

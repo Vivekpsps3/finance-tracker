@@ -48,6 +48,7 @@ install-frontend:
 # Run both; Ctrl+C stops both job groups
 dev:
 	@echo "Starting backend (:$(API_PORT)) and frontend (:$(WEB_PORT))…"
+	@echo "(Restart required after proxy.conf.js changes.)"
 	@trap 'kill 0' EXIT INT TERM; \
 	$(MAKE) backend & \
 	$(MAKE) frontend & \
@@ -62,7 +63,7 @@ backend:
 
 frontend:
 	@test -d $(FRONTEND_DIR)/node_modules || (echo "Run: make install-frontend" && exit 1)
-	cd $(FRONTEND_DIR) && npx ng serve --host $(WEB_HOST) --port $(WEB_PORT)
+	cd $(FRONTEND_DIR) && npx ng serve --configuration development --host $(WEB_HOST) --port $(WEB_PORT)
 
 test: test-backend test-frontend
 

@@ -61,6 +61,9 @@ class HoldingResponse(BaseModel):
     value: float
     price_source: str
     price_as_of: Optional[datetime] = None
+    account_display: Optional[str] = None
+    company_name: Optional[str] = None
+    brokerage_account_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -144,15 +147,7 @@ class NetWorthResponse(BaseModel):
     total: float
     as_of: datetime
     portfolio_sources: Dict[str, str]
-
-
-class NetWorthHistoryPoint(BaseModel):
-    date: str
-    other_assets: float
-    portfolio: float
-    liabilities: float
-    total_assets: float
-    total: float
+    portfolio_breakdown: Dict[str, float] = {}  # e.g. {"Fidelity ···Z21741448 (Individual)": 1234.56, "Manual": 500.0, ...}
 
 
 class TransactionUpdate(BaseModel):
@@ -231,3 +226,62 @@ class BankImportOption(BaseModel):
     name: str
     hint: str
     file_extensions: List[str]
+
+
+class SetAccountNickname(BaseModel):
+    nickname: Optional[str] = None
+
+
+class BrokerageAccountResponse(BaseModel):
+    id: int
+    nickname: Optional[str] = None
+    label: Optional[str] = None
+    account_mask: str
+
+
+# Fidelity portfolio (holdings) import types — separate from bank tx imports
+# (replace semantics per account, not dedupe/append)
+
+class FidelityImportOption(BaseModel):
+    slug: str
+    name: str
+    hint: str
+    file_extensions: List[str]
+
+
+class FidelityPreviewRow(BaseModel):
+    account_mask: str
+    account_display: str
+    symbol: str
+    shares: float
+    avg_cost_basis: float
+    cost_basis_total: float
+    # status for UI: 'replace' (all will be reset for the account)
+    status: str = "replace"
+
+
+class FidelityPreviewResponse(BaseModel):
+    broker: str
+    filename: str
+    accounts: List[str]
+    rows: List[FidelityPreviewRow]
+    summary: Dict[str, int | float]  # e.g. accounts, positions, total_cost
+
+
+class FidelityCommitRow(BaseModel):
+    account_mask: str = Field(..., min_length=1, max_length=32)
+    symbol: str = Field(..., min_length=1, max_length=10)
+    shares: float = Field(..., gt=0)
+    avg_cost_basis: float = Field(..., ge=0)
+
+
+class FidelityCommitRequest(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=255)
+    rows: List[FidelityCommitRow] = Field(..., min_length=1)
+
+
+class FidelityCommitResponse(BaseModel):
+    accounts_replaced: int
+    holdings_replaced: int
+    inserted: int
+    accounts: List[str]

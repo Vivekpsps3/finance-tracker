@@ -1,0 +1,460 @@
+<div class="mc-page">
+  <ui-page-header
+    title="Planning Lab"
+    subtitle="Build a complete Monte Carlo scenario from your current balance sheet, transaction trends, goals, dated events, and market assumptions."
+  />
+
+  <div class="mc-disclaimer">
+    <ui-icon name="spark" size="sm" />
+    <p>{{ disclaimer }}</p>
+  </div>
+
+  @if (error) {
+    <p class="mc-error" role="alert">{{ error }}</p>
+  }
+
+  @if (loading) {
+    <ui-skeleton height="320px" />
+  } @else {
+    <section class="mc-summary-band" aria-label="Planning inputs">
+      <div class="mc-metric">
+        <span>Current net worth</span>
+        <strong>{{ formatMoney(inputs?.net_worth_total) }}</strong>
+        <small>Ledger snapshot, not simulation output</small>
+      </div>
+      <div class="mc-metric">
+        <span>Portfolio exposure</span>
+        <strong>{{ formatPct(inferredAllocation()) }}</strong>
+        <small>{{ formatMoney(inputs?.net_worth_portfolio) }} portfolio value</small>
+      </div>
+      <div class="mc-metric">
+        <span>Annual cash flow</span>
+        <strong>{{ formatSignedMoney(effectiveNetCashflow()) }}</strong>
+        <small>
+          {{ formatMoney(effectiveAnnualIncome()) }} income /
+          {{ formatMoney(effectiveAnnualSpending()) }} spending
+        </small>
+      </div>
+      <div class="mc-metric">
+        <span>Run scale</span>
+        <strong>{{ nPaths | number }} paths</strong>
+        <small>{{ horizonYears }} years · seed {{ seed }}</small>
+      </div>
+    </section>
+
+    <div class="mc-workbench">
+      <aside class="mc-panel" aria-label="Scenario builder">
+        <ui-card title="Run setup">
+          <div class="mc-control-grid">
+            <label class="mc-field">
+              <span>Horizon</span>
+              <input type="number" min="1" max="80" [(ngModel)]="horizonYears" />
+            </label>
+            <label class="mc-field">
+              <span>Paths</span>
+              <input type="number" min="100" max="50000" step="500" [(ngModel)]="nPaths" />
+            </label>
+            <label class="mc-field mc-field--seed">
+              <span>Seed</span>
+              <div class="mc-seed-row">
+                <input type="number" [(ngModel)]="seed" />
+                <ui-button variant="secondary" (clicked)="randomizeSeed()">Randomize</ui-button>
+              </div>
+            </label>
+          </div>
+          <label class="mc-check">
+            <input type="checkbox" [(ngModel)]="useLedgerStartingNetWorth" />
+            <span>Use ledger net worth at start</span>
+          </label>
+          <label class="mc-field">
+            <span>Starting net worth</span>
+            <input
+              type="number"
+              step="1000"
+              [disabled]="useLedgerStartingNetWorth"
+              [(ngModel)]="startingNetWorth"
+            />
+            <small class="mc-field-hint">Simulation only — does not change your balance sheet.</small>
+          </label>
+        </ui-card>
+
+        <ui-card title="Cash flow">
+          <label class="mc-check">
+            <input type="checkbox" [(ngModel)]="useTxSpending" />
+            <span>Use transaction spending</span>
+          </label>
+          <label class="mc-field">
+            <span>Annual spending</span>
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              [disabled]="useTxSpending"
+              [ngModel]="useTxSpending ? txImpliedAnnualSpending() : assumptions.annual_spending"
+              (ngModelChange)="onAnnualSpendingInput($event)"
+            />
+          </label>
+
+          <label class="mc-check">
+            <input type="checkbox" [(ngModel)]="useTxIncome" />
+            <span>Use transaction income</span>
+          </label>
+          <label class="mc-field">
+            <span>Monthly income</span>
+            <input
+              type="number"
+              min="0"
+              step="500"
+              [disabled]="useTxIncome"
+              [ngModel]="useTxIncome ? txImpliedMonthlyIncome() : assumptions.monthly_income"
+              (ngModelChange)="onMonthlyIncomeInput($event)"
+            />
+          </label>
+
+          <label class="mc-check">
+            <input type="checkbox" [(ngModel)]="useManualNetCashflow" />
+            <span>Override net annual cash flow</span>
+          </label>
+          <label class="mc-field">
+            <span>Net contribution / withdrawal</span>
+            <input
+              type="number"
+              step="1000"
+              [disabled]="!useManualNetCashflow"
+              [(ngModel)]="assumptions.extra_contributions.annual_contribution"
+            />
+          </label>
+
+          <div class="mc-control-grid">
+            <label class="mc-field">
+              <span>Inflation</span>
+              <input type="number" step="0.005" [(ngModel)]="assumptions.inflation_cpi" />
+            </label>
+            <label class="mc-field">
+              <span>Income growth</span>
+              <input
+                type="number"
+                step="0.005"
+                [(ngModel)]="assumptions.annual_income_growth"
+              />
+            </label>
+          </div>
+        </ui-card>
+
+        <ui-card title="Market model">
+          <label class="mc-check">
+            <input type="checkbox" [(ngModel)]="useInferredAllocation" />
+            <span>Infer growth allocation</span>
+          </label>
+          <label class="mc-field">
+            <span>Growth allocation</span>
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step="0.05"
+              [disabled]="useInferredAllocation"
+              [(ngModel)]="assumptions.portfolio_allocation"
+            />
+          </label>
+
+          <div class="mc-control-grid">
+            <label class="mc-field">
+              <span>Return mean</span>
+              <input type="number" step="0.005" [(ngModel)]="assumptions.nominal_return_mean" />
+            </label>
+            <label class="mc-field">
+              <span>Volatility</span>
+              <input type="number" step="0.005" [(ngModel)]="assumptions.nominal_return_std" />
+            </label>
+            <label class="mc-field">
+              <span>Stable return</span>
+              <input type="number" step="0.005" [(ngModel)]="assumptions.stable_return_mean" />
+            </label>
+            <label class="mc-field">
+              <span>Tax drag</span>
+              <input type="number" min="0" step="0.0025" [(ngModel)]="assumptions.tax_drag" />
+            </label>
+            <label class="mc-field">
+              <span>Fee drag</span>
+              <input
+                type="number"
+                min="0"
+                step="0.0025"
+                [(ngModel)]="assumptions.annual_fee_drag"
+              />
+            </label>
+            <label class="mc-field">
+              <span>Shock chance</span>
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                [(ngModel)]="assumptions.shock_probability"
+              />
+            </label>
+            <label class="mc-field">
+              <span>Shock loss</span>
+              <input
+                type="number"
+                min="0"
+                max="0.9"
+                step="0.01"
+                [(ngModel)]="assumptions.shock_mean_loss"
+              />
+            </label>
+            <label class="mc-field">
+              <span>Shock spread</span>
+              <input
+                type="number"
+                min="0"
+                max="0.5"
+                step="0.01"
+                [(ngModel)]="assumptions.shock_loss_std"
+              />
+            </label>
+          </div>
+        </ui-card>
+
+        <ui-card title="Goals">
+          <div class="mc-list">
+            @for (checkpoint of assumptions.checkpoints; track trackByIndex($index)) {
+              <div class="mc-editor-row">
+                <label class="mc-field mc-field--wide">
+                  <span>Name</span>
+                  <input type="text" [(ngModel)]="checkpoint.label" />
+                </label>
+                <label class="mc-field">
+                  <span>Year</span>
+                  <input type="number" min="0" max="80" [(ngModel)]="checkpoint.year" />
+                </label>
+                <label class="mc-field">
+                  <span>Target date</span>
+                  <input type="date" [(ngModel)]="checkpoint.target_date" />
+                </label>
+                <label class="mc-field">
+                  <span>Net worth goal</span>
+                  <input type="number" min="0" step="10000" [(ngModel)]="checkpoint.target_net_worth" />
+                </label>
+                <label class="mc-field">
+                  <span>Required odds</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    [(ngModel)]="checkpoint.min_success_probability"
+                  />
+                </label>
+                <button type="button" class="mc-icon-btn" (click)="removeCheckpoint($index)">
+                  Remove
+                </button>
+              </div>
+            }
+          </div>
+          <button type="button" class="mc-secondary-action" (click)="addCheckpoint()">
+            Add checkpoint
+          </button>
+        </ui-card>
+
+        <ui-card title="Future events">
+          <p class="mc-events-help">
+            Simulation years: <strong>1</strong> = first year after today, up to your horizon.
+            Amount is <strong>per occurrence</strong>, summed into each simulation year (negative = outflow).
+            Repeating events use <strong>every N years</strong> (0.5 ≈ twice per year, 2 = every two years).
+          </p>
+          <div class="mc-list">
+            @for (event of assumptions.annual_cashflow_events; track trackByIndex($index)) {
+              <div class="mc-editor-row">
+                <label class="mc-field mc-field--wide">
+                  <span>Name</span>
+                  <input type="text" [(ngModel)]="event.label" />
+                </label>
+                <label class="mc-field">
+                  <span>Amount (each time)</span>
+                  <input type="number" step="1000" [(ngModel)]="event.amount" />
+                </label>
+                <label class="mc-check mc-check--compact">
+                  <input type="checkbox" [(ngModel)]="event.recurring" />
+                  <span>Repeating schedule</span>
+                </label>
+                @if (!event.recurring) {
+                  <label class="mc-field">
+                    <span>One-time in year</span>
+                    <input type="number" min="1" [max]="horizonYears" [(ngModel)]="event.year" />
+                  </label>
+                } @else {
+                  <label class="mc-field">
+                    <span>From year</span>
+                    <input
+                      type="number"
+                      min="1"
+                      [max]="horizonYears"
+                      [ngModel]="event.start_year ?? event.year"
+                      (ngModelChange)="event.start_year = $event; event.year = null"
+                    />
+                  </label>
+                  <label class="mc-field">
+                    <span>Through year</span>
+                    <input
+                      type="number"
+                      min="1"
+                      [max]="horizonYears"
+                      [placeholder]="'Horizon (' + horizonYears + ')'"
+                      [(ngModel)]="event.end_year"
+                    />
+                    <small class="mc-field-hint">Leave empty = through end of horizon</small>
+                  </label>
+                  <label class="mc-field">
+                    <span>Every N years</span>
+                    <input
+                      type="number"
+                      min="0.25"
+                      max="80"
+                      step="0.25"
+                      [(ngModel)]="event.interval_years"
+                    />
+                    <small class="mc-field-hint">1 = yearly, 2 = biennial, 0.5 = semi-annual</small>
+                  </label>
+                }
+                <label class="mc-check mc-check--compact">
+                  <input type="checkbox" [(ngModel)]="event.inflation_adjusted" />
+                  <span>Inflation</span>
+                </label>
+                <button type="button" class="mc-icon-btn" (click)="removeEvent($index)">
+                  Remove
+                </button>
+              </div>
+            }
+          </div>
+          <button type="button" class="mc-secondary-action" (click)="addEvent()">Add event</button>
+        </ui-card>
+
+        <ui-button variant="primary" [disabled]="running" (clicked)="runSimulation()">
+          {{ running ? 'Simulating...' : 'Run Monte Carlo' }}
+        </ui-button>
+      </aside>
+
+      <main class="mc-results" aria-label="Simulation results">
+        @if (!lastRun) {
+          <div class="mc-empty-state">
+            <ui-icon name="trending" size="lg" />
+            <h2>Scenario ready</h2>
+            <p>
+              Run the model to generate percentile bands, dated goal odds, depletion risk, and a
+              projection table from your current planning assumptions.
+            </p>
+          </div>
+        } @else {
+          <section class="mc-kpis" aria-label="Monte Carlo result summary">
+            <div class="mc-kpi">
+              <span>Horizon survival</span>
+              <strong [class]="'mc-kpi__value mc-kpi__value--' + successVariant()">
+                {{ formatPct(lastRun.result_summary.success_rate_pct, 'percent') }}
+              </strong>
+              <small>{{ formatPct(lastRun.result_summary.pct_depleted_before_horizon, 'percent') }} depletion risk</small>
+            </div>
+            <div class="mc-kpi">
+              <span>Median ending net worth</span>
+              <strong>{{ formatMoney(lastRun.result_summary.terminal_p50) }}</strong>
+              <small>
+                P10 {{ formatMoney(lastRun.result_summary.terminal_p10) }} · P90
+                {{ formatMoney(lastRun.result_summary.terminal_p90) }}
+              </small>
+            </div>
+            <div class="mc-kpi">
+              <span>Beats starting point</span>
+              <strong>{{ formatPct(lastRun.result_summary.chance_ending_above_start_pct, 'percent') }}</strong>
+              <small>Growth allocation {{ formatPct(lastRun.result_summary.starting_growth_allocation) }}</small>
+            </div>
+          </section>
+
+          <ui-card title="Net worth fan chart">
+            @if (fanPathCaption(); as caption) {
+              <p class="mc-chart-note">{{ caption }}</p>
+            }
+            <app-monte-carlo-fan-chart
+              [data]="chartData"
+              [checkpoints]="checkpointRows()"
+            />
+          </ui-card>
+
+          @if (checkpointRows().length) {
+            <ui-card title="Checkpoint goals">
+              <ui-data-table ariaLabel="Checkpoint goal results">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Goal</th>
+                      <th>When</th>
+                      <th>Target</th>
+                      <th>P10</th>
+                      <th>P50</th>
+                      <th>P90</th>
+                      <th>Odds</th>
+                      <th>Gap</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of checkpointRows(); track row.label) {
+                      <tr>
+                        <td>{{ row.label }}</td>
+                        <td>Year {{ row.year }}</td>
+                        <td>{{ formatMoney(row.target_net_worth) }}</td>
+                        <td>{{ formatMoney(row.p10) }}</td>
+                        <td>{{ formatMoney(row.p50) }}</td>
+                        <td>{{ formatMoney(row.p90) }}</td>
+                        <td>{{ formatPct(row.success_probability_pct, 'percent') }}</td>
+                        <td [class.mc-positive]="(row.gap_to_goal_p50 ?? 0) >= 0" [class.mc-negative]="(row.gap_to_goal_p50 ?? 0) < 0">
+                          {{ formatSignedMoney(row.gap_to_goal_p50) }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </ui-data-table>
+            </ui-card>
+          }
+
+          <ui-card title="Projection table">
+            <ui-data-table ariaLabel="Projection percentile table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Milestone</th>
+                    <th>P10</th>
+                    <th>P50</th>
+                    <th>P90</th>
+                    <th>Goal odds</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of projectionRows(); track row.year) {
+                    <tr>
+                      <td>{{ row.label }}</td>
+                      <td>{{ formatMoney(row.p10) }}</td>
+                      <td>{{ formatMoney(row.p50) }}</td>
+                      <td>{{ formatMoney(row.p90) }}</td>
+                      <td>{{ formatPct(row.success_probability_pct, 'percent') }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </ui-data-table>
+          </ui-card>
+
+          @if (lastRun.result_summary.narrative?.length) {
+            <ui-card title="Readout">
+              <ul class="mc-narrative">
+                @for (line of lastRun.result_summary.narrative; track line) {
+                  <li>{{ line }}</li>
+                }
+              </ul>
+            </ui-card>
+          }
+        }
+      </main>
+    </div>
+  }
+</div>

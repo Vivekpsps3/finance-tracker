@@ -32,7 +32,7 @@ def test_asset_and_liability_affect_net_worth(client, monkeypatch):
     monkeypatch.setattr("main.market_data.get_price", fake_price)
 
     client.post(
-        "/holdings/",
+        "/api/holdings/",
         json={
             "symbol": "AAPL",
             "shares": 1,
@@ -41,7 +41,7 @@ def test_asset_and_liability_affect_net_worth(client, monkeypatch):
         },
     )
     client.post(
-        "/assets/",
+        "/api/assets/",
         json={
             "name": "Checking",
             "category": "checking",
@@ -50,7 +50,7 @@ def test_asset_and_liability_affect_net_worth(client, monkeypatch):
         },
     )
     client.post(
-        "/liabilities/",
+        "/api/liabilities/",
         json={
             "name": "Credit card",
             "category": "credit_card",
@@ -59,7 +59,7 @@ def test_asset_and_liability_affect_net_worth(client, monkeypatch):
         },
     )
 
-    nw = client.get("/net-worth/").json()
+    nw = client.get("/api/net-worth/").json()
     assert nw["other_assets"] == 10000
     assert nw["portfolio"] == 100
     assert nw["liabilities"] == 2000
@@ -69,7 +69,7 @@ def test_asset_and_liability_affect_net_worth(client, monkeypatch):
 
 def test_expense_transaction_does_not_change_net_worth(client):
     client.post(
-        "/transactions/",
+        "/api/transactions/",
         json={
             "date": str(date.today()),
             "type": "expense",
@@ -77,13 +77,13 @@ def test_expense_transaction_does_not_change_net_worth(client):
             "amount": 120,
         },
     )
-    nw = client.get("/net-worth/").json()
+    nw = client.get("/api/net-worth/").json()
     assert nw["total"] == 0
 
 
 def test_income_transaction_does_not_change_net_worth(client):
     client.post(
-        "/transactions/",
+        "/api/transactions/",
         json={
             "date": str(date.today()),
             "type": "income",
@@ -91,6 +91,6 @@ def test_income_transaction_does_not_change_net_worth(client):
             "amount": 5000,
         },
     )
-    nw = client.get("/net-worth/").json()
+    nw = client.get("/api/net-worth/").json()
     assert nw["total"] == 0
     assert nw["other_assets"] == 0

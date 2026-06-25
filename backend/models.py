@@ -87,6 +87,7 @@ class Holding(Base):
     shares = Column(Float)
     purchase_price = Column(Float)
     purchase_date = Column(Date)
+    brokerage_account_id = Column(Integer, ForeignKey("brokerage_accounts.id"), nullable=True, index=True)
 
 
 class TickerQuote(Base):
@@ -98,6 +99,23 @@ class TickerQuote(Base):
     quote_date = Column(Date, nullable=False)
     fetched_at = Column(DateTime, nullable=False, index=True)
     source = Column(String, default="sqlite_eod", nullable=False)
+
+
+class Brokerage(Base):
+    __tablename__ = "brokerages"
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+
+
+class BrokerageAccount(Base):
+    __tablename__ = "brokerage_accounts"
+    __table_args__ = (UniqueConstraint("brokerage_id", "account_mask", name="uq_brokerage_account_mask"),)
+    id = Column(Integer, primary_key=True, index=True)
+    brokerage_id = Column(Integer, ForeignKey("brokerages.id"), nullable=False, index=True)
+    account_mask = Column(String, nullable=False)
+    label = Column(String, nullable=True)
+    nickname = Column(String, nullable=True)  # user-friendly name, e.g. "Roth IRA" or "Taxable"
 
 
 class Asset(Base):
@@ -124,12 +142,35 @@ class Liability(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class NetWorthSnapshot(Base):
-    __tablename__ = "net_worth_snapshots"
+class PlanningAssumptionProfile(Base):
+    """User assumption profile for speculative planning runs (not ledger truth)."""
+
+    __tablename__ = "planning_assumption_profiles"
     id = Column(Integer, primary_key=True, index=True)
-    recorded_at = Column(DateTime, index=True, default=datetime.utcnow)
-    cash = Column(Float)
-    other_assets = Column(Float, default=0.0)
-    portfolio = Column(Float)
-    liabilities = Column(Float, default=0.0)
-    total = Column(Float)
+    name = Column(String, nullable=False)
+    base_currency = Column(String, default="USD", nullable=False)
+    payload_json = Column(String, nullable=False, default="{}")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PlanningScenarioRun(Base):
+    """Persisted speculative scenario run metadata and results."""
+
+    __tablename__ = "planning_scenario_runs"
+    id = Column(Integer, primary_key=True, index=True)
+    profile_id = Column(Integer, ForeignKey("planning_assumption_profiles.id"), nullable=True, index=True)
+    tool_id = Column(String, nullable=False, index=True)
+    seed = Column(Integer, nullable=True)
+    n_paths = Column(Integer, nullable=True)
+    horizon_years = Column(Integer, nullable=True)
+    overrides_json = Column(String, nullable=True)
+    input_snapshot_hash = Column(String, nullable=False)
+    input_as_of = Column(String, nullable=True)
+    status = Column(String, default="pending", nullable=False)
+    result_summary_json = Column(String, nullable=True)
+    result_artifacts_json = Column(String, nullable=True)
+    started_at = Column(DateTime, default=datetime.utcnow)
+    finished_at = Column(DateTime, nullable=True)
+
+

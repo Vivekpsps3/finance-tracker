@@ -13,6 +13,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   background: color-mix(in srgb, var(--danger) 14%, var(--card-bg));
   border-bottom: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
@@ -24,6 +25,22 @@
 .api-banner code {
   font-size: 0.75rem;
   color: var(--text-tertiary);
+}
+
+.api-banner__retry {
+  margin-left: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.api-banner__retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .nav-content {

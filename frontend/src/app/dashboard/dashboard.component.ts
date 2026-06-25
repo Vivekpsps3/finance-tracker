@@ -8,9 +8,9 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Subject, combineLatest, finalize, takeUntil } from 'rxjs';
+import { Subject, combineLatest, finalize, takeUntil, tap } from 'rxjs';
 import { FinanceService } from '../services/finance.service';
-import { DateFilter, NetWorth, NetWorthHistoryPoint, Transaction } from '../models/transaction.model';
+import { DateFilter, NetWorth, Transaction } from '../models/transaction.model';
 import { ChartsComponent } from '../charts/charts.component';
 import {
   UiBadgeComponent,
@@ -50,7 +50,6 @@ import { filterByDate, getDefaultDateFilter } from '../utils/date.util';
 export class DashboardComponent implements OnInit, OnDestroy {
   netWorth: NetWorth | null = null;
   transactions: Transaction[] = [];
-  history: NetWorthHistoryPoint[] = [];
   isLoading = true;
   chartsReady = false;
   error: string | null = null;
@@ -59,7 +58,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   filter: DateFilter = getDefaultDateFilter();
   filteredTransactions: Transaction[] = [];
-  filteredHistory: NetWorthHistoryPoint[] = [];
   filterSummary = '';
 
   readonly periodOptions: UiSelectOption[] = [
@@ -80,13 +78,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     combineLatest([
       this.financeService.netWorth$,
       this.financeService.transactions$,
-      this.financeService.netWorthHistory$,
     ])
       .pipe(takeUntil(this.destroy$))
-      .subscribe(([nw, txs, hist]) => {
+      .subscribe(([nw, txs]) => {
         this.netWorth = nw;
         this.transactions = txs;
-        this.history = hist;
         this.applyDateFilter();
         this.cdr.markForCheck();
       });
@@ -95,16 +91,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .loadDashboard()
       .pipe(
         takeUntil(this.destroy$),
+        tap(() => {
+          this.chartsReady = true;
+          this.error = null;
+        }),
         finalize(() => {
           this.isLoading = false;
-          this.chartsReady = true;
           this.cdr.markForCheck();
         })
       )
       .subscribe({
-        error: () => {
-          this.error =
-            'Could not load dashboard. Start the API (uvicorn) and run ng serve with the dev proxy, then open http://localhost:4200.';
+        error: (err: Error) => {
+          this.chartsReady = false;
+          const detail = err?.message ? ` ${err.message}` : '';
+          this.error = `Could not load dashboard. Is the API running?${detail}`;
           this.cdr.markForCheck();
         },
       });
@@ -137,16 +137,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .loadDashboard(true)
       .pipe(
         takeUntil(this.destroy$),
+        tap(() => {
+          this.chartsReady = true;
+          this.error = null;
+        }),
         finalize(() => {
           this.isLoading = false;
-          this.chartsReady = true;
           this.cdr.markForCheck();
         })
       )
       .subscribe({
-        error: () => {
-          this.error =
-            'Could not load dashboard. Start the API (uvicorn) and run ng serve with the dev proxy.';
+        error: (err: Error) => {
+          this.chartsReady = false;
+          const detail = err?.message ? ` ${err.message}` : '';
+          this.error = `Could not load dashboard. Is the API running?${detail}`;
           this.cdr.markForCheck();
         },
       });
@@ -192,7 +196,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private applyDateFilter() {
     this.filteredTransactions = filterByDate(this.transactions, this.filter);
-    this.filteredHistory = filterByDate(this.history, this.filter);
     this.updateFilterSummary();
     this.computeInsights();
   }

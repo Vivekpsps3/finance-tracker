@@ -21,6 +21,8 @@ Living list of follow-ups after the 2026-03-18 hardening pass. Not blocking loca
 | P2 | Pagination for transactions (5k client limit today) |
 | P3 | Light theme or remove unused `[data-theme='light']` hooks |
 | P3 | E2E smoke in CI (API mock + Playwright) |
+| P3 | Planning P6: async MC jobs, `/planning/runs/:id` route, Chart.js fan charts in planning UI |
+| P3 | Parametrized smoke test for all 37 planning `tool_id`s |
 | P3 | Auth if API is ever exposed beyond localhost |
 
 ## Open — ops

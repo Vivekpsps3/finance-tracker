@@ -16,10 +16,11 @@ Angular 19 standalone app under `frontend/src/app/`.
 | `/` | Dashboard (lazy) |
 | `/transactions` | Transactions (income, expenses, import) |
 | `/balance-sheet` | Balance sheet |
-| `/portfolio` | Portfolio |
+| `/portfolio` | Portfolio (manual + Fidelity CSV import with account grouping) |
 | `/calendar` | Calendar |
+| `/planning` | Monte Carlo net worth simulator (fan chart, tunable assumptions; speculative) |
 
-Shell: `MainLayoutComponent` (top nav, `#main-content` max-width 1100px). Dev API: empty `apiUrl` + `proxy.conf.js`.
+Shell: `MainLayoutComponent` (top nav, `#main-content` max-width 1100px). Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
 
 ## Design tokens
 

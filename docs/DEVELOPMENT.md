@@ -21,16 +21,20 @@ make dev       # API + UI
 |-----|---------|
 | http://localhost:4200 | Angular app (dev proxy → API) |
 | http://127.0.0.1:8000/docs | OpenAPI / Swagger |
-| http://127.0.0.1:8000/health | Health check |
+| http://127.0.0.1:8000/api/health | Health check |
 
-Use **http://localhost:4200** in the browser so the dev proxy works (`environment.development.ts` uses `apiUrl: ''`).
+The UI calls the API at **`/api/...`** (see `environment.development.ts` `apiUrl: '/api'`). `proxy.conf.js` forwards `/api/**` to the backend. **Restart `ng serve` after proxy changes** (a stale dev server keeps serving HTML for `/api/*`).
+
+```bash
+cd frontend && npm run verify:proxy   # expects ng serve on :4200
+```
 
 ## Make targets
 
 See `make help`. Common:
 
 - `make backend` / `make frontend` — run one side only
-- `make test` — pytest + `ng test` (frontend needs Chrome)
+- `make test` — pytest + `ng test` (frontend needs a browser; set `CHROME_BIN` if ChromeHeadless is missing)
 - `make clean` — caches and `dist`; does **not** delete `finance.db` or `node_modules`
 - `make build` — production frontend build
 
@@ -50,7 +54,8 @@ backend/
   models.py        # SQLAlchemy
   schemas.py       # Pydantic
   routers/         # HTTP routes
-  services/        # domain + market_data
+  services/        # domain + market_data + planning/analytics
+  tax_rulesets/    # JSON tax bracket files for planning tools
   import_parsers/  # bank CSV parsers (wired via routers/imports.py)
   .env.example     # copy to .env (optional)
 ```
@@ -63,6 +68,16 @@ Wipe all local data and start fresh:
 make reset-db   # stop the API first if it is running
 make backend    # creates empty tables via init_database()
 ```
+
+### Database initialization order (SQLite)
+
+On API startup, `init_database()` in `database.py` runs in order:
+
+1. **`Base.metadata.create_all`** — creates tables from current SQLAlchemy models.
+2. **`migrations.run_sqlite_migrations`** — legacy idempotent column/table patches for older local DBs.
+3. **Alembic `upgrade head`** — file-backed DBs only (`:memory:` skips Alembic). Revision scripts use inspector guards so reruns are safe if `create_all` already applied schema.
+
+If Alembic fails, the API still starts but logs a warning; check logs after upgrading dependencies or pulling new revisions. Planning tables (`planning_*`) are ensured via `migrations.py`; newer Alembic revisions may add brokerage/planning columns on existing files.
 
 ## Frontend layout
 

@@ -38,6 +38,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./calendar/calendar.component').then(m => m.CalendarComponent),
       },
+      {
+        path: 'planning',
+        title: 'Planning · Finance',
+        loadComponent: () =>
+          import('./planning/planning.component').then(m => m.PlanningComponent),
+      },
     ],
   },
   { path: 'charts', redirectTo: '', pathMatch: 'full' },

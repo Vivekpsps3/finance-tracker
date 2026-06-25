@@ -13,6 +13,7 @@
         Refresh prices
       </ui-button>
       <ui-button variant="primary" (clicked)="openAddModal()">Add Holding</ui-button>
+      <ui-button variant="secondary" (clicked)="openFidelityImportModal()">Import from Fidelity</ui-button>
     </div>
   </ui-page-header>
   <p class="refresh-note" *ngIf="lastPortfolioRefresh">Last price refresh: {{ lastPortfolioRefresh }}</p>
@@ -31,6 +32,13 @@
         </div>
       </div>
     </div>
+    @if (netWorth?.portfolio_breakdown) {
+      <div class="breakdown" style="margin-top:0.5rem; font-size:0.8rem; display:flex; gap:1rem; flex-wrap:wrap;">
+        @for (entry of (netWorth!.portfolio_breakdown | keyvalue); track entry.key) {
+          <span>{{ entry.key }}: <strong>${{ entry.value | number:'1.0-0' }}</strong></span>
+        }
+      </div>
+    }
   </ui-card>
   }
 
@@ -49,52 +57,153 @@
         </ui-button>
         <ui-button variant="secondary" size="sm" (clicked)="exportToCsv()">Export CSV</ui-button>
     </div>
+    <p class="text-sm text-secondary" style="margin: 0.25rem 0 0.5rem;">
+      Tip: Use <strong>Edit</strong> on a holding to change its ticker symbol (useful for imported CUSIPs or funds).
+    </p>
 
     <div *ngIf="loading" class="loading-overlay" role="status">
       <span class="spinner-inline" aria-hidden="true"></span> Loading holdings…
     </div>
 
-    <div class="table-scroll" *ngIf="filteredHoldings.length > 0; else empty">
-      <table class="data-table portfolio-table" aria-label="Portfolio holdings">
-        <caption class="sr-only">Stock holdings with market values</caption>
-        <thead>
-          <tr>
-            <th scope="col">Symbol</th>
-            <th scope="col">Shares</th>
-            <th scope="col">Cost Basis</th>
-            <th scope="col">Current</th>
-            <th scope="col">Value</th>
-            <th scope="col">Gain</th>
-            <th scope="col">%</th>
-            <th scope="col">Price</th>
-            <th scope="col">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let h of filteredHoldings; trackBy: trackByHoldingId">
-            <td class="symbol">{{ h.symbol }}</td>
-            <td>{{ h.shares }}</td>
-            <td>${{ h.purchase_price | number: '1.2-2' }}</td>
-            <td>${{ h.current_price | number: '1.2-2' }}</td>
-            <td>${{ h.value | number: '1.2-2' }}</td>
-            <td [class.positive]="getGain(h) >= 0" [class.negative]="getGain(h) < 0">
-              {{ getGain(h) >= 0 ? '+' : '' }}${{ getGain(h) | number: '1.2-2' }}
-            </td>
-            <td [class.positive]="getGainPercent(h) >= 0" [class.negative]="getGainPercent(h) < 0">
-              {{ getGainPercent(h) | number: '1.1-1' }}%
-            </td>
-            <td>
-              <ui-badge [variant]="h.price_source === 'live' ? 'success' : 'warning'">{{ priceFreshness(h) }}</ui-badge>
-              <span class="as-of-small">{{ formatPriceTime(h.price_as_of) }}</span>
-            </td>
-            <td class="actions">
-              <button type="button" class="btn-edit" (click)="refreshHoldingPrice(h)" [attr.aria-label]="'Refresh price for ' + h.symbol">↻</button>
-              <button type="button" class="btn-edit" (click)="editHolding(h)" [attr.aria-label]="'Edit ' + h.symbol">Edit</button>
-              <button type="button" class="btn-delete" (click)="deleteHolding(h)" [attr.aria-label]="'Delete ' + h.symbol">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Grouped by account with collapsible sub-tables -->
+    <div *ngIf="filteredHoldings.length > 0; else empty">
+
+      <!-- Fidelity Section (collapsible) -->
+      @if (accountGroups.fidelity.length > 0) {
+        <details class="account-section" open>
+          <summary class="section-header">
+            <strong>Fidelity</strong>
+            <span class="section-total">${{ accountGroups.fidelityTotal | number: '1.2-2' }}</span>
+          </summary>
+
+          @for (group of accountGroups.fidelity; track group.label) {
+            <details class="account-sub" open>
+              <summary>
+                <span class="account-label">
+                  @if (editingNicknameFor === group.brokerageAccountId) {
+                    <input type="text" [(ngModel)]="nicknameDraft" (keyup.enter)="saveNickname()" (blur)="saveNickname()" style="width: 180px;" />
+                    <button (click)="cancelEditNickname(); $event.stopImmediatePropagation()">Cancel</button>
+                  } @else {
+                    {{ group.label }}
+                    <button class="btn-edit" (click)="startEditNickname(group.brokerageAccountId, group.label); $event.stopImmediatePropagation()" style="margin-left: 4px; font-size: 10px;">✎</button>
+                  }
+                </span>
+                <span class="sub-total">${{ group.totalValue | number: '1.2-2' }}</span>
+                <span class="toggle-hint">(click to collapse)</span>
+              </summary>
+
+              <div class="table-scroll sub-table">
+                <table class="data-table portfolio-table" [attr.aria-label]="group.label + ' holdings'">
+                  <thead>
+                    <tr>
+                      <th scope="col">Symbol</th>
+                      <th scope="col">Shares</th>
+                      <th scope="col">Cost Basis</th>
+                      <th scope="col">Current</th>
+                      <th scope="col">Value</th>
+                      <th scope="col">Gain</th>
+                      <th scope="col">%</th>
+                      <th scope="col">Price</th>
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (h of group.holdings; track h.id) {
+                      <tr>
+                        <td class="symbol">
+                          <strong>{{ h.symbol }}</strong>
+                          @if (h.company_name) {
+                            <br><small style="color: var(--text-secondary);">{{ h.company_name }}</small>
+                          }
+                        </td>
+                        <td>{{ h.shares }}</td>
+                        <td>${{ h.purchase_price | number: '1.2-2' }}</td>
+                        <td>${{ h.current_price | number: '1.2-2' }}</td>
+                        <td>${{ h.value | number: '1.2-2' }}</td>
+                        <td [class.positive]="getGain(h) >= 0" [class.negative]="getGain(h) < 0">
+                          {{ getGain(h) >= 0 ? '+' : '' }}${{ getGain(h) | number: '1.2-2' }}
+                        </td>
+                        <td [class.positive]="getGainPercent(h) >= 0" [class.negative]="getGainPercent(h) < 0">
+                          {{ getGainPercent(h) | number: '1.1-1' }}%
+                        </td>
+                        <td>
+                          <ui-badge [variant]="h.price_source === 'live' ? 'success' : 'warning'">{{ priceFreshness(h) }}</ui-badge>
+                          <span class="as-of-small">{{ formatPriceTime(h.price_as_of) }}</span>
+                        </td>
+                        <td class="actions">
+                          <button type="button" class="btn-edit" (click)="refreshHoldingPrice(h)" [attr.aria-label]="'Refresh price for ' + h.symbol">↻</button>
+                          <button type="button" class="btn-edit" (click)="editHolding(h)" [attr.aria-label]="'Edit ' + h.symbol">Edit</button>
+                          <button type="button" class="btn-delete" (click)="deleteHolding(h)" [attr.aria-label]="'Delete ' + h.symbol">Delete</button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          }
+        </details>
+      }
+
+      <!-- Manual / Unassigned -->
+      @if (accountGroups.manual.length > 0) {
+        <div class="account-section">
+          <div class="section-header">
+            <strong>Manual / Unassigned</strong>
+            <span class="section-total">${{ accountGroups.manualTotal | number: '1.2-2' }}</span>
+          </div>
+
+          <div class="table-scroll">
+            <table class="data-table portfolio-table" [attr.aria-label]="'Manual holdings'">
+              <thead>
+                <tr>
+                  <th scope="col">Symbol</th>
+                  <th scope="col">Shares</th>
+                  <th scope="col">Cost Basis</th>
+                  <th scope="col">Current</th>
+                  <th scope="col">Value</th>
+                  <th scope="col">Gain</th>
+                  <th scope="col">%</th>
+                  <th scope="col">Price</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (h of accountGroups.manual; track h.id) {
+                  <tr>
+                    <td class="symbol">
+                      <strong>{{ h.symbol }}</strong>
+                      @if (h.company_name) {
+                        <br><small style="color: var(--text-secondary);">{{ h.company_name }}</small>
+                      }
+                    </td>
+                    <td>{{ h.shares }}</td>
+                    <td>${{ h.purchase_price | number: '1.2-2' }}</td>
+                    <td>${{ h.current_price | number: '1.2-2' }}</td>
+                    <td>${{ h.value | number: '1.2-2' }}</td>
+                    <td [class.positive]="getGain(h) >= 0" [class.negative]="getGain(h) < 0">
+                      {{ getGain(h) >= 0 ? '+' : '' }}${{ getGain(h) | number: '1.2-2' }}
+                    </td>
+                    <td [class.positive]="getGainPercent(h) >= 0" [class.negative]="getGainPercent(h) < 0">
+                      {{ getGainPercent(h) | number: '1.1-1' }}%
+                    </td>
+                    <td>
+                      <ui-badge [variant]="h.price_source === 'live' ? 'success' : 'warning'">{{ priceFreshness(h) }}</ui-badge>
+                      <span class="as-of-small">{{ formatPriceTime(h.price_as_of) }}</span>
+                    </td>
+                    <td class="actions">
+                      <button type="button" class="btn-edit" (click)="refreshHoldingPrice(h)" [attr.aria-label]="'Refresh price for ' + h.symbol">↻</button>
+                      <button type="button" class="btn-edit" (click)="editHolding(h)" [attr.aria-label]="'Edit ' + h.symbol">Edit</button>
+                      <button type="button" class="btn-delete" (click)="deleteHolding(h)" [attr.aria-label]="'Delete ' + h.symbol">Delete</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
     </div>
 
     <ng-template #empty>
@@ -148,12 +257,79 @@
         </div>
       </div>
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="!holdingForm.form.valid || saving">
+        <button type="submit" class="btn btn-primary" [disabled]="!canSave() || saving">
           <span *ngIf="saving" class="spinner-inline" aria-hidden="true"></span>
           {{ editingId ? 'Update' : 'Add' }}
         </button>
         <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancel</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Fidelity Import Modal -->
+<div class="modal-backdrop" *ngIf="showFidelityImportModal" role="dialog" aria-modal="true" aria-labelledby="fidelity-import-modal-title">
+  <div class="modal-panel form-card import-panel">
+    <h3 id="fidelity-import-modal-title">Import from Fidelity (replaces positions)</h3>
+
+    <p class="import-warning" style="color: #f59e0b; font-size: 0.85rem;">
+      ⚠️ This will <strong>delete and replace</strong> all current holdings for the Fidelity accounts present in the CSV.
+      Manual holdings and other accounts are unaffected.
+    </p>
+
+    @if (fidelityImportStep === 'upload') {
+      <div class="form-group">
+        <label>Fidelity CSV file</label>
+        <input type="file" accept=".csv" (change)="onFidelityFileSelected($event)" />
+        @if (fidelityImportFile) {
+          <p class="file-name">{{ fidelityImportFile.name }}</p>
+        }
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" (click)="runFidelityPreview()" [disabled]="!fidelityImportFile || fidelityImportParsing">
+          <span *ngIf="fidelityImportParsing" class="spinner-inline"></span>
+          Preview &amp; Replace
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closeFidelityImportModal()">Cancel</button>
+      </div>
+    } @else if (fidelityImportPreview) {
+      <p class="import-summary">
+        Will replace holdings for <strong>{{ fidelityImportPreview.accounts.length }}</strong> account(s),
+        {{ fidelityImportPreview.summary.positions }} positions.
+      </p>
+
+      <div class="import-accounts">
+        @for (acc of fidelityImportPreview.accounts; track acc) {
+          <label class="account-chip">
+            <input type="checkbox" [checked]="isFidelityAccountSelectedForDisplay(acc)" (change)="toggleFidelityAccountFromDisplay(acc)" />
+            {{ acc }}
+          </label>
+        }
+      </div>
+
+      <div class="table-scroll" style="max-height: 220px; margin: 0.75rem 0;">
+        <table class="data-table">
+          <thead><tr><th>Account</th><th>Symbol</th><th>Shares</th><th>Avg Cost</th></tr></thead>
+          <tbody>
+            @for (row of fidelityImportPreview.rows; track row.symbol + row.account_mask) {
+              <tr>
+                <td>{{ row.account_display }}</td>
+                <td>{{ row.symbol }}</td>
+                <td>{{ row.shares }}</td>
+                <td>${{ row.avg_cost_basis | number:'1.2-2' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" (click)="commitFidelityImport()" [disabled]="fidelityImportCommitting || selectedFidelityAccounts.size === 0">
+          <span *ngIf="fidelityImportCommitting" class="spinner-inline"></span>
+          Confirm Replace
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closeFidelityImportModal()">Cancel</button>
+      </div>
+    }
   </div>
 </div>

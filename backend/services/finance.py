@@ -6,28 +6,32 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from import_parsers.dedupe import build_dedupe_key
-from import_registry import get_bank_import
+from import_registry import get_bank_import, get_brokerage_import
 from logging_config import get_logger
 from models import (
     Asset,
     Bank,
     BankAccount,
+    Brokerage,
+    BrokerageAccount,
     Holding,
     ImportBatch,
     Liability,
-    NetWorthSnapshot,
     Transaction,
     TransactionType,
 )
 from schemas import (
     AssetResponse,
+    FidelityCommitRequest,
+    FidelityCommitResponse,
+    FidelityPreviewResponse,
+    FidelityPreviewRow,
     HoldingResponse,
     ImportCommitRequest,
     ImportCommitResponse,
     ImportPreviewResponse,
     ImportPreviewRow,
     LiabilityResponse,
-    NetWorthHistoryPoint,
     NetWorthResponse,
     TransactionResponse,
 )
@@ -48,7 +52,7 @@ def compute_liabilities(db: Session) -> float:
 
 def compute_net_worth(db: Session) -> NetWorthResponse:
     other_assets = compute_other_assets(db)
-    portfolio, sources = compute_portfolio(db)
+    portfolio, sources, breakdown = compute_portfolio(db)
     liabilities = compute_liabilities(db)
     total_assets = round(other_assets + portfolio, 2)
     total = round(total_assets - liabilities, 2)
@@ -60,6 +64,7 @@ def compute_net_worth(db: Session) -> NetWorthResponse:
         total=total,
         as_of=datetime.utcnow(),
         portfolio_sources=sources,
+        portfolio_breakdown=breakdown,
     )
 
 
@@ -99,11 +104,19 @@ def holding_to_response(
     h: Holding, force_refresh: bool = False, db: Optional[Session] = None
 ) -> HoldingResponse:
     current_price, source, as_of = market_data.get_price(h.symbol, force_refresh=force_refresh, db=db)
-    if current_price <= 0:
+    if current_price <= 0 or source in ("error", "non_ticker"):
         current_price = h.purchase_price
-        source = "fallback_purchase"
+        source = "fallback_purchase" if source != "non_ticker" else "non_ticker"
         as_of = None
     value = round(h.shares * current_price, 2)
+
+    company_name = market_data.get_company_name(h.symbol) if source not in ("non_ticker",) else None
+
+    account_display = None
+    if h.brokerage_account_id and db is not None:
+        displays = brokerage_account_display_map(db, [h.brokerage_account_id])
+        account_display = displays.get(h.brokerage_account_id)
+
     return HoldingResponse(
         id=h.id,
         symbol=h.symbol,
@@ -114,79 +127,25 @@ def holding_to_response(
         value=value,
         price_source=source,
         price_as_of=as_of,
+        account_display=account_display,
+        company_name=company_name,
+        brokerage_account_id=h.brokerage_account_id,
     )
 
 
-def compute_portfolio(db: Session) -> Tuple[float, Dict[str, str]]:
+def compute_portfolio(db: Session) -> Tuple[float, Dict[str, str], Dict[str, float]]:
     holdings = db.query(Holding).all()
     total = 0.0
     sources: Dict[str, str] = {}
+    breakdown: Dict[str, float] = {}
+    displays = brokerage_account_display_map(db, [h.brokerage_account_id for h in holdings if h.brokerage_account_id])
     for h in holdings:
         resp = holding_to_response(h, db=db)
         total += resp.value
         sources[h.symbol] = resp.price_source
-    return round(total, 2), sources
-
-
-def compute_portfolio_as_of(db: Session, as_of: date) -> float:
-    holdings = db.query(Holding).filter(Holding.purchase_date <= as_of).all()
-    total = 0.0
-    for h in holdings:
-        total += holding_to_response(h, db=db).value
-    return round(total, 2)
-
-
-def _snapshot_to_history_point(snap: NetWorthSnapshot) -> NetWorthHistoryPoint:
-    other_assets = snap.other_assets if snap.other_assets is not None else (snap.cash or 0.0)
-    liabilities = snap.liabilities if snap.liabilities is not None else 0.0
-    portfolio = snap.portfolio or 0.0
-    total_assets = round(other_assets + portfolio, 2)
-    return NetWorthHistoryPoint(
-        date=snap.recorded_at.date().isoformat(),
-        other_assets=round(other_assets, 2),
-        portfolio=round(portfolio, 2),
-        liabilities=round(liabilities, 2),
-        total_assets=total_assets,
-        total=round(snap.total, 2) if snap.total is not None else round(total_assets - liabilities, 2),
-    )
-
-
-def build_net_worth_history(db: Session) -> List[NetWorthHistoryPoint]:
-    snaps = (
-        db.query(NetWorthSnapshot)
-        .order_by(NetWorthSnapshot.recorded_at.asc(), NetWorthSnapshot.id.asc())
-        .all()
-    )
-    if snaps:
-        points = [_snapshot_to_history_point(s) for s in snaps]
-        points.reverse()
-        return points
-
-    current = compute_net_worth(db)
-    today_iso = date.today().isoformat()
-    return [
-        NetWorthHistoryPoint(
-            date=today_iso,
-            other_assets=current.other_assets,
-            portfolio=current.portfolio,
-            liabilities=current.liabilities,
-            total_assets=current.total_assets,
-            total=current.total,
-        )
-    ]
-
-
-def record_net_worth_snapshot(db: Session) -> None:
-    current = compute_net_worth(db)
-    snap = NetWorthSnapshot(
-        cash=current.other_assets,
-        other_assets=current.other_assets,
-        portfolio=current.portfolio,
-        liabilities=current.liabilities,
-        total=current.total,
-    )
-    db.add(snap)
-    db.commit()
+        key = resp.account_display or "Manual / Unassigned"
+        breakdown[key] = breakdown.get(key, 0.0) + resp.value
+    return round(total, 2), sources, {k: round(v, 2) for k, v in breakdown.items()}
 
 
 def get_or_create_bank(db: Session, slug: str, name: str) -> Bank:
@@ -233,6 +192,73 @@ def account_display_map(db: Session, account_ids: List[int]) -> Dict[int, str]:
     out: Dict[int, str] = {}
     for acc, bank in rows:
         out[acc.id] = acc.label or f"{bank.name} ···{acc.account_mask}"
+    return out
+
+
+def brokerage_account_display(acc: BrokerageAccount, br: Brokerage) -> str:
+    """Return display name, preferring nickname > label > default."""
+    if acc.nickname:
+        return acc.nickname
+    if acc.label:
+        return acc.label
+    return f"{br.name} ···{acc.account_mask}" if br else f"···{acc.account_mask}"
+
+
+def get_or_create_brokerage(db: Session, slug: str, name: str) -> Brokerage:
+    br = db.query(Brokerage).filter(Brokerage.slug == slug).first()
+    if br:
+        return br
+    br = Brokerage(slug=slug, name=name)
+    db.add(br)
+    db.flush()
+    db.refresh(br)
+    return br
+
+
+def get_or_create_brokerage_account(db: Session, br: Brokerage, account_mask: str, account_name: str = "") -> BrokerageAccount:
+    acc = (
+        db.query(BrokerageAccount)
+        .filter(BrokerageAccount.brokerage_id == br.id, BrokerageAccount.account_mask == account_mask)
+        .first()
+    )
+    if acc:
+        return acc
+    label = f"{br.name} ···{account_mask}"
+    if account_name:
+        label = f"{br.name} ···{account_mask} ({account_name})"
+    acc = BrokerageAccount(
+        brokerage_id=br.id,
+        account_mask=account_mask,
+        label=label,
+    )
+    db.add(acc)
+    db.flush()
+    db.refresh(acc)
+    return acc
+
+
+def set_brokerage_account_nickname(db: Session, brokerage_account_id: int, nickname: str) -> BrokerageAccount:
+    acc = db.query(BrokerageAccount).filter(BrokerageAccount.id == brokerage_account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Brokerage account not found")
+    acc.nickname = nickname.strip() or None
+    db.commit()
+    db.refresh(acc)
+    return acc
+
+
+def brokerage_account_display_map(db: Session, account_ids: List[int]) -> Dict[int, str]:
+    if not account_ids:
+        return {}
+    rows = (
+        db.query(BrokerageAccount, Brokerage)
+        .join(Brokerage, Brokerage.id == BrokerageAccount.brokerage_id)
+        .filter(BrokerageAccount.id.in_(account_ids))
+        .all()
+    )
+    out: Dict[int, str] = {}
+    for acc, br in rows:
+        out[acc.id] = brokerage_account_display(acc, br)
     return out
 
 
@@ -410,3 +436,132 @@ def commit_bank_import(
         body.filename,
     )
     return ImportCommitResponse(inserted=inserted, skipped=skipped, batch_id=batch.id)
+
+
+# Fidelity / brokerage holdings import (replace semantics per account)
+
+async def preview_fidelity_import(
+    file: UploadFile, db: Session
+) -> FidelityPreviewResponse:
+    cfg = get_brokerage_import("fidelity")
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Unknown brokerage import type")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Missing filename")
+    lower = file.filename.lower()
+    if not any(lower.endswith(ext) for ext in cfg.file_extensions):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Upload a file with extension: {', '.join(cfg.file_extensions)}",
+        )
+    raw = (await file.read()).decode("utf-8-sig", errors="replace")
+    try:
+        parsed = cfg.parse(raw)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    # Group by account for replace preview
+    from collections import defaultdict
+    by_account: dict[str, list] = defaultdict(list)
+    for row in parsed:
+        by_account[row.account_mask].append(row)
+
+    preview_rows: list[FidelityPreviewRow] = []
+    accounts_seen: list[str] = []
+    total_cost = 0.0
+    for mask, rows in by_account.items():
+        display = f"Fidelity ···{mask}"
+        accounts_seen.append(display)
+        for r in rows:
+            preview_rows.append(
+                FidelityPreviewRow(
+                    account_mask=mask,
+                    account_display=display,
+                    symbol=r.symbol,
+                    shares=r.shares,
+                    avg_cost_basis=r.avg_cost_basis,
+                    cost_basis_total=r.cost_basis_total,
+                    status="replace",
+                )
+            )
+            total_cost += r.cost_basis_total
+
+    summary = {
+        "accounts": len(by_account),
+        "positions": len(parsed),
+        "total_cost": round(total_cost, 2),
+    }
+    logger.info(
+        "fidelity_preview filename=%s accounts=%s positions=%s",
+        file.filename,
+        summary["accounts"],
+        summary["positions"],
+    )
+    return FidelityPreviewResponse(
+        broker=cfg.name,
+        filename=file.filename,
+        accounts=accounts_seen,
+        rows=preview_rows,
+        summary=summary,
+    )
+
+
+def commit_fidelity_import(
+    body: FidelityCommitRequest, db: Session
+) -> FidelityCommitResponse:
+    cfg = get_brokerage_import("fidelity")
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Unknown brokerage import type")
+
+    logger.info(
+        "fidelity_commit_start filename=%s rows=%s",
+        body.filename,
+        len(body.rows),
+    )
+
+    br = get_or_create_brokerage(db, cfg.slug, cfg.name)
+
+    # Collect unique accounts from the commit payload
+    accounts_in_file: dict[str, str] = {}  # mask -> name (name may be empty)
+    for r in body.rows:
+        if r.account_mask not in accounts_in_file:
+            accounts_in_file[r.account_mask] = ""
+
+    holdings_replaced = 0
+    inserted = 0
+    account_displays: list[str] = []
+
+    acc_map: dict[str, BrokerageAccount] = {}
+    for mask in accounts_in_file:
+        acc = get_or_create_brokerage_account(db, br, mask)
+        acc_map[mask] = acc
+        # Replace: delete existing holdings for this account
+        deleted = db.query(Holding).filter(Holding.brokerage_account_id == acc.id).delete()
+        holdings_replaced += deleted
+        account_displays.append(acc.label or f"{br.name} ···{mask}")
+
+    for r in body.rows:
+        acc = acc_map[r.account_mask]
+        h = Holding(
+            symbol=r.symbol.upper().strip(),
+            shares=round(r.shares, 6),
+            purchase_price=round(r.avg_cost_basis or 0.0, 4),
+            purchase_date=date.today(),
+            brokerage_account_id=acc.id,
+        )
+        db.add(h)
+        inserted += 1
+
+    db.commit()
+    logger.info(
+        "fidelity_commit_done replaced_accounts=%s holdings_replaced=%s inserted=%s",
+        len(accounts_in_file),
+        holdings_replaced,
+        inserted,
+    )
+    return FidelityCommitResponse(
+        accounts_replaced=len(accounts_in_file),
+        holdings_replaced=holdings_replaced,
+        inserted=inserted,
+        accounts=account_displays,
+    )

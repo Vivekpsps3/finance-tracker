@@ -50,6 +50,9 @@ export interface Holding {
   value?: number;
   price_source?: string;
   price_as_of?: string | null;
+  account_display?: string | null;
+  company_name?: string | null;
+  brokerage_account_id?: number | null;
 }
 
 export interface TransactionCreate {
@@ -113,6 +116,39 @@ export interface NetWorth {
   total: number;
   as_of?: string;
   portfolio_sources?: Record<string, string>;
+  portfolio_breakdown?: Record<string, number>;
+}
+
+export interface FidelityImportOption {
+  slug: string;
+  name: string;
+  hint: string;
+  file_extensions: string[];
+}
+
+export interface FidelityPreviewRow {
+  account_mask: string;
+  account_display: string;
+  symbol: string;
+  shares: number;
+  avg_cost_basis: number;
+  cost_basis_total: number;
+  status: string;
+}
+
+export interface FidelityPreviewResult {
+  broker: string;
+  filename: string;
+  accounts: string[];
+  rows: FidelityPreviewRow[];
+  summary: { accounts: number; positions: number; total_cost: number };
+}
+
+export interface FidelityCommitResult {
+  accounts_replaced: number;
+  holdings_replaced: number;
+  inserted: number;
+  accounts: string[];
 }
 
 export interface MarketPriceQuote {
@@ -121,15 +157,6 @@ export interface MarketPriceQuote {
   price_source: string;
   price_as_of?: string | null;
   valid: boolean;
-}
-
-export interface NetWorthHistoryPoint {
-  date: string;
-  other_assets: number;
-  portfolio: number;
-  liabilities: number;
-  total_assets: number;
-  total: number;
 }
 
 export type ToastKind = 'success' | 'error' | 'info';

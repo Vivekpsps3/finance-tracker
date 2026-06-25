@@ -29,7 +29,8 @@
 @if (apiOffline) {
   <div class="api-banner" role="status">
     <ui-icon name="spark" size="sm" />
-    <span>API offline — start backend on port 8000 and use <code>ng serve</code> with proxy.</span>
+    <span>API unreachable. Start the backend and dev server, then retry.</span>
+    <button type="button" class="api-banner__retry" (click)="refreshApiStatus()">Retry</button>
   </div>
 }
 

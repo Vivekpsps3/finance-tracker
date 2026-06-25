@@ -32,20 +32,83 @@ def run_sqlite_migrations(engine) -> None:
                     )
                 )
 
-    _migrate_net_worth_snapshots(inspector, engine)
+    _drop_net_worth_snapshots(inspector, engine)
+    _migrate_brokerage_accounts(inspector, engine)
+    _ensure_planning_tables(inspector, engine)
+    _migrate_planning_runs(inspector, engine)
 
 
-def _migrate_net_worth_snapshots(inspector, engine) -> None:
+def _drop_net_worth_snapshots(inspector, engine) -> None:
     if not inspector.has_table("net_worth_snapshots"):
         return
-    existing = {c["name"] for c in inspector.get_columns("net_worth_snapshots")}
-    alters = []
-    if "other_assets" not in existing:
-        alters.append("ALTER TABLE net_worth_snapshots ADD COLUMN other_assets FLOAT DEFAULT 0")
-    if "liabilities" not in existing:
-        alters.append("ALTER TABLE net_worth_snapshots ADD COLUMN liabilities FLOAT DEFAULT 0")
-    if not alters:
+    with engine.begin() as conn:
+        # Drop indexes first if any, then table (safe for SQLite)
+        conn.execute(text("DROP TABLE IF EXISTS net_worth_snapshots"))
+    # Note: any future net worth history is intentionally removed for simplicity (current-only NW)
+
+
+def _migrate_brokerage_accounts(inspector, engine) -> None:
+    if not inspector.has_table("brokerage_accounts"):
+        return
+    existing = {c["name"] for c in inspector.get_columns("brokerage_accounts")}
+    if "nickname" not in existing:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE brokerage_accounts ADD COLUMN nickname VARCHAR"))
+
+
+def _ensure_planning_tables(inspector, engine) -> None:
+    if inspector.has_table("planning_assumption_profiles"):
         return
     with engine.begin() as conn:
-        for stmt in alters:
-            conn.execute(text(stmt))
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS planning_assumption_profiles (
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR NOT NULL,
+                    base_currency VARCHAR NOT NULL DEFAULT 'USD',
+                    payload_json VARCHAR NOT NULL DEFAULT '{}',
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS planning_scenario_runs (
+                    id INTEGER PRIMARY KEY,
+                    profile_id INTEGER,
+                    tool_id VARCHAR NOT NULL,
+                    seed INTEGER,
+                    n_paths INTEGER,
+                    horizon_years INTEGER,
+                    overrides_json VARCHAR,
+                    input_snapshot_hash VARCHAR NOT NULL,
+                    input_as_of VARCHAR,
+                    status VARCHAR NOT NULL DEFAULT 'pending',
+                    result_summary_json VARCHAR,
+                    result_artifacts_json VARCHAR,
+                    started_at DATETIME,
+                    finished_at DATETIME,
+                    FOREIGN KEY(profile_id) REFERENCES planning_assumption_profiles(id)
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_planning_scenario_runs_tool_id "
+                "ON planning_scenario_runs (tool_id)"
+            )
+        )
+
+
+def _migrate_planning_runs(inspector, engine) -> None:
+    if not inspector.has_table("planning_scenario_runs"):
+        return
+    existing = {c["name"] for c in inspector.get_columns("planning_scenario_runs")}
+    if "input_as_of" not in existing:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE planning_scenario_runs ADD COLUMN input_as_of VARCHAR"))

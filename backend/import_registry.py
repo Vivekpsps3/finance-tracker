@@ -11,7 +11,13 @@ from import_parsers.capital_one import (
     IMPORT_HINT as CAPITAL_ONE_HINT,
     parse_capital_one_csv,
 )
-from import_parsers.types import ParsedImportRow
+from import_parsers.fidelity import (
+    BANK_NAME as FIDELITY_NAME,
+    BANK_SLUG as FIDELITY_SLUG,
+    IMPORT_HINT as FIDELITY_HINT,
+    parse_fidelity_csv,
+)
+from import_parsers.types import ParsedFidelityRow, ParsedImportRow
 
 
 @dataclass(frozen=True)
@@ -58,3 +64,48 @@ SLUG_ALIASES = {
 def get_bank_import(slug: str) -> BankImportConfig | None:
     canonical = SLUG_ALIASES.get(slug, slug)
     return BANK_IMPORTS.get(canonical)
+
+
+# Parallel structure for portfolio / brokerage (holdings) imports.
+# Separate for type safety (tx dedupe vs holdings replace).
+
+@dataclass(frozen=True)
+class BrokerageImportConfig:
+    slug: str
+    name: str
+    hint: str
+    file_extensions: tuple[str, ...]
+    parse: Callable[[str], List[ParsedFidelityRow]]
+
+
+BROKERAGE_IMPORTS: Dict[str, BrokerageImportConfig] = {
+    FIDELITY_SLUG: BrokerageImportConfig(
+        slug=FIDELITY_SLUG,
+        name=FIDELITY_NAME,
+        hint=FIDELITY_HINT,
+        file_extensions=(".csv",),
+        parse=parse_fidelity_csv,
+    ),
+}
+
+
+def list_brokerage_imports() -> List[dict]:
+    return [
+        {
+            "slug": cfg.slug,
+            "name": cfg.name,
+            "hint": cfg.hint,
+            "file_extensions": list(cfg.file_extensions),
+        }
+        for cfg in BROKERAGE_IMPORTS.values()
+    ]
+
+
+BROKERAGE_SLUG_ALIASES = {
+    "fidelity-investments": FIDELITY_SLUG,
+}
+
+
+def get_brokerage_import(slug: str) -> BrokerageImportConfig | None:
+    canonical = BROKERAGE_SLUG_ALIASES.get(slug, slug)
+    return BROKERAGE_IMPORTS.get(canonical)

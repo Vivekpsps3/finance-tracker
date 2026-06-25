@@ -17,7 +17,7 @@ logger = logging.getLogger("finance_api.access")
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         path = request.url.path
-        if path == "/health" and not LOG_ACCESS_HEALTH:
+        if path in ("/health", "/api/health") and not LOG_ACCESS_HEALTH:
             return await call_next(request)
         if request.method == "OPTIONS":
             return await call_next(request)

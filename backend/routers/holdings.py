@@ -7,7 +7,7 @@ from database import get_db
 from logging_config import get_logger
 from models import Holding
 from schemas import HoldingCreate, HoldingResponse, HoldingUpdate
-from services.finance import holding_to_response, record_net_worth_snapshot
+from services.finance import holding_to_response
 
 router = APIRouter(tags=["holdings"])
 logger = get_logger()
@@ -30,7 +30,6 @@ def create_holding(h: HoldingCreate, db: Session = Depends(get_db)):
     db.add(db_h)
     db.commit()
     db.refresh(db_h)
-    record_net_worth_snapshot(db)
     return holding_to_response(db_h, db=db)
 
 
@@ -51,7 +50,6 @@ def update_holding(holding_id: int, update: HoldingUpdate, db: Session = Depends
         setattr(h, field, value)
     db.commit()
     db.refresh(h)
-    record_net_worth_snapshot(db)
     return holding_to_response(h, db=db)
 
 
@@ -62,5 +60,4 @@ def delete_holding(holding_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Holding not found")
     db.delete(h)
     db.commit()
-    record_net_worth_snapshot(db)
     return {"ok": True}

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Asset
 from schemas import AssetCreate, AssetResponse, AssetUpdate
-from services.finance import asset_to_response, record_net_worth_snapshot
+from services.finance import asset_to_response
 
 router = APIRouter(tags=["assets"])
 
@@ -23,7 +23,6 @@ def create_asset(body: AssetCreate, db: Session = Depends(get_db)):
     db.add(row)
     db.commit()
     db.refresh(row)
-    record_net_worth_snapshot(db)
     return asset_to_response(row)
 
 
@@ -36,7 +35,6 @@ def update_asset(asset_id: int, body: AssetUpdate, db: Session = Depends(get_db)
         setattr(row, field, value)
     db.commit()
     db.refresh(row)
-    record_net_worth_snapshot(db)
     return asset_to_response(row)
 
 
@@ -47,5 +45,4 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Asset not found")
     db.delete(row)
     db.commit()
-    record_net_worth_snapshot(db)
     return {"ok": True}

@@ -26,8 +26,9 @@ Details: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 - **Dashboard** — Current net worth, period-filtered insights/charts, coordinated loading
 - **Transactions** — Income & expenses, **bank import** (Capital One CSV; preview + dedupe), monthly totals on the tab
 - **Balance sheet** — Manual assets & liabilities that drive net worth (route: /balance-sheet)
-- **Portfolio** — Holdings CRUD, refresh prices, check symbol before add
+- **Portfolio** — Holdings CRUD, **Fidelity positions CSV import** (per-account replace), refresh prices, check symbol before add
 - **Calendar** — Daily transaction summary
+- **Monte Carlo** (`/planning`) — Net worth fan chart, tunable assumptions from your ledger (speculative; does not change net worth or ledger)
 
 ## Tech stack
 
@@ -69,9 +70,9 @@ Optional: `backend/.env` from **`backend/.env.example`**
 
 Adding banks: **[docs/ADDING_A_BANK_IMPORT.md](docs/ADDING_A_BANK_IMPORT.md)**. See **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)** and **[AGENTS.md](AGENTS.md)** for agents.
 
-- **Net worth** = manual assets + portfolio market value − liabilities.
+- **Net worth** = manual assets + portfolio market value − liabilities (always current).
 - **Transactions** — income, expenses, and card imports for tracking; not part of net worth.
-- **History** — snapshots on asset, liability, and holding changes.
+- (Net worth history/snapshots removed for simplicity.)
 
 Local database: `backend/finance.db` (not committed; see `.gitignore`).
 

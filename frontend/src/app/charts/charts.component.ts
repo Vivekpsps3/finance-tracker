@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FinanceService } from '../services/finance.service';
-import { Transaction, Holding, NetWorthHistoryPoint } from '../models/transaction.model';
+import { Transaction, Holding } from '../models/transaction.model';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import type { Chart as ChartInstance, ChartItem } from 'chart.js';
 import { UiCardComponent, UiEmptyStateComponent } from '../shared/ui';
@@ -43,21 +43,16 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild('incomeExpenseChart') incomeExpenseCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('portfolioChart') portfolioCanvas!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('netWorthChart') netWorthCanvas!: ElementRef<HTMLCanvasElement>;
 
   transactions: Transaction[] = [];
   holdings: Holding[] = [];
-  history: NetWorthHistoryPoint[] = [];
   loading = true;
 
   incomeTotal = 0;
-  allocationRows: { label: string; value: number; pct: number }[] = [];
-  netWorthRows: { date: string; total: number }[] = [];
-  netWorthTableRows: { date: string; total: number }[] = [];
+  allocationRows: { label: string; value: number; pct: number; companyName?: string | null }[] = [];
 
   private incomeChart?: ChartInstance;
   private portfolioChart?: ChartInstance;
-  private netWorthChart?: ChartInstance;
   private render$ = new Subject<void>();
   private destroy$ = new Subject<void>();
   private viewReady = false;
@@ -65,7 +60,6 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
   private paintInFlight: Promise<void> | null = null;
 
   private txOverride: Transaction[] | null = null;
-  private histOverride: NetWorthHistoryPoint[] | null = null;
 
   get hasTxData(): boolean {
     const txs = this.txOverride ?? this.transactions;
@@ -74,12 +68,6 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @Input() set overrideTransactions(value: Transaction[] | undefined | null) {
     this.txOverride = value ?? null;
-    this.computeDerived();
-    this.render$.next();
-  }
-
-  @Input() set overrideHistory(value: NetWorthHistoryPoint[] | undefined | null) {
-    this.histOverride = value ?? null;
     this.computeDerived();
     this.render$.next();
   }
@@ -119,29 +107,11 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
-    this.financeService.netWorthHistory$.pipe(takeUntil(this.destroy$)).subscribe(data => {
-      this.history = data;
-      this.computeDerived();
-      this.render$.next();
-      this.cdr.markForCheck();
-    });
-
     if (!this.embedded) {
       this.financeService.getTransactions().pipe(takeUntil(this.destroy$)).subscribe();
       this.financeService.getHoldings().pipe(takeUntil(this.destroy$)).subscribe();
-      this.financeService
-        .getNetWorthHistory()
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.loading = false;
-            this.cdr.markForCheck();
-          },
-          error: () => {
-            this.loading = false;
-            this.cdr.markForCheck();
-          },
-        });
+      this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -155,7 +125,6 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.destroy$.complete();
     this.incomeChart?.destroy();
     this.portfolioChart?.destroy();
-    this.netWorthChart?.destroy();
   }
 
   private async ensureChartCtor(): Promise<ChartConstructor> {
@@ -177,7 +146,6 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private computeDerived() {
     const txs = this.txOverride ?? this.transactions;
-    const hists = this.histOverride ?? this.history;
 
     this.incomeTotal = txs
       .filter(t => t.type === 'income')
@@ -190,12 +158,8 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
         label: h.symbol,
         value: h.value || 0,
         pct: totalVal ? ((h.value || 0) / totalVal) * 100 : 0,
+        companyName: h.company_name || null,
       }));
-
-    this.netWorthRows = [...hists]
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map(p => ({ date: p.date, total: p.total }));
-    this.netWorthTableRows = [...this.netWorthRows].reverse();
   }
 
   private async paintCharts() {
@@ -205,7 +169,6 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     const Chart = await this.ensureChartCtor();
     this.updateIncomeExpense(Chart);
     this.updatePortfolio(Chart);
-    this.updateNetWorth(Chart);
     this.cdr.markForCheck();
   }
 
@@ -292,51 +255,12 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
             callbacks: {
               label: (ctx: TooltipCtx) => {
                 const row = this.allocationRows[ctx.dataIndex];
-                return `$${Number(ctx.raw).toLocaleString()} (${row.pct.toFixed(1)}%)`;
+                const name = row.companyName ? ` - ${row.companyName}` : '';
+                return `${row.label}${name}: $${Number(ctx.raw).toLocaleString()} (${row.pct.toFixed(1)}%)`;
               },
             },
           },
         },
-      },
-    });
-  }
-
-  private updateNetWorth(Chart: ChartConstructor) {
-    const canvas = this.netWorthCanvas?.nativeElement;
-    if (!canvas) {
-      return;
-    }
-    if (this.netWorthRows.length === 0) {
-      this.netWorthChart?.destroy();
-      this.netWorthChart = undefined;
-      return;
-    }
-    this.netWorthChart = this.upsertChart(Chart, this.netWorthChart, canvas, {
-      type: 'line',
-      data: {
-        labels: this.netWorthRows.map(r => r.date),
-        datasets: [{
-          label: 'Total net worth',
-          data: this.netWorthRows.map(r => r.total),
-          borderColor: chartAccentColor(),
-          backgroundColor: 'rgba(59, 130, 246, 0.14)',
-          tension: 0.3,
-          fill: true,
-          pointRadius: 2,
-          pointHoverRadius: 5,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            ...chartTooltipTheme(),
-            callbacks: { label: (ctx: TooltipCtx) => '$' + Number(ctx.raw).toLocaleString() },
-          },
-        },
-        scales: chartCartesianScales(),
       },
     });
   }

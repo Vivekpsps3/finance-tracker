@@ -40,16 +40,16 @@ def test_parse_capital_one_skips_credits():
 
 
 def test_capital_one_preview_and_commit_does_not_change_net_worth(client):
-    nw_before = client.get("/net-worth/").json()["total"]
+    nw_before = client.get("/api/net-worth/").json()["total"]
 
     files = {"file": ("capital.csv", SAMPLE_CSV, "text/csv")}
-    preview = client.post("/imports/capital-one/preview", files=files)
+    preview = client.post("/api/imports/capital-one/preview", files=files)
     assert preview.status_code == 200
     body = preview.json()
     assert body["summary"]["new"] == 1
 
     commit = client.post(
-        "/imports/capital-one/commit",
+        "/api/imports/capital-one/commit",
         json={
             "filename": "capital.csv",
             "rows": [
@@ -67,14 +67,14 @@ def test_capital_one_preview_and_commit_does_not_change_net_worth(client):
     assert commit.status_code == 200
     assert commit.json()["inserted"] == 1
 
-    txs = client.get("/transactions/").json()
+    txs = client.get("/api/transactions/").json()
     assert len(txs) == 1
     assert txs[0]["type"] == "expense"
     assert txs[0]["source"] == "import"
 
-    nw_after = client.get("/net-worth/").json()
+    nw_after = client.get("/api/net-worth/").json()
     assert nw_after["total"] == nw_before
 
-    list_banks = client.get("/imports/banks")
+    list_banks = client.get("/api/imports/banks")
     assert list_banks.status_code == 200
     assert any(b["slug"] == "capital_one" for b in list_banks.json())

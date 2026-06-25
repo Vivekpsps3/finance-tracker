@@ -11,7 +11,7 @@ import {
   shareReplay,
   take,
 } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { apiUrl } from '../core/api-url';
 import {
   Holding,
   HoldingCreate,
@@ -20,12 +20,15 @@ import {
   Asset,
   AssetCreate,
   BankImportOption,
+  FidelityImportOption,
+  FidelityPreviewResult,
+  FidelityPreviewRow,
+  FidelityCommitResult,
   ImportCommitResult,
   ImportPreviewResult,
   ImportPreviewRow,
   Liability,
   LiabilityCreate,
-  NetWorthHistoryPoint,
   Transaction,
   TransactionCreate,
 } from '../models/transaction.model';
@@ -34,24 +37,19 @@ export type DashboardLoadResult = [
   Transaction[],
   Holding[],
   NetWorth,
-  NetWorthHistoryPoint[],
 ];
 
 @Injectable({ providedIn: 'root' })
 export class FinanceService {
-  private apiUrl = environment.apiUrl;
-
   private _transactions = new BehaviorSubject<Transaction[]>([]);
   private _holdings = new BehaviorSubject<Holding[]>([]);
   private _netWorth = new BehaviorSubject<NetWorth | null>(null);
-  private _history = new BehaviorSubject<NetWorthHistoryPoint[]>([]);
   private _assets = new BehaviorSubject<Asset[]>([]);
   private _liabilities = new BehaviorSubject<Liability[]>([]);
 
   transactions$ = this._transactions.asObservable();
   holdings$ = this._holdings.asObservable();
   netWorth$ = this._netWorth.asObservable();
-  netWorthHistory$ = this._history.asObservable();
   assets$ = this._assets.asObservable();
   liabilities$ = this._liabilities.asObservable();
 
@@ -74,7 +72,6 @@ export class FinanceService {
         this.getTransactions(),
         this.getHoldings(false),
         this.getNetWorth(),
-        this.getNetWorthHistory(),
       ]).pipe(
         shareReplay({ bufferSize: 1, refCount: false }),
         catchError(err => {
@@ -87,9 +84,7 @@ export class FinanceService {
   }
 
   private refreshDerivedMetrics(): void {
-    forkJoin([this.getNetWorth(), this.getNetWorthHistory()])
-      .pipe(take(1))
-      .subscribe();
+    this.getNetWorth().pipe(take(1)).subscribe();
   }
 
   private invalidateDashboardCache(): void {
@@ -102,7 +97,7 @@ export class FinanceService {
   }
 
   /**
-   * Reload transactions, holdings (cached prices), net worth, and history.
+   * Reload transactions, holdings (cached prices), and current net worth.
    * Use refreshAllHoldingPrices() on Portfolio when live quotes are needed.
    */
   refreshAll(): Observable<DashboardLoadResult> {
@@ -112,7 +107,6 @@ export class FinanceService {
       this.getTransactions(),
       this.getHoldings(false),
       this.getNetWorth(),
-      this.getNetWorthHistory(),
     ]).pipe(
       timeout(60_000),
       tap({
@@ -133,13 +127,13 @@ export class FinanceService {
     if (search?.trim()) {
       params = params.set('search', search.trim());
     }
-    return this.http.get<Transaction[]>(`${this.apiUrl}/transactions/`, { params }).pipe(
+    return this.http.get<Transaction[]>(apiUrl('/transactions/'), { params }).pipe(
       tap(data => this._transactions.next(data))
     );
   }
 
   addTransaction(tx: TransactionCreate): Observable<Transaction> {
-    return this.http.post<Transaction>(`${this.apiUrl}/transactions/`, tx).pipe(
+    return this.http.post<Transaction>(apiUrl('/transactions/'), tx).pipe(
       tap(created => {
         this._transactions.next([created, ...this._transactions.value]);
         this.refreshDerivedMetrics();
@@ -148,7 +142,7 @@ export class FinanceService {
   }
 
   updateTransaction(id: number, tx: Partial<TransactionCreate>): Observable<Transaction> {
-    return this.http.put<Transaction>(`${this.apiUrl}/transactions/${id}`, tx).pipe(
+    return this.http.put<Transaction>(apiUrl(`/transactions/${id}`), tx).pipe(
       tap(updated => {
         this._transactions.next(
           this._transactions.value.map(t => (t.id === id ? updated : t))
@@ -159,7 +153,7 @@ export class FinanceService {
   }
 
   deleteTransaction(id: number): Observable<{ ok: boolean }> {
-    return this.http.delete<{ ok: boolean }>(`${this.apiUrl}/transactions/${id}`).pipe(
+    return this.http.delete<{ ok: boolean }>(apiUrl(`/transactions/${id}`)).pipe(
       tap(() => {
         this._transactions.next(this._transactions.value.filter(t => t.id !== id));
         this.refreshDerivedMetrics();
@@ -172,7 +166,7 @@ export class FinanceService {
     if (refreshPrices) {
       params = params.set('refresh_prices', 'true');
     }
-    return this.http.get<Holding[]>(`${this.apiUrl}/holdings/`, { params }).pipe(
+    return this.http.get<Holding[]>(apiUrl('/holdings/'), { params }).pipe(
       tap(data => this._holdings.next(data))
     );
   }
@@ -192,7 +186,7 @@ export class FinanceService {
 
   refreshHoldingPrice(holdingId: number): Observable<Holding> {
     return this.http
-      .post<Holding>(`${this.apiUrl}/holdings/${holdingId}/refresh-price`, {})
+      .post<Holding>(apiUrl(`/holdings/${holdingId}/refresh-price`), {})
       .pipe(
         tap(updated => {
           this._holdings.next(
@@ -209,13 +203,13 @@ export class FinanceService {
     if (refresh) {
       params = params.set('refresh', 'true');
     }
-    return this.http.get<MarketPriceQuote>(`${this.apiUrl}/market/price/${encodeURIComponent(upper)}`, {
+    return this.http.get<MarketPriceQuote>(apiUrl(`/market/price/${encodeURIComponent(upper)}`), {
       params,
     });
   }
 
   addHolding(holding: HoldingCreate): Observable<Holding> {
-    return this.http.post<Holding>(`${this.apiUrl}/holdings/`, holding).pipe(
+    return this.http.post<Holding>(apiUrl('/holdings/'), holding).pipe(
       tap(created => {
         this._holdings.next([...this._holdings.value, created]);
         this.invalidateDashboardCache();
@@ -228,7 +222,7 @@ export class FinanceService {
     id: number,
     holding: Partial<HoldingCreate>
   ): Observable<Holding> {
-    return this.http.put<Holding>(`${this.apiUrl}/holdings/${id}`, holding).pipe(
+    return this.http.put<Holding>(apiUrl(`/holdings/${id}`), holding).pipe(
       tap(updated => {
         this._holdings.next(this._holdings.value.map(h => (h.id === id ? updated : h)));
         this.invalidateDashboardCache();
@@ -238,7 +232,7 @@ export class FinanceService {
   }
 
   deleteHolding(id: number): Observable<{ ok: boolean }> {
-    return this.http.delete<{ ok: boolean }>(`${this.apiUrl}/holdings/${id}`).pipe(
+    return this.http.delete<{ ok: boolean }>(apiUrl(`/holdings/${id}`)).pipe(
       tap(() => {
         this._holdings.next(this._holdings.value.filter(h => h.id !== id));
         this.invalidateDashboardCache();
@@ -248,25 +242,19 @@ export class FinanceService {
   }
 
   getNetWorth(): Observable<NetWorth> {
-    return this.http.get<NetWorth>(`${this.apiUrl}/net-worth/`).pipe(
+    return this.http.get<NetWorth>(apiUrl('/net-worth/')).pipe(
       tap(data => this._netWorth.next(data))
     );
   }
 
-  getNetWorthHistory(): Observable<NetWorthHistoryPoint[]> {
-    return this.http.get<NetWorthHistoryPoint[]>(`${this.apiUrl}/net-worth/history`).pipe(
-      tap(data => this._history.next(data))
-    );
-  }
-
   getAssets(): Observable<Asset[]> {
-    return this.http.get<Asset[]>(`${this.apiUrl}/assets/`).pipe(
+    return this.http.get<Asset[]>(apiUrl('/assets/')).pipe(
       tap(data => this._assets.next(data))
     );
   }
 
   addAsset(body: AssetCreate): Observable<Asset> {
-    return this.http.post<Asset>(`${this.apiUrl}/assets/`, body).pipe(
+    return this.http.post<Asset>(apiUrl('/assets/'), body).pipe(
       tap(created => {
         this._assets.next([...this._assets.value, created]);
         this.refreshDerivedMetrics();
@@ -276,7 +264,7 @@ export class FinanceService {
   }
 
   updateAsset(id: number, body: Partial<AssetCreate>): Observable<Asset> {
-    return this.http.put<Asset>(`${this.apiUrl}/assets/${id}`, body).pipe(
+    return this.http.put<Asset>(apiUrl(`/assets/${id}`), body).pipe(
       tap(updated => {
         this._assets.next(this._assets.value.map(a => (a.id === id ? updated : a)));
         this.refreshDerivedMetrics();
@@ -286,7 +274,7 @@ export class FinanceService {
   }
 
   deleteAsset(id: number): Observable<{ ok: boolean }> {
-    return this.http.delete<{ ok: boolean }>(`${this.apiUrl}/assets/${id}`).pipe(
+    return this.http.delete<{ ok: boolean }>(apiUrl(`/assets/${id}`)).pipe(
       tap(() => {
         this._assets.next(this._assets.value.filter(a => a.id !== id));
         this.refreshDerivedMetrics();
@@ -296,13 +284,13 @@ export class FinanceService {
   }
 
   getLiabilities(): Observable<Liability[]> {
-    return this.http.get<Liability[]>(`${this.apiUrl}/liabilities/`).pipe(
+    return this.http.get<Liability[]>(apiUrl('/liabilities/')).pipe(
       tap(data => this._liabilities.next(data))
     );
   }
 
   addLiability(body: LiabilityCreate): Observable<Liability> {
-    return this.http.post<Liability>(`${this.apiUrl}/liabilities/`, body).pipe(
+    return this.http.post<Liability>(apiUrl('/liabilities/'), body).pipe(
       tap(created => {
         this._liabilities.next([...this._liabilities.value, created]);
         this.refreshDerivedMetrics();
@@ -312,7 +300,7 @@ export class FinanceService {
   }
 
   updateLiability(id: number, body: Partial<LiabilityCreate>): Observable<Liability> {
-    return this.http.put<Liability>(`${this.apiUrl}/liabilities/${id}`, body).pipe(
+    return this.http.put<Liability>(apiUrl(`/liabilities/${id}`), body).pipe(
       tap(updated => {
         this._liabilities.next(
           this._liabilities.value.map(li => (li.id === id ? updated : li))
@@ -324,7 +312,7 @@ export class FinanceService {
   }
 
   deleteLiability(id: number): Observable<{ ok: boolean }> {
-    return this.http.delete<{ ok: boolean }>(`${this.apiUrl}/liabilities/${id}`).pipe(
+    return this.http.delete<{ ok: boolean }>(apiUrl(`/liabilities/${id}`)).pipe(
       tap(() => {
         this._liabilities.next(this._liabilities.value.filter(li => li.id !== id));
         this.refreshDerivedMetrics();
@@ -334,14 +322,14 @@ export class FinanceService {
   }
 
   getImportBanks(): Observable<BankImportOption[]> {
-    return this.http.get<BankImportOption[]>(`${this.apiUrl}/imports/banks`);
+    return this.http.get<BankImportOption[]>(apiUrl('/imports/banks'));
   }
 
   previewBankImport(bankSlug: string, file: File): Observable<ImportPreviewResult> {
     const form = new FormData();
     form.append('file', file, file.name);
     return this.http.post<ImportPreviewResult>(
-      `${this.apiUrl}/imports/${encodeURIComponent(bankSlug)}/preview`,
+      apiUrl(`/imports/${encodeURIComponent(bankSlug)}/preview`),
       form
     );
   }
@@ -352,7 +340,7 @@ export class FinanceService {
     rows: ImportPreviewRow[]
   ): Observable<ImportCommitResult> {
     return this.http
-      .post<ImportCommitResult>(`${this.apiUrl}/imports/${encodeURIComponent(bankSlug)}/commit`, {
+      .post<ImportCommitResult>(apiUrl(`/imports/${encodeURIComponent(bankSlug)}/commit`), {
         filename,
         rows: rows.map(r => ({
           dedupe_key: r.dedupe_key,
@@ -364,5 +352,53 @@ export class FinanceService {
         })),
       })
       .pipe(tap(() => this.refreshAfterImport()));
+  }
+
+  // Fidelity portfolio import (replaces positions per account)
+  getBrokerageImports(): Observable<FidelityImportOption[]> {
+    return this.http.get<FidelityImportOption[]>(apiUrl('/imports/brokerages'));
+  }
+
+  previewFidelityImport(file: File): Observable<FidelityPreviewResult> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<FidelityPreviewResult>(
+      apiUrl('/imports/fidelity/preview'),
+      form
+    );
+  }
+
+  commitFidelityImport(
+    filename: string,
+    rows: FidelityPreviewRow[]
+  ): Observable<FidelityCommitResult> {
+    return this.http
+      .post<FidelityCommitResult>(apiUrl('/imports/fidelity/commit'), {
+        filename,
+        rows: rows.map(r => ({
+          account_mask: r.account_mask,
+          symbol: r.symbol,
+          shares: r.shares,
+          avg_cost_basis: r.avg_cost_basis,
+        })),
+      })
+      .pipe(
+        tap(() => {
+          // refresh holdings and net worth (current only)
+          this.invalidateDashboardCache();
+          this.getHoldings().pipe(take(1)).subscribe();
+          this.getNetWorth().pipe(take(1)).subscribe();
+        })
+      );
+  }
+
+  setAccountNickname(accountId: number, nickname: string | null): Observable<any> {
+    return this.http.put(apiUrl(`/imports/brokerage-accounts/${accountId}/nickname`), {
+      nickname: nickname || null,
+    }).pipe(
+      tap(() => {
+        this.getHoldings().pipe(take(1)).subscribe();
+      })
+    );
   }
 }

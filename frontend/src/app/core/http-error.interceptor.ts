@@ -5,6 +5,7 @@ import { ToastService } from '../services/toast.service';
 
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
+  const silent = req.url.includes('/health');
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
       const msg =
@@ -13,7 +14,9 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
           : typeof err.error?.error === 'string'
             ? err.error.error
             : err.message || 'Request failed';
-      toast.error(msg);
+      if (!silent) {
+        toast.error(msg);
+      }
       return throwError(() => err);
     })
   );

@@ -3,11 +3,12 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --configuration development",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "debug:ui": "node scripts/debug-ui.mjs"
+    "debug:ui": "node scripts/debug-ui.mjs",
+    "verify:proxy": "node scripts/verify-proxy.mjs"
   },
   "private": true,
   "dependencies": {

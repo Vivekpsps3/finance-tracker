@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from logging_config import get_logger, redact_database_url, setup_logging, uvicorn_log_config
 from price_cache import EOD_MAX_AGE_HOURS, REDIS_URL
 from request_logging import RequestLoggingMiddleware
-from routers import assets, health, holdings, imports, liabilities, market, net_worth, transactions
+from routers import assets, health, holdings, imports, liabilities, market, net_worth, planning, transactions
 
 setup_logging()
 logger = get_logger()
@@ -21,6 +21,9 @@ logger = get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from database import init_database
+
+    init_database()
     db_url = os.getenv("DATABASE_URL", "sqlite:///./finance.db")
     cors = [
         o.strip()
@@ -80,14 +83,16 @@ def create_app() -> FastAPI:
         )
         return JSONResponse(status_code=500, content={"error": "Internal server error", "code": 500})
 
-    application.include_router(health.router)
-    application.include_router(imports.router)
-    application.include_router(transactions.router)
-    application.include_router(assets.router)
-    application.include_router(liabilities.router)
-    application.include_router(market.router)
-    application.include_router(holdings.router)
-    application.include_router(net_worth.router)
+    api_prefix = "/api"
+    application.include_router(health.router, prefix=api_prefix)
+    application.include_router(imports.router, prefix=api_prefix)
+    application.include_router(transactions.router, prefix=api_prefix)
+    application.include_router(assets.router, prefix=api_prefix)
+    application.include_router(liabilities.router, prefix=api_prefix)
+    application.include_router(market.router, prefix=api_prefix)
+    application.include_router(holdings.router, prefix=api_prefix)
+    application.include_router(net_worth.router, prefix=api_prefix)
+    application.include_router(planning.router, prefix=api_prefix)
 
     return application
 

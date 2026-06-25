@@ -27,7 +27,7 @@ def client():
 
 
 def test_health(client):
-    r = client.get("/health")
+    r = client.get("/api/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
 
@@ -40,24 +40,24 @@ def test_transaction_crud_and_net_worth(client):
         "amount": 5000,
         "description": "Test",
     }
-    create = client.post("/transactions/", json=payload)
+    create = client.post("/api/transactions/", json=payload)
     assert create.status_code == 200
     tx_id = create.json()["id"]
 
-    listing = client.get("/transactions/")
+    listing = client.get("/api/transactions/")
     assert len(listing.json()) == 1
 
-    nw = client.get("/net-worth/")
+    nw = client.get("/api/net-worth/")
     assert nw.status_code == 200
     assert nw.json()["total"] == 0
 
-    update = client.put(f"/transactions/{tx_id}", json={"amount": 4500})
+    update = client.put(f"/api/transactions/{tx_id}", json={"amount": 4500})
     assert update.status_code == 200
     assert update.json()["amount"] == 4500
 
-    delete = client.delete(f"/transactions/{tx_id}")
+    delete = client.delete(f"/api/transactions/{tx_id}")
     assert delete.status_code == 200
-    assert client.get("/transactions/").json() == []
+    assert client.get("/api/transactions/").json() == []
 
 
 def test_holding_uses_market_data_on_update(client, monkeypatch):
@@ -67,7 +67,7 @@ def test_holding_uses_market_data_on_update(client, monkeypatch):
     monkeypatch.setattr("main.market_data.get_price", fake_price)
 
     create = client.post(
-        "/holdings/",
+        "/api/holdings/",
         json={
             "symbol": "AAPL",
             "shares": 2,
@@ -79,7 +79,7 @@ def test_holding_uses_market_data_on_update(client, monkeypatch):
     hid = create.json()["id"]
     assert create.json()["current_price"] == 100
 
-    update = client.put(f"/holdings/{hid}", json={"shares": 3})
+    update = client.put(f"/api/holdings/{hid}", json={"shares": 3})
     assert update.status_code == 200
     assert update.json()["price_source"] in ("live", "cached", "fallback_purchase")
     assert update.json()["value"] == 300
@@ -91,13 +91,13 @@ def test_market_price_and_refresh_holdings(client, monkeypatch):
 
     monkeypatch.setattr("main.market_data.get_price", fake_price)
 
-    quote = client.get("/market/price/MSFT", params={"refresh": True})
+    quote = client.get("/api/market/price/MSFT", params={"refresh": True})
     assert quote.status_code == 200
     assert quote.json()["price"] == 42.5
     assert quote.json()["valid"] is True
 
     create = client.post(
-        "/holdings/",
+        "/api/holdings/",
         json={
             "symbol": "MSFT",
             "shares": 1,
@@ -106,22 +106,9 @@ def test_market_price_and_refresh_holdings(client, monkeypatch):
         },
     )
     hid = create.json()["id"]
-    refreshed = client.post(f"/holdings/{hid}/refresh-price")
+    refreshed = client.post(f"/api/holdings/{hid}/refresh-price")
     assert refreshed.status_code == 200
     assert refreshed.json()["current_price"] == 42.5
 
 
-def test_net_worth_history(client):
-    client.post(
-        "/assets/",
-        json={
-            "name": "Savings",
-            "category": "savings",
-            "current_value": 1000,
-            "as_of_date": "2026-01-01",
-        },
-    )
-    hist = client.get("/net-worth/history")
-    assert hist.status_code == 200
-    assert len(hist.json()) >= 1
-    assert hist.json()[0]["other_assets"] == 1000
+# test_net_worth_history removed: net worth history / snapshots feature deleted (current-only NW)

@@ -36,7 +36,7 @@ def setup_logging(level: Optional[str] = None) -> None:
         ("uvicorn.error", logging.INFO),
         ("httpx", logging.WARNING),
         ("httpcore", logging.WARNING),
-        ("yfinance", logging.WARNING),
+        ("yfinance", logging.CRITICAL),  # yfinance can be noisy for bad symbols; we skip most via heuristic
         ("peewee", logging.WARNING),
     ):
         logging.getLogger(name).setLevel(logging.DEBUG if lvl <= logging.DEBUG else default)

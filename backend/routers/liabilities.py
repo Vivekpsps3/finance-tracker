@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Liability
 from schemas import LiabilityCreate, LiabilityResponse, LiabilityUpdate
-from services.finance import liability_to_response, record_net_worth_snapshot
+from services.finance import liability_to_response
 
 router = APIRouter(tags=["liabilities"])
 
@@ -23,7 +23,6 @@ def create_liability(body: LiabilityCreate, db: Session = Depends(get_db)):
     db.add(row)
     db.commit()
     db.refresh(row)
-    record_net_worth_snapshot(db)
     return liability_to_response(row)
 
 
@@ -38,7 +37,6 @@ def update_liability(
         setattr(row, field, value)
     db.commit()
     db.refresh(row)
-    record_net_worth_snapshot(db)
     return liability_to_response(row)
 
 
@@ -49,5 +47,4 @@ def delete_liability(liability_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Liability not found")
     db.delete(row)
     db.commit()
-    record_net_worth_snapshot(db)
     return {"ok": True}
