@@ -1,0 +1,167 @@
+<div class="page tax-center">
+  <ui-page-header
+    title="Tax Center"
+    subtitle="Official document vault and yearly tax summary" />
+
+  <ui-card class="year-card">
+    <div class="year-row">
+      <label class="field">
+        <span>Tax year</span>
+        <input type="number" min="1990" max="2100" [(ngModel)]="taxYear" />
+      </label>
+      <ui-button variant="primary" (clicked)="loadSummary()">Load year</ui-button>
+    </div>
+    <p class="note">
+      Tax documents are stored in SQLite with the rest of the local app data. Summary values
+      come from fields you enter from official documents; they do not change net worth or transactions.
+    </p>
+  </ui-card>
+
+  @if (error) {
+    <ui-card>
+      <p class="error-text">{{ error }}</p>
+    </ui-card>
+  }
+
+  @if (summary && !isLoading) {
+    <section class="summary-grid" aria-label="Yearly tax summary">
+      @for (field of headlineFields; track field.key) {
+        <div class="summary-tile">
+          <span class="summary-label">{{ field.label }}</span>
+          <span class="summary-value">{{ formatMoney(summary.totals[field.key]) }}</span>
+        </div>
+      }
+    </section>
+
+    <ui-card title="Document Coverage">
+      <div class="coverage-row">
+        <div>
+          <span class="coverage-value">{{ summary.document_count }}</span>
+          <span class="coverage-label">documents</span>
+        </div>
+        <div>
+          <span class="coverage-value">{{ (summary.total_size_bytes / 1024 / 1024) | number:'1.1-1' }} MB</span>
+          <span class="coverage-label">stored</span>
+        </div>
+        <div>
+          <span class="coverage-value">{{ summary.missing_recommended.length }}</span>
+          <span class="coverage-label">recommended missing</span>
+        </div>
+      </div>
+
+      @if (summary.missing_recommended.length) {
+        <div class="missing-list" aria-label="Missing recommended tax documents">
+          @for (doc of summary.missing_recommended; track doc) {
+            <ui-badge variant="warning">{{ documentTypeLabel(doc) }}</ui-badge>
+          }
+        </div>
+      }
+    </ui-card>
+  }
+
+  <ui-card title="Upload Official Document">
+    <form class="upload-grid" (ngSubmit)="uploadDocument()">
+      <label class="field">
+        <span>Document type</span>
+        <select [(ngModel)]="upload.documentType" name="documentType">
+          @for (type of documentTypes; track type.value) {
+            <option [value]="type.value">{{ type.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Issuer</span>
+        <input type="text" name="issuer" [(ngModel)]="upload.issuer" placeholder="Employer, brokerage, IRS..." />
+      </label>
+
+      <label class="field">
+        <span>Taxpayer</span>
+        <input type="text" name="taxpayer" [(ngModel)]="upload.taxpayer" placeholder="Person on document" />
+      </label>
+
+      <label class="field file-field">
+        <span>File</span>
+        <input
+          #taxFileInput
+          type="file"
+          accept="application/pdf,text/csv,text/plain,image/jpeg,image/png"
+          (change)="onFileSelected($event)" />
+      </label>
+
+      <label class="field notes-field">
+        <span>Notes</span>
+        <textarea name="notes" [(ngModel)]="upload.notes" rows="3"></textarea>
+      </label>
+
+      <div class="tax-fields">
+        @for (field of taxFields; track field.key) {
+          <label class="field compact-field">
+            <span>{{ field.label }}</span>
+            <input
+              type="number"
+              step="0.01"
+              [(ngModel)]="fieldValues[field.key]"
+              [name]="field.key" />
+          </label>
+        }
+      </div>
+
+      <div class="form-actions">
+        <ui-button variant="primary" type="submit" [disabled]="isUploading">
+          {{ isUploading ? 'Uploading' : 'Upload document' }}
+        </ui-button>
+      </div>
+    </form>
+  </ui-card>
+
+  <ui-card title="Stored Documents">
+    @if (summary && summary.documents.length) {
+      <ui-data-table>
+        <thead>
+          <tr>
+            <th>Document</th>
+            <th>Important values</th>
+            <th>Uploaded</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (doc of summary.documents; track doc.id) {
+            <tr>
+              <td>
+                <strong>{{ documentTypeLabel(doc.document_type) }}</strong>
+                <span class="doc-meta">{{ doc.filename }}</span>
+                @if (doc.issuer) {
+                  <span class="doc-meta">{{ doc.issuer }}</span>
+                }
+                @if (doc.notes) {
+                  <span class="doc-note">{{ doc.notes }}</span>
+                }
+              </td>
+              <td>
+                <div class="value-list">
+                  @for (value of visibleDocumentFields(doc); track value.key) {
+                    <span>{{ value.label }}: {{ formatMoney(value.value) }}</span>
+                  }
+                  @if (!visibleDocumentFields(doc).length) {
+                    <span class="muted">No structured values entered</span>
+                  }
+                </div>
+              </td>
+              <td>{{ doc.uploaded_at | date:'mediumDate' }}</td>
+              <td>
+                <div class="row-actions">
+                  <ui-button variant="secondary" size="sm" (clicked)="downloadDocument(doc)">Download</ui-button>
+                  <ui-button variant="danger" size="sm" (clicked)="deleteDocument(doc)">Delete</ui-button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </ui-data-table>
+    } @else {
+      <ui-empty-state title="No tax documents" message="Upload W-2s, 1099s, tax returns, and other official documents for this year." />
+    }
+  </ui-card>
+</div>
