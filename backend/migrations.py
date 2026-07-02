@@ -32,19 +32,9 @@ def run_sqlite_migrations(engine) -> None:
                     )
                 )
 
-    _drop_net_worth_snapshots(inspector, engine)
     _migrate_brokerage_accounts(inspector, engine)
     _ensure_planning_tables(inspector, engine)
     _migrate_planning_runs(inspector, engine)
-
-
-def _drop_net_worth_snapshots(inspector, engine) -> None:
-    if not inspector.has_table("net_worth_snapshots"):
-        return
-    with engine.begin() as conn:
-        # Drop indexes first if any, then table (safe for SQLite)
-        conn.execute(text("DROP TABLE IF EXISTS net_worth_snapshots"))
-    # Note: any future net worth history is intentionally removed for simplicity (current-only NW)
 
 
 def _migrate_brokerage_accounts(inspector, engine) -> None:

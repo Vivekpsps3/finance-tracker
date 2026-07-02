@@ -29,22 +29,32 @@ def init_database() -> None:
     # Automatic Alembic upgrade at startup (for new tables like brokerages, column adds, drops)
     # The migration uses inspector guards so it is safe even if create_all already created tables.
     if ":memory:" not in SQLALCHEMY_DATABASE_URL:
+        from alembic.config import Config
+        from alembic import command
+        import logging
+
+        log = logging.getLogger(__name__)
+        strict = os.getenv("ALEMBIC_STRICT", "1").lower() not in ("0", "false", "no")
         try:
-            from alembic.config import Config
-            from alembic import command
             here = os.path.dirname(os.path.abspath(__file__))
             alembic_cfg = Config(os.path.join(here, "alembic.ini"))
             alembic_cfg.set_main_option("script_location", os.path.join(here, "alembic"))
             alembic_cfg.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
             command.upgrade(alembic_cfg, "head")
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning("Alembic upgrade skipped or failed: %s", e)
+            if strict:
+                log.error("Alembic upgrade failed (ALEMBIC_STRICT=1): %s", e)
+                raise
+            log.warning("Alembic upgrade skipped or failed: %s", e)
 
 
 def get_db():
     db = SessionLocal()
     try:
         yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()

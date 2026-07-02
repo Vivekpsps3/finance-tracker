@@ -10,7 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Subject, combineLatest, finalize, takeUntil, tap } from 'rxjs';
 import { FinanceService } from '../services/finance.service';
-import { DateFilter, NetWorth, Transaction } from '../models/transaction.model';
+import { DateFilter, NetWorth, NetWorthSnapshot, Transaction } from '../models/transaction.model';
 import { ChartsComponent } from '../charts/charts.component';
 import {
   UiBadgeComponent,
@@ -50,10 +50,18 @@ import { filterByDate, getDefaultDateFilter } from '../utils/date.util';
 export class DashboardComponent implements OnInit, OnDestroy {
   netWorth: NetWorth | null = null;
   transactions: Transaction[] = [];
+  netWorthSnapshots: NetWorthSnapshot[] = [];
   isLoading = true;
   chartsReady = false;
+  isRecordingSnapshot = false;
   error: string | null = null;
   periodIncomeTotal = 0;
+  periodExpenseTotal = 0;
+  periodNetCashflow = 0;
+  periodSavingsRate: number | null = null;
+  averageDailySpend = 0;
+  largestCategory = '';
+  largestCategoryTotal = 0;
   asOfLabel = '';
 
   filter: DateFilter = getDefaultDateFilter();
@@ -78,11 +86,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     combineLatest([
       this.financeService.netWorth$,
       this.financeService.transactions$,
+      this.financeService.netWorthSnapshots$,
     ])
       .pipe(takeUntil(this.destroy$))
-      .subscribe(([nw, txs]) => {
+      .subscribe(([nw, txs, snapshots]) => {
         this.netWorth = nw;
         this.transactions = txs;
+        this.netWorthSnapshots = snapshots;
         this.applyDateFilter();
         this.cdr.markForCheck();
       });
@@ -119,6 +129,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.periodIncomeTotal = this.filteredTransactions
       .filter(t => t.type === 'income')
       .reduce((s, t) => s + t.amount, 0);
+    this.periodExpenseTotal = this.filteredTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((s, t) => s + t.amount, 0);
+    this.periodNetCashflow = this.periodIncomeTotal - this.periodExpenseTotal;
+    this.periodSavingsRate = this.periodIncomeTotal > 0
+      ? (this.periodNetCashflow / this.periodIncomeTotal) * 100
+      : null;
+
+    const days = this.daysInFilter();
+    this.averageDailySpend = days > 0 ? this.periodExpenseTotal / days : 0;
+
+    const categoryTotals = new Map<string, number>();
+    for (const tx of this.filteredTransactions) {
+      if (tx.type !== 'expense') continue;
+      categoryTotals.set(tx.category, (categoryTotals.get(tx.category) || 0) + tx.amount);
+    }
+    const top = [...categoryTotals.entries()].sort((a, b) => b[1] - a[1])[0];
+    this.largestCategory = top?.[0] || '';
+    this.largestCategoryTotal = top?.[1] || 0;
 
     if (this.netWorth?.as_of) {
       const d = new Date(this.netWorth.as_of);
@@ -154,6 +183,45 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
       });
+  }
+
+  recordSnapshot() {
+    this.isRecordingSnapshot = true;
+    this.cdr.markForCheck();
+    this.financeService
+      .recordNetWorthSnapshot('Manual dashboard snapshot')
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.isRecordingSnapshot = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        error: (err: Error) => {
+          const detail = err?.message ? ` ${err.message}` : '';
+          this.error = `Could not record net worth snapshot.${detail}`;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  latestSnapshotDelta(): number | null {
+    if (!this.netWorth || this.netWorthSnapshots.length < 2) {
+      return null;
+    }
+    return this.netWorth.total - this.netWorthSnapshots[1].total;
+  }
+
+  abs(value: number): number {
+    return Math.abs(value);
+  }
+
+  formatPercent(value: number | null): string {
+    if (value === null || Number.isNaN(value)) {
+      return '-';
+    }
+    return `${value.toFixed(1)}%`;
   }
 
   portfolioFreshness(): string {
@@ -225,5 +293,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
     this.filterSummary = '';
+  }
+
+  private daysInFilter(): number {
+    const f = this.filter;
+    if (f.mode === 'month' && f.month) {
+      const [year, month] = f.month.split('-').map(Number);
+      return new Date(year, month, 0).getDate();
+    }
+    if (f.mode === 'year' && f.year) {
+      const start = new Date(f.year, 0, 1);
+      const end = new Date(f.year, 11, 31);
+      return this.inclusiveDays(start, end);
+    }
+    if (f.mode === 'custom' && f.start && f.end) {
+      return this.inclusiveDays(new Date(`${f.start}T00:00:00`), new Date(`${f.end}T00:00:00`));
+    }
+    if (!this.filteredTransactions.length) {
+      return 0;
+    }
+    const dates = this.filteredTransactions.map(t => new Date(`${t.date}T00:00:00`).getTime());
+    return this.inclusiveDays(new Date(Math.min(...dates)), new Date(Math.max(...dates)));
+  }
+
+  private inclusiveDays(start: Date, end: Date): number {
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return 0;
+    }
+    return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
   }
 }

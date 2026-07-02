@@ -14,6 +14,7 @@ export type UiIconName =
   | 'trending'
   | 'building'
   | 'credit-card'
+  | 'document'
   | 'spark';
 
 /** Lucide-style 24×24 stroke icons (currentColor). */
@@ -33,6 +34,7 @@ const PATHS: Record<UiIconName, string> = {
   trending: 'M3 17l6-6 4 4 8-10',
   building: 'M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M6 12h12M6 16h12M6 8h12M10 6h.01M14 6h.01',
   'credit-card': 'M2 8h20M6 16h4M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+  document: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h6',
   spark: 'M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3z',
 };
 

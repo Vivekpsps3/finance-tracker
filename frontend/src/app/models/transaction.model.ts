@@ -119,6 +119,19 @@ export interface NetWorth {
   portfolio_breakdown?: Record<string, number>;
 }
 
+export interface NetWorthSnapshot {
+  id: number;
+  snapshot_date: string;
+  other_assets: number;
+  portfolio: number;
+  liabilities: number;
+  total_assets: number;
+  total: number;
+  as_of: string;
+  source: string;
+  note?: string | null;
+}
+
 export interface FidelityImportOption {
   slug: string;
   name: string;
@@ -157,6 +170,62 @@ export interface MarketPriceQuote {
   price_source: string;
   price_as_of?: string | null;
   valid: boolean;
+}
+
+export type TaxDocumentType =
+  | 'w2'
+  | '1099'
+  | '1098'
+  | '5498'
+  | '1040'
+  | 'state_return'
+  | 'property_tax'
+  | 'other';
+
+export type TaxSummaryField =
+  | 'wages'
+  | 'federal_income_tax_withheld'
+  | 'social_security_wages'
+  | 'social_security_tax_withheld'
+  | 'medicare_wages'
+  | 'medicare_tax_withheld'
+  | 'state_wages'
+  | 'state_income_tax_withheld'
+  | 'interest_income'
+  | 'ordinary_dividends'
+  | 'qualified_dividends'
+  | 'capital_gain_distributions'
+  | 'retirement_contributions'
+  | 'agi'
+  | 'taxable_income'
+  | 'total_tax'
+  | 'refund_or_amount_owed';
+
+export type TaxSummaryValues = Partial<Record<TaxSummaryField, number>>;
+
+export interface TaxDocument {
+  id: number;
+  tax_year: number;
+  document_type: TaxDocumentType;
+  issuer?: string | null;
+  taxpayer?: string | null;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  summary: TaxSummaryValues;
+  notes?: string | null;
+  uploaded_at: string;
+}
+
+export interface TaxYearSummary {
+  tax_year: number;
+  document_count: number;
+  total_size_bytes: number;
+  document_counts: Record<string, number>;
+  totals: TaxSummaryValues;
+  missing_recommended: string[];
+  documents: TaxDocument[];
 }
 
 export type ToastKind = 'success' | 'error' | 'info';

@@ -1,7 +1,16 @@
 /**
- * Chart.js palette aligned with design tokens (--chart-* / tailwind chart.*).
+ * Chart.js palette from design tokens (--chart-1 … --chart-6 in theme/tokens.css).
  */
-export const CHART_COLORS = [
+const CHART_VAR_NAMES = [
+  '--chart-1',
+  '--chart-2',
+  '--chart-3',
+  '--chart-4',
+  '--chart-5',
+  '--chart-6',
+] as const;
+
+const CHART_FALLBACKS = [
   '#3b82f6',
   '#22c55e',
   '#ef4444',
@@ -10,8 +19,18 @@ export const CHART_COLORS = [
   '#ec4899',
 ] as const;
 
+export function chartPalette(): string[] {
+  return CHART_VAR_NAMES.map((name, i) => cssVar(name, CHART_FALLBACKS[i]));
+}
+
+/** @deprecated Prefer chartColorAt() — reads CSS variables at runtime */
+export function CHART_COLORS(): readonly string[] {
+  return chartPalette();
+}
+
 export function chartColorAt(index: number): string {
-  return CHART_COLORS[index % CHART_COLORS.length];
+  const palette = chartPalette();
+  return palette[index % palette.length];
 }
 
 function cssVar(name: string, fallback: string): string {

@@ -31,10 +31,12 @@ import {
 } from '../utils/portfolio.util';
 import {
   UiBadgeComponent,
+  UiBadgeVariant,
   UiButtonComponent,
   UiCardComponent,
   UiEmptyStateComponent,
   UiPageHeaderComponent,
+  UiDataTableComponent,
 } from '../shared/ui';
 
 @Component({
@@ -49,6 +51,7 @@ import {
     UiCardComponent,
     UiBadgeComponent,
     UiEmptyStateComponent,
+    UiDataTableComponent,
   ],
   templateUrl: './portfolio.component.html',
   styleUrl: './portfolio.component.css',
@@ -290,11 +293,33 @@ export class PortfolioComponent implements OnInit, OnDestroy {
     };
   }
 
+  priceSourceBadgeVariant(h: Holding): UiBadgeVariant {
+    const src = h.price_source ?? '';
+    if (src === 'live' || src === 'live_eod') return 'success';
+    if (src === 'error') return 'danger';
+    if (src === 'fallback_purchase' || src === 'non_ticker') return 'warning';
+    if (src === 'cached' || src === 'sqlite_eod' || src.startsWith('redis')) return 'default';
+    return 'warning';
+  }
+
   priceFreshness(h: Holding): string {
-    if (h.price_source === 'live') return 'Live';
-    if (h.price_source === 'cached') return 'Cached';
-    if (h.price_source === 'fallback_purchase') return 'Est.';
-    return '—';
+    const src = h.price_source ?? '';
+    if (src === 'live' || src === 'live_eod') return 'Live';
+    if (src === 'cached') return 'Cached';
+    if (src === 'sqlite_eod') return 'EOD cache';
+    if (src.startsWith('redis')) return 'Cached';
+    if (src === 'fallback_purchase') return 'Cost basis';
+    if (src === 'non_ticker') return 'No ticker';
+    if (src === 'error') return 'Unavailable';
+    return src || 'Unknown';
+  }
+
+  priceSourceHint(h: Holding): string | null {
+    const src = h.price_source ?? '';
+    if (src === 'fallback_purchase') return 'Using purchase price; refresh or fix symbol.';
+    if (src === 'non_ticker') return 'Symbol is not a market ticker (e.g. CUSIP or sweep).';
+    if (src === 'error') return 'Live quote failed; value may use cost basis.';
+    return null;
   }
 
   applyFilter() {
@@ -442,14 +467,13 @@ export class PortfolioComponent implements OnInit, OnDestroy {
       });
   }
 
-  commitFidelityImport() {
+  async commitFidelityImport() {
     if (!this.fidelityImportPreview || !this.fidelityImportFile) return;
     const selectedMasks = Array.from(this.selectedFidelityAccounts);
     if (!selectedMasks.length) {
       this.toastService.error('No accounts selected to replace.');
       return;
     }
-    // Filter rows to only selected accounts (all for those accounts)
     const rowsToSend = this.fidelityImportPreview.rows.filter(r =>
       this.selectedFidelityAccounts.has(r.account_mask)
     );
@@ -457,7 +481,25 @@ export class PortfolioComponent implements OnInit, OnDestroy {
       this.toastService.error('Select accounts to import.');
       return;
     }
+
+    const accountLabels = this.fidelityImportPreview.accounts.filter(a => {
+      const mask = this.extractMaskFromDisplay(a);
+      return this.selectedFidelityAccounts.has(mask);
+    });
+    const accountList = accountLabels.length
+      ? accountLabels.map(a => `• ${a}`).join('\n')
+      : selectedMasks.map(m => `• ···${m}`).join('\n');
+
+    const ok = await this.confirmService.ask(
+      'Replace Fidelity holdings?',
+      `This permanently removes existing positions for each selected account and replaces them with the CSV.\n\nAccounts:\n${accountList}\n\n${rowsToSend.length} position row(s) will be imported.`,
+      'Replace holdings',
+      'Cancel'
+    );
+    if (!ok) return;
+
     this.fidelityImportCommitting = true;
+    this.cdr.markForCheck();
     this.financeService
       .commitFidelityImport(this.fidelityImportPreview.filename, rowsToSend)
       .pipe(takeUntil(this.destroy$))
@@ -465,7 +507,9 @@ export class PortfolioComponent implements OnInit, OnDestroy {
         next: (res: FidelityCommitResult) => {
           this.fidelityImportCommitting = false;
           this.closeFidelityImportModal();
-          this.toastService.success(`Replaced ${res.holdings_replaced} holdings, inserted ${res.inserted} for ${res.accounts_replaced} account(s)`);
+          this.toastService.success(
+            `Replaced ${res.holdings_replaced} holdings, inserted ${res.inserted} for ${res.accounts_replaced} account(s)`
+          );
           this.cdr.markForCheck();
         },
         error: () => {

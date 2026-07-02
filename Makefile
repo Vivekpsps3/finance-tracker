@@ -11,11 +11,13 @@ UVICORN := $(VENV)/bin/uvicorn
 
 API_HOST ?= 127.0.0.1
 API_PORT ?= 8000
+# WEB_HOST 0.0.0.0 exposes the dev UI on your LAN (SEC-011); API stays on API_HOST by default.
 WEB_HOST ?= 0.0.0.0
 WEB_PORT ?= 4200
 
 .PHONY: help install install-backend install-frontend dev backend frontend \
-        test test-backend test-frontend build build-frontend clean reset-db check
+        test test-backend test-frontend build build-frontend clean reset-db check \
+        docker-up docker-down docker-build docker-rebuild docker-logs docker-ps docker-config reset-docker-db
 
 help:
 	@echo "Finance Tracker"
@@ -26,8 +28,13 @@ help:
 	@echo "  make frontend         UI only   → http://localhost:$(WEB_PORT) (proxy → API)"
 	@echo "  make test             Backend + frontend unit tests"
 	@echo "  make build            Production Angular build"
+	@echo "  make docker-up        Build/start full website → http://127.0.0.1:8080"
+	@echo "  make docker-down      Stop Docker stack"
+	@echo "  make docker-logs      Follow Docker logs"
+	@echo "  make docker-rebuild   Rebuild images without cache and start"
 	@echo "  make clean            Remove caches, dist, __pycache__, *.bak"
 	@echo "  make reset-db         Delete backend/finance.db (fresh schema on next API start)"
+	@echo "  make reset-docker-db  Delete data/finance.db for Docker stack"
 	@echo ""
 	@echo "First time: make install && make dev"
 	@echo "Open: http://localhost:$(WEB_PORT)"
@@ -80,10 +87,36 @@ build: build-frontend
 build-frontend:
 	cd $(FRONTEND_DIR) && npm run build
 
+docker-up:
+	docker compose up --build
+
+docker-down:
+	docker compose down
+
+docker-build:
+	docker compose build
+
+docker-rebuild:
+	docker compose build --no-cache
+	docker compose up
+
+docker-logs:
+	docker compose logs -f
+
+docker-ps:
+	docker compose ps
+
+docker-config:
+	docker compose config
+
 reset-db:
 	rm -f $(BACKEND_DIR)/finance.db $(BACKEND_DIR)/finance.db-journal \
 		$(BACKEND_DIR)/finance.db-wal $(BACKEND_DIR)/finance.db-shm
 	@echo "Removed $(BACKEND_DIR)/finance.db. Restart the API to recreate an empty database."
+
+reset-docker-db:
+	rm -f data/finance.db data/finance.db-journal data/finance.db-wal data/finance.db-shm
+	@echo "Removed data/finance.db. Restart Docker stack to recreate an empty database."
 
 clean:
 	rm -rf $(BACKEND_DIR)/__pycache__ \
@@ -97,5 +130,5 @@ clean:
 	find $(BACKEND_DIR) -name '*.bak' -delete 2>/dev/null || true
 	@echo "Cleaned build artifacts and caches (kept finance.db and node_modules)."
 
-check: test-backend build-frontend
+check: test-backend test-frontend build-frontend
 	@echo "check OK"

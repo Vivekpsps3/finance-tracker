@@ -10,9 +10,9 @@
   --text: #f5f5f7;
   --text-secondary: #a1a1aa;
   --text-tertiary: #71717a;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-glow: rgba(59, 130, 246, 0.12);
+  --accent: #14b8a6;
+  --accent-hover: #0d9488;
+  --accent-glow: rgba(20, 184, 166, 0.14);
   --border: #27272a;
   --border-subtle: #1f1f23;
   --surface-elevated: #1a1a1e;
@@ -62,15 +62,7 @@
   --motion-base: 220ms;
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
-}
 
-[data-theme='light'] {
-  --bg: #f8fafc;
-  --card-bg: #ffffff;
-  --surface-2: #f1f5f9;
-  --surface-hover: #e2e8f0;
-  --text: #0f172a;
-  --text-secondary: #475569;
-  --text-tertiary: #64748b;
-  --border: #e2e8f0;
+  --chart-embed-height: 280px;
+  --chart-tall-height: 320px;
 }

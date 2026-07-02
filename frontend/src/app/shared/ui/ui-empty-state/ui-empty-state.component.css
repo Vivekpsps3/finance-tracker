@@ -4,6 +4,13 @@
   color: var(--text-secondary);
 }
 
+.ui-empty__icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+  color: var(--text-tertiary);
+}
+
 .ui-empty__title {
   margin: 0 0 var(--space-2);
   font-size: var(--text-lg);

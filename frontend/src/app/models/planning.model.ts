@@ -5,6 +5,12 @@ export const PLANNING_DISCLAIMER =
 
 export const MC_TOOL_ID = 'mc_net_worth_paths' as const;
 
+/** Matches backend schemas_planning MC_N_PATHS_* / FAN_PATHS_PERSIST_MAX */
+export const MC_N_PATHS_MIN = 100;
+export const MC_N_PATHS_MAX = 5000;
+export const MC_FAN_PATHS_PERSIST_MAX = 500;
+export const MC_RUN_HTTP_TIMEOUT_MS = 120_000;
+
 export interface ProfilePayload {
   annual_income_growth: number;
   inflation_cpi: number;
@@ -76,10 +82,28 @@ export interface PlanningInputsPreview {
   implied_annual_spending: number;
   implied_annual_savings: number;
   transaction_count: number;
+  annual_spending_source?: string;
+}
+
+export interface PlanningProfile {
+  id: number;
+  name: string;
+  base_currency: string;
+  payload: ProfilePayload;
+  created_at: string;
+  updated_at: string;
+  disclaimer?: string;
+}
+
+export interface PlanningProfileCreate {
+  name: string;
+  base_currency?: string;
+  payload?: ProfilePayload;
 }
 
 export interface PlanningRunCreate {
   tool_id: string;
+  profile_id?: number | null;
   overrides?: Record<string, unknown>;
   seed?: number;
   n_paths?: number;
@@ -87,7 +111,7 @@ export interface PlanningRunCreate {
 }
 
 export interface PlanningRun {
-  id: number;
+  id?: number | null;
   tool_id: string;
   status: string;
   disclaimer: string;

@@ -77,6 +77,13 @@
   gap: var(--space-3);
 }
 
+.net-worth-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 .card-header h2 {
   margin: 0;
   font-size: var(--text-lg);
@@ -127,7 +134,7 @@
   font-weight: 700;
   line-height: 1;
   margin-bottom: var(--space-2);
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .as-of {
@@ -146,6 +153,35 @@
   gap: var(--space-6);
   padding-top: var(--space-4);
   border-top: 1px solid var(--border-subtle);
+}
+
+.snapshot-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+}
+
+.snapshot-label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.snapshot-value {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.snapshot-value.negative {
+  color: var(--danger);
 }
 
 .breakdown-item {
@@ -186,6 +222,22 @@
 .insight-tile__value {
   font-size: var(--text-xl);
   font-weight: 600;
+}
+
+.insight-tile__value.negative {
+  color: var(--danger);
+}
+
+.insight-tile__value.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: var(--text-lg);
+}
+
+.insight-tile__value small {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
 .sr-only {
@@ -323,9 +375,4 @@
   margin-top: var(--space-3);
   font-size: var(--text-sm);
   color: var(--text-secondary);
-}
-
-.btn-small {
-  padding: 4px 10px;
-  font-size: var(--text-xs);
 }

@@ -1,4 +1,10 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  OnDestroy,
+  OnInit,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -35,6 +41,7 @@ interface CalendarDay {
   ],
   templateUrl: './calendar.component.html',
   styleUrl: './calendar.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarComponent implements OnInit, OnDestroy {
   currentDate = new Date();
@@ -47,14 +54,20 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
-  constructor(private financeService: FinanceService) {}
+  constructor(
+    private financeService: FinanceService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.financeService.transactions$.pipe(takeUntil(this.destroy$)).subscribe(data => {
       this.transactions = data;
       this.generateCalendar();
+      this.cdr.markForCheck();
     });
-    this.financeService.getTransactions().pipe(takeUntil(this.destroy$)).subscribe();
+    this.financeService.getTransactions().pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => this.cdr.markForCheck(),
+    });
   }
 
   ngOnDestroy() {
@@ -87,6 +100,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (!day.date) return;
     this.selectedDate = day.date;
     this.selectedTransactions = this.transactions.filter(t => t.date === day.date);
+    this.cdr.markForCheck();
   }
 
   onDayKeydown(event: KeyboardEvent, day: CalendarDay, index: number) {
@@ -125,18 +139,23 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const today = todayIsoDate();
     const day = this.daysInMonth.find(d => d.date === today);
     if (day) this.selectDay(day);
+    else this.cdr.markForCheck();
   }
 
   prevMonth() {
     this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 1);
     this.generateCalendar();
     this.selectedDate = null;
+    this.selectedTransactions = [];
+    this.cdr.markForCheck();
   }
 
   nextMonth() {
     this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 1);
     this.generateCalendar();
     this.selectedDate = null;
+    this.selectedTransactions = [];
+    this.cdr.markForCheck();
   }
 
   getMonthName(): string {

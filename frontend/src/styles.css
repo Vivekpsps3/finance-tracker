@@ -59,6 +59,13 @@ a {
   font-feature-settings: 'tnum' 1;
 }
 
+.stat-display {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
 @keyframes page-enter {
   from {
     opacity: 0;
@@ -250,6 +257,10 @@ label {
 .positive { color: var(--success); }
 .negative { color: var(--danger); }
 
+.text-muted {
+  color: var(--text-tertiary);
+}
+
 .badge {
   display: inline-block;
   padding: var(--space-1) var(--space-2);
@@ -401,6 +412,11 @@ label {
   display: flex;
   gap: var(--space-3);
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.toast-actions ui-button {
+  flex-shrink: 0;
 }
 
 .spinner-inline {

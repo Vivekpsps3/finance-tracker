@@ -44,6 +44,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./planning/planning.component').then(m => m.PlanningComponent),
       },
+      {
+        path: 'taxes',
+        title: 'Tax Center · Finance',
+        loadComponent: () =>
+          import('./taxes/tax-center.component').then(m => m.TaxCenterComponent),
+      },
     ],
   },
   { path: 'charts', redirectTo: '', pathMatch: 'full' },

@@ -8,9 +8,18 @@
         <div>
           <h2 id="nw-heading" class="sr-only">Current net worth</h2>
         </div>
-        <ui-badge [variant]="freshnessBadgeVariant()">{{ portfolioFreshness() }}</ui-badge>
+        <div class="net-worth-actions">
+          <ui-badge [variant]="freshnessBadgeVariant()">{{ portfolioFreshness() }}</ui-badge>
+          <ui-button
+            variant="secondary"
+            size="sm"
+            [disabled]="isRecordingSnapshot"
+            (clicked)="recordSnapshot()">
+            {{ isRecordingSnapshot ? 'Recording' : 'Record snapshot' }}
+          </ui-button>
+        </div>
       </div>
-      <div class="net-worth-value money" aria-live="polite">
+      <div class="net-worth-value money stat-display" aria-live="polite">
         ${{ netWorth.total | number: '1.2-2' }}
       </div>
       <p class="as-of">As of {{ asOfLabel }}</p>
@@ -35,6 +44,34 @@
         <p class="price-refresh-hint">
           <a routerLink="/portfolio">Refresh portfolio prices</a> for live quotes.
         </p>
+      }
+      @if (netWorthSnapshots.length) {
+        <div class="snapshot-strip">
+          <div>
+            <span class="snapshot-label">Last snapshot</span>
+            <span class="snapshot-value money">
+              ${{ netWorthSnapshots[0].total | number:'1.2-2' }}
+            </span>
+          </div>
+          <div>
+            <span class="snapshot-label">Change since prior snapshot</span>
+            @if (latestSnapshotDelta() !== null) {
+              <span
+                class="snapshot-value money"
+                [class.negative]="(latestSnapshotDelta() ?? 0) < 0">
+                {{ (latestSnapshotDelta() ?? 0) >= 0 ? '+' : '−' }}${{
+                  abs(latestSnapshotDelta() ?? 0) | number:'1.2-2'
+                }}
+              </span>
+            } @else {
+              <span class="snapshot-value">—</span>
+            }
+          </div>
+          <div>
+            <span class="snapshot-label">Snapshot date</span>
+            <span class="snapshot-value">{{ netWorthSnapshots[0].snapshot_date }}</span>
+          </div>
+        </div>
       }
       <p class="net-worth-note">
         <a routerLink="/balance-sheet">Edit balance sheet</a>
@@ -121,11 +158,40 @@
   </ui-card>
 
   <ui-card title="Insights">
-    @if (periodIncomeTotal > 0 || (netWorth && netWorth.total_assets > 0)) {
+    @if (filteredTransactions.length || (netWorth && netWorth.total_assets > 0)) {
       <div class="insight-tiles">
         <div class="insight-tile">
           <span class="insight-tile__label">Income in period</span>
           <span class="insight-tile__value money">${{ periodIncomeTotal | number:'1.2-2' }}</span>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label">Spending in period</span>
+          <span class="insight-tile__value money negative">${{ periodExpenseTotal | number:'1.2-2' }}</span>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label">Net cashflow</span>
+          <span class="insight-tile__value money" [class.negative]="periodNetCashflow < 0">
+            {{ periodNetCashflow >= 0 ? '+' : '−' }}${{ abs(periodNetCashflow) | number:'1.2-2' }}
+          </span>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label">Savings rate</span>
+          <span class="insight-tile__value">
+            {{ formatPercent(periodSavingsRate) }}
+          </span>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label">Average daily spend</span>
+          <span class="insight-tile__value money">${{ averageDailySpend | number:'1.2-2' }}</span>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label">Largest expense category</span>
+          <span class="insight-tile__value compact">
+            {{ largestCategory || '—' }}
+            @if (largestCategoryTotal) {
+              <small>${{ largestCategoryTotal | number:'1.2-2' }}</small>
+            }
+          </span>
         </div>
         @if (netWorth && netWorth.total_assets > 0) {
           <div class="insight-tile">
@@ -137,7 +203,7 @@
         }
       </div>
     } @else {
-      <ui-empty-state message="Add transactions in this period to see insights." />
+      <ui-empty-state icon="transactions" message="Add transactions in this period to see insights." />
     }
   </ui-card>
 

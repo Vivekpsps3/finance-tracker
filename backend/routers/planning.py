@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from typing import List
 
@@ -10,9 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import PlanningScenarioRun
 from schemas_planning import (
-    PlanningExportBundle,
     PlanningProfileCreate,
     PlanningProfileResponse,
     PlanningProfileUpdate,
@@ -90,56 +87,23 @@ def delete_profile(profile_id: int, db: Session = Depends(get_db)):
     profile_svc.delete_profile(db, profile_id)
 
 
-def _as_of_from_row(row: PlanningScenarioRun, snapshot: dict) -> datetime:
-    raw = row.input_as_of or snapshot.get("as_of")
+def _as_of_from_snapshot(snapshot: dict) -> datetime:
+    raw = snapshot.get("as_of")
     if raw:
         return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
     return datetime.now(UTC)
 
 
-def _run_to_response(row: PlanningScenarioRun, snapshot: dict) -> PlanningRunResponse:
-    as_of = _as_of_from_row(row, snapshot)
-    return PlanningRunResponse(
-        id=row.id,
-        tool_id=row.tool_id,
-        profile_id=row.profile_id,
-        status=row.status,
-        input_snapshot_hash=row.input_snapshot_hash,
-        as_of=as_of,
-        seed=row.seed,
-        n_paths=row.n_paths,
-        horizon_years=row.horizon_years,
-        result_summary=json.loads(row.result_summary_json or "{}"),
-        result_artifacts=json.loads(row.result_artifacts_json or "{}"),
-        started_at=row.started_at,
-        finished_at=row.finished_at,
-    )
-
-
 @router.post("/runs", response_model=PlanningRunResponse)
 def create_run(body: PlanningRunCreate, db: Session = Depends(get_db)):
+    """Execute Monte Carlo once; results are not persisted (saved inputs = profiles only)."""
     snapshot = build_planning_snapshot(db)
     h = snapshot_hash(snapshot)
     profile_resp = None
     if body.profile_id is not None:
         profile_resp = profile_svc.get_profile(db, body.profile_id)
     payload = profile_svc.merge_profile_payload(profile_resp, body.overrides)
-
-    row = PlanningScenarioRun(
-        profile_id=body.profile_id,
-        tool_id=body.tool_id,
-        seed=body.seed,
-        n_paths=body.n_paths,
-        horizon_years=body.horizon_years,
-        overrides_json=json.dumps(body.overrides),
-        input_snapshot_hash=h,
-        status="running",
-        input_as_of=snapshot.get("as_of"),
-        started_at=datetime.now(UTC),
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
+    started = datetime.now(UTC)
 
     try:
         summary, artifacts = execute_tool(
@@ -152,47 +116,26 @@ def create_run(body: PlanningRunCreate, db: Session = Depends(get_db)):
             n_paths=body.n_paths or 100,
             horizon_years=body.horizon_years or 30,
         )
-        row.status = "completed"
-        row.result_summary_json = json.dumps(summary)
-        row.result_artifacts_json = json.dumps(artifacts)
-        row.finished_at = datetime.now(UTC)
-        db.commit()
-        db.refresh(row)
     except HTTPException:
-        row.status = "failed"
-        row.finished_at = datetime.now(UTC)
-        db.commit()
         raise
     except Exception as exc:
-        row.status = "failed"
-        row.result_summary_json = json.dumps({"error": str(exc)})
-        row.finished_at = datetime.now(UTC)
-        db.commit()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return _run_to_response(row, snapshot)
-
-
-@router.get("/runs/{run_id}", response_model=PlanningRunResponse)
-def get_run(run_id: int, db: Session = Depends(get_db)):
-    row = db.query(PlanningScenarioRun).filter(PlanningScenarioRun.id == run_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Run not found")
-    snapshot = build_planning_snapshot(db)
-    return _run_to_response(row, snapshot)
-
-
-@router.get("/runs/{run_id}/export", response_model=PlanningExportBundle)
-def export_run(run_id: int, db: Session = Depends(get_db)):
-    row = db.query(PlanningScenarioRun).filter(PlanningScenarioRun.id == run_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Run not found")
-    snapshot = build_planning_snapshot(db)
-    run_resp = _run_to_response(row, snapshot)
-    return PlanningExportBundle(
-        run=run_resp,
-        profile=profile_svc.get_profile(db, row.profile_id) if row.profile_id else None,
-        snapshot_hash=row.input_snapshot_hash,
+    finished = datetime.now(UTC)
+    return PlanningRunResponse(
+        id=None,
+        tool_id=body.tool_id,
+        profile_id=body.profile_id,
+        status="completed",
+        input_snapshot_hash=h,
+        as_of=_as_of_from_snapshot(snapshot),
+        seed=body.seed,
+        n_paths=body.n_paths,
+        horizon_years=body.horizon_years,
+        result_summary=summary,
+        result_artifacts=artifacts,
+        started_at=started,
+        finished_at=finished,
     )
 
 

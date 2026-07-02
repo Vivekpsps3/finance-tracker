@@ -9,6 +9,17 @@
     <p>{{ disclaimer }}</p>
   </div>
 
+  @if (showSpendingFallbackBanner()) {
+    <div class="mc-spending-fallback" role="status">
+      <ui-icon name="spark" size="sm" />
+      <p>
+        <strong>No expense history found.</strong>
+        Annual spending for this simulation defaults to <strong>$40,000</strong> until you add
+        transactions or turn off “Use transaction spending” and enter a manual amount.
+      </p>
+    </div>
+  }
+
   @if (error) {
     <p class="mc-error" role="alert">{{ error }}</p>
   }
@@ -16,6 +27,35 @@
   @if (loading) {
     <ui-skeleton height="320px" />
   } @else {
+    <ui-card title="Saved inputs" class="mc-profiles-card">
+      <p class="mc-saved-hint">Name and save your assumption set. Simulations are not stored—only these input presets.</p>
+      <div class="mc-profiles-row">
+        <label class="mc-field">
+          <span>Load saved inputs</span>
+          <select [value]="selectedProfileId ?? ''" (change)="onProfileSelected($any($event.target).value)">
+            <option value="">None (custom session)</option>
+            @for (p of profiles; track p.id) {
+              <option [value]="p.id">{{ p.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="mc-field mc-field--grow">
+          <span>Name</span>
+          <input type="text" [(ngModel)]="savedInputName" placeholder="e.g. Retirement baseline" maxlength="120" />
+        </label>
+        <ui-button
+          variant="secondary"
+          (clicked)="saveSavedInputs()"
+          [disabled]="savingProfile || !savedInputName.trim()"
+        >
+          {{ selectedProfileId != null ? 'Update' : 'Save' }}
+        </ui-button>
+        <ui-button variant="ghost" (clicked)="deleteSelectedProfile()" [disabled]="selectedProfileId == null">
+          Delete
+        </ui-button>
+      </div>
+    </ui-card>
+
     <section class="mc-summary-band" aria-label="Planning inputs">
       <div class="mc-metric">
         <span>Current net worth</span>
@@ -52,7 +92,16 @@
             </label>
             <label class="mc-field">
               <span>Paths</span>
-              <input type="number" min="100" max="50000" step="500" [(ngModel)]="nPaths" />
+              <input
+                type="number"
+                [min]="mcNPathsMin"
+                [max]="mcNPathsMax"
+                step="100"
+                [(ngModel)]="nPaths"
+              />
+              <small class="mc-field-hint">
+                Up to {{ mcNPathsMax | number }} paths simulated; chart stores {{ mcFanPathsPersistMax }} samples.
+              </small>
             </label>
             <label class="mc-field mc-field--seed">
               <span>Seed</span>
@@ -247,15 +296,15 @@
                     [(ngModel)]="checkpoint.min_success_probability"
                   />
                 </label>
-                <button type="button" class="mc-icon-btn" (click)="removeCheckpoint($index)">
-                  Remove
-                </button>
+                <div class="mc-row-action">
+                  <ui-button variant="danger" size="sm" (clicked)="removeCheckpoint($index)">Remove</ui-button>
+                </div>
               </div>
             }
           </div>
-          <button type="button" class="mc-secondary-action" (click)="addCheckpoint()">
-            Add checkpoint
-          </button>
+          <div class="mc-secondary-action-wrap">
+            <ui-button variant="secondary" (clicked)="addCheckpoint()">Add checkpoint</ui-button>
+          </div>
         </ui-card>
 
         <ui-card title="Future events">
@@ -322,13 +371,15 @@
                   <input type="checkbox" [(ngModel)]="event.inflation_adjusted" />
                   <span>Inflation</span>
                 </label>
-                <button type="button" class="mc-icon-btn" (click)="removeEvent($index)">
-                  Remove
-                </button>
+                <div class="mc-row-action">
+                  <ui-button variant="danger" size="sm" (clicked)="removeEvent($index)">Remove</ui-button>
+                </div>
               </div>
             }
           </div>
-          <button type="button" class="mc-secondary-action" (click)="addEvent()">Add event</button>
+          <div class="mc-secondary-action-wrap">
+            <ui-button variant="secondary" (clicked)="addEvent()">Add event</ui-button>
+          </div>
         </ui-card>
 
         <ui-button variant="primary" [disabled]="running" (clicked)="runSimulation()">

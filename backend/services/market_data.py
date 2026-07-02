@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Dict, Optional, Tuple
 
 import yfinance as yf
@@ -11,6 +11,13 @@ from models import TickerQuote
 from price_cache import get_redis_eod, set_redis_eod
 
 logger = get_logger()
+
+
+def _ensure_utc(dt: datetime) -> datetime:
+    """Normalize DB/memory datetimes for comparison (legacy rows may be naive UTC)."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 class MarketDataService:
@@ -52,14 +59,15 @@ class MarketDataService:
         row = db.query(TickerQuote).filter(TickerQuote.symbol == symbol).first()
         if not row:
             return None
-        if datetime.utcnow() - row.fetched_at > self._eod_ttl:
+        fetched_at = _ensure_utc(row.fetched_at)
+        if datetime.now(UTC) - fetched_at > self._eod_ttl:
             return None
-        return row.close_price, row.fetched_at, row.source or "sqlite_eod"
+        return row.close_price, fetched_at, row.source or "sqlite_eod"
 
     def _sqlite_set(
         self, db: Session, symbol: str, close_price: float, quote_date: date, source: str
     ) -> None:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         row = db.query(TickerQuote).filter(TickerQuote.symbol == symbol).first()
         if row:
             row.close_price = close_price
@@ -76,7 +84,7 @@ class MarketDataService:
                     source=source,
                 )
             )
-        db.commit()
+        db.flush()
 
     def _fetch_eod(self, symbol: str) -> Tuple[Optional[float], Optional[date], str]:
         started = time.perf_counter()
@@ -144,14 +152,14 @@ class MarketDataService:
         self, symbol: str, force_refresh: bool = False, db: Optional[Session] = None
     ) -> Tuple[float, str, Optional[datetime]]:
         symbol = symbol.upper().strip()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if not force_refresh and self._looks_like_non_ticker(symbol):
             return 0.0, "non_ticker", None
 
         # Short-circuit recently failed symbols
         if not force_refresh and symbol in self._failed:
-            if now - self._failed[symbol] < timedelta(minutes=5):
+            if now - _ensure_utc(self._failed[symbol]) < timedelta(minutes=5):
                 return 0.0, "error", None
             else:
                 self._failed.pop(symbol, None)
@@ -161,8 +169,8 @@ class MarketDataService:
 
         if symbol in self._memory:
             price, ts, source = self._memory[symbol]
-            if now - ts < self._ttl:
-                return price, source, ts
+            if now - _ensure_utc(ts) < self._ttl:
+                return price, source, _ensure_utc(ts)
 
         if not force_refresh:
             redis_hit = get_redis_eod(symbol)

@@ -12,7 +12,12 @@ from typing import Any, Dict, Iterable, Tuple
 
 import numpy as np
 
-from schemas_planning import PlanningCashflowEvent, PlanningCheckpoint, ProfilePayload
+from schemas_planning import (
+    FAN_PATHS_PERSIST_MAX,
+    PlanningCashflowEvent,
+    PlanningCheckpoint,
+    ProfilePayload,
+)
 
 from services.analytics.distributions import annual_returns, percentiles_by_year
 
@@ -32,6 +37,15 @@ def _snapshot_date(snapshot: dict) -> date:
 
 
 DEFAULT_ANNUAL_SPENDING_FALLBACK = 40_000.0
+
+
+def _fan_paths_for_persistence(paths: np.ndarray) -> tuple[list[list[float]], int]:
+    """Store at most FAN_PATHS_PERSIST_MAX paths; percentiles use full simulation."""
+    n = int(paths.shape[0])
+    if n <= FAN_PATHS_PERSIST_MAX:
+        return paths.round(2).tolist(), n
+    idx = np.linspace(0, n - 1, FAN_PATHS_PERSIST_MAX, dtype=int)
+    return paths[idx].round(2).tolist(), FAN_PATHS_PERSIST_MAX
 
 
 def annual_spending_from_transactions(tx: dict) -> tuple[float, str]:
@@ -465,11 +479,12 @@ def mc_net_worth_paths(
 
     percentiles = percentiles_by_year(paths, ps=(5, 10, 25, 50, 75, 90, 95))
     years = list(range(horizon_years + 1))
+    fan_paths, fan_paths_displayed = _fan_paths_for_persistence(paths)
     artifacts = {
         "years": years,
         "percentiles_by_year": percentiles,
-        "fan_paths": paths.round(2).tolist(),
-        "fan_paths_displayed": n_paths,
+        "fan_paths": fan_paths,
+        "fan_paths_displayed": fan_paths_displayed,
         "n_paths_simulated": n_paths,
         "checkpoint_results": checkpoint_rows,
         "projection_table": table_rows,

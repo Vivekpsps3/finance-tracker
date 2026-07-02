@@ -28,7 +28,7 @@ Parser: `backend/import_parsers/capital_one.py`. Slug: `capital_one`. Credits/pa
 - `type = expense`
 - `source = import`
 - Dedupe on `dedupe_key` (preview shows new vs duplicate)
-- Does **not** call `record_net_worth_snapshot`
+- Does **not** update net worth or record snapshots
 
 ## Frontend
 

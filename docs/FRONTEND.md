@@ -13,14 +13,16 @@ Angular 19 standalone app under `frontend/src/app/`.
 
 | Path | Component |
 |------|-----------|
-| `/` | Dashboard (lazy) |
+| `/` | Dashboard (lazy; current net worth, manual snapshots, period trends) |
 | `/transactions` | Transactions (income, expenses, import) |
 | `/balance-sheet` | Balance sheet |
 | `/portfolio` | Portfolio (manual + Fidelity CSV import with account grouping) |
 | `/calendar` | Calendar |
-| `/planning` | Monte Carlo net worth simulator (fan chart, tunable assumptions; speculative) |
+| `/taxes` | Tax Center (official document vault + yearly summary) |
+| `/planning` | Monte Carlo net worth simulator (fan chart; save **named input presets** only—runs not stored) |
+| `/charts` | Redirects to `/` (legacy path) |
 
-Shell: `MainLayoutComponent` (top nav, `#main-content` max-width 1100px). Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
+Shell: `MainLayoutComponent` (top nav, `#main-content` max-width 1180px). Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
 
 ## Design tokens
 
@@ -63,7 +65,32 @@ Use **OnPush** on new components; feature pages should use OnPush + `markForChec
 
 - **Period filter** applies to insights and charts only.
 - **Net worth hero** is always **current** balance-sheet total (labeled in UI).
-- Embedded charts: `[embedded]="true"`, `[dataReady]`, `[overrideTransactions]`, `[overrideHistory]`.
+- **Record snapshot** stores the current balance-sheet valuation through
+  `POST /api/net-worth/snapshots`.
+- Snapshot history is observed net worth history. It is not computed from
+  transactions.
+- Embedded charts: `[embedded]="true"`, `[dataReady]`, `[overrideTransactions]`.
+
+When adding history charts later, keep two concepts separate:
+
+| Concept | Source |
+|---------|--------|
+| Observed net worth | `net_worth_snapshots` |
+| Spending/income trends | `transactions` |
+
+## Tax Center behavior
+
+- Route: `/taxes`.
+- Shows yearly totals from structured values entered during upload.
+- Upload accepts PDF, CSV, text, JPG, and PNG tax documents.
+- Important values are visible on the page and on each document row.
+- Document downloads use `/api/taxes/documents/{id}/download`.
+- Tax summaries are not financial ledger mutations; keep tax docs separate from
+  net worth and transactions.
+- Tax Center uses native file, textarea, and dense numeric inputs because shared
+  UI components do not yet cover those controls ergonomically. Keep the local
+  `.field` pattern contained to the page until reusable file/textarea controls
+  exist.
 
 ## Build
 

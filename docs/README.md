@@ -3,11 +3,13 @@
 | Doc | Purpose |
 |-----|---------|
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | Setup, `make` targets, repo layout, env |
+| [BACKUP.md](./BACKUP.md) | SQLite backup and restore |
+| [DEPLOY.md](./DEPLOY.md) | Production checklist (API_KEY, CORS, rate limits) |
 | [DATA_MODEL.md](./DATA_MODEL.md) | Net worth, assets, liabilities, income ledger |
 | [FRONTEND.md](./FRONTEND.md) | Angular conventions, tokens, shared UI, dashboard rules |
+| [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | Product/UI metrics, charts, and page standards |
 | [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md) | New bank CSV importer |
-| [UI_DEBUG_REPORT.md](./UI_DEBUG_REPORT.md) | CORS, proxy, “UI not loading” |
-| [ENGINEERING_BACKLOG.md](./ENGINEERING_BACKLOG.md) | Optional improvements tracker |
-| [SPECULATIVE_ANALYTICS.md](./SPECULATIVE_ANALYTICS.md) | Planning lab (MC, tax, retirement, stats) — design + tool catalog |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | One-page system architecture |
+| [../AGENTS.md](../AGENTS.md) | Fast handoff for future AI agents |
 
-Agents: read [../AGENTS.md](../AGENTS.md) first. Project overview: [../README.md](../README.md).
+Project overview: [../README.md](../README.md).

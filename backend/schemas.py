@@ -1,10 +1,10 @@
 from datetime import date, datetime
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from constants import SYMBOL_PATTERN
-from models import AssetCategory, LiabilityCategory, TransactionType
+from models import AssetCategory, LiabilityCategory, TaxDocumentType, TransactionType
 
 
 class TransactionCreate(BaseModel):
@@ -38,6 +38,8 @@ class HoldingCreate(BaseModel):
 
 
 class TransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     date: date
     type: str
@@ -47,11 +49,10 @@ class TransactionResponse(BaseModel):
     source: str = "manual"
     account_display: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 
 class HoldingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     symbol: str
     shares: float
@@ -64,9 +65,6 @@ class HoldingResponse(BaseModel):
     account_display: Optional[str] = None
     company_name: Optional[str] = None
     brokerage_account_id: Optional[int] = None
-
-    class Config:
-        from_attributes = True
 
 
 class AssetCreate(BaseModel):
@@ -91,6 +89,8 @@ class AssetUpdate(BaseModel):
 
 
 class AssetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     category: str
@@ -99,9 +99,6 @@ class AssetResponse(BaseModel):
     notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class LiabilityCreate(BaseModel):
@@ -126,6 +123,8 @@ class LiabilityUpdate(BaseModel):
 
 
 class LiabilityResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     category: str
@@ -134,9 +133,6 @@ class LiabilityResponse(BaseModel):
     notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class NetWorthResponse(BaseModel):
@@ -148,6 +144,53 @@ class NetWorthResponse(BaseModel):
     as_of: datetime
     portfolio_sources: Dict[str, str]
     portfolio_breakdown: Dict[str, float] = {}  # e.g. {"Fidelity ···Z21741448 (Individual)": 1234.56, "Manual": 500.0, ...}
+
+
+class NetWorthSnapshotCreate(BaseModel):
+    snapshot_date: Optional[date] = None
+    note: Optional[str] = Field(None, max_length=500)
+
+
+class NetWorthSnapshotResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    snapshot_date: date
+    other_assets: float
+    portfolio: float
+    liabilities: float
+    total_assets: float
+    total: float
+    as_of: datetime
+    source: str
+    note: Optional[str] = None
+
+
+class TaxDocumentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    tax_year: int
+    document_type: str
+    issuer: Optional[str] = None
+    taxpayer: Optional[str] = None
+    filename: str
+    content_type: str
+    size_bytes: int
+    sha256: str
+    summary: Dict[str, float] = {}
+    notes: Optional[str] = None
+    uploaded_at: datetime
+
+
+class TaxYearSummary(BaseModel):
+    tax_year: int
+    document_count: int
+    total_size_bytes: int
+    document_counts: Dict[str, int]
+    totals: Dict[str, float]
+    missing_recommended: List[str]
+    documents: List[TaxDocumentResponse]
 
 
 class TransactionUpdate(BaseModel):

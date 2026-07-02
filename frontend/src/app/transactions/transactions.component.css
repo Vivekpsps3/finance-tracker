@@ -1,3 +1,22 @@
+.actions--row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.list-hint {
+  margin: var(--space-3) 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+}
+
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) 0 var(--space-2);
+}
+
 .section-eyebrow {
   font-size: 0.6875rem;
   font-weight: 600;
@@ -81,12 +100,13 @@
   flex-wrap: wrap;
 }
 
-.tx-table tbody tr {
-  transition: background var(--motion-fast, 150ms) ease;
+.tx-table-wrap ui-data-table {
+  min-width: 640px;
 }
 
-.tx-table tbody tr:hover {
-  background: var(--surface-hover);
+.tx-table-wrap th.sortable {
+  cursor: pointer;
+  user-select: none;
 }
 
 .import-panel {
@@ -115,11 +135,6 @@
 
 .duplicate-row {
   opacity: 0.65;
-}
-
-.badge.duplicate {
-  background: var(--surface-elevated);
-  color: var(--text-secondary);
 }
 
 .import-tag {

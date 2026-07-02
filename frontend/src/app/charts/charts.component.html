@@ -10,20 +10,48 @@
   }
 
   <div class="charts-grid">
-    <ui-card title="Income in period">
-      @if (incomeTotal > 0) {
-        <div class="chart-wrap">
-          <canvas #incomeExpenseChart role="img" aria-label="Bar chart of income in period"></canvas>
+    <ui-card title="Monthly cashflow" class="chart-wide">
+      @if (monthlyRows.length) {
+        <div class="chart-wrap tall" [class.chart-dim]="chartDimmed">
+          <canvas #incomeExpenseChart role="img" aria-label="Monthly income, spending, and net cashflow chart"></canvas>
         </div>
-        <p class="chart-note">Total income logged: <strong>${{ incomeTotal | number:'1.2-2' }}</strong></p>
+        <p class="chart-note">
+          Income <strong>${{ incomeTotal | number:'1.2-2' }}</strong>
+          · Spending <strong>${{ expenseTotal | number:'1.2-2' }}</strong>
+          · Net <strong>${{ netCashflow | number:'1.2-2' }}</strong>
+        </p>
       } @else {
-        <ui-empty-state message="Add income transactions in the selected period." />
+        <ui-empty-state icon="transactions" message="Add transactions in the selected period." />
+      }
+    </ui-card>
+
+    <ui-card title="Spending by category">
+      @if (categoryRows.length) {
+        <div class="chart-wrap" [class.chart-dim]="chartDimmed">
+          <canvas #categoryChart role="img" aria-label="Spending by category chart"></canvas>
+        </div>
+        <div class="chart-fallback">
+          <table aria-label="Spending category data table">
+            <thead><tr><th>Category</th><th>Amount</th><th>%</th></tr></thead>
+            <tbody>
+              @for (row of categoryRows; track row.label) {
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td>${{ row.value | number:'1.2-2' }}</td>
+                  <td>{{ row.pct | number:'1.1-1' }}%</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <ui-empty-state icon="transactions" message="Add expense transactions to see category mix." />
       }
     </ui-card>
 
     <ui-card [title]="embedded ? 'Portfolio allocation (current)' : 'Portfolio Allocation'">
       @if (allocationRows.length) {
-        <div class="chart-wrap">
+        <div class="chart-wrap" [class.chart-dim]="chartDimmed">
           <canvas #portfolioChart role="img" aria-label="Portfolio allocation by symbol"></canvas>
         </div>
         <div class="chart-fallback">
@@ -41,7 +69,7 @@
           </table>
         </div>
       } @else {
-        <ui-empty-state message="Add holdings to see allocation." />
+        <ui-empty-state icon="portfolio" message="Add holdings to see allocation." />
       }
     </ui-card>
   </div>

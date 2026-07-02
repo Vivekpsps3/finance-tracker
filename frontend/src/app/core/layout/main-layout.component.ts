@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ApiHealthService } from '../../services/api-health.service';
-import { UiIconComponent, UiIconName } from '../../shared/ui';
+import { UiButtonComponent, UiCardComponent, UiIconComponent, UiIconName } from '../../shared/ui';
 
 export interface NavItem {
   path: string;
@@ -14,7 +14,7 @@ export interface NavItem {
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, UiIconComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, UiIconComponent, UiCardComponent, UiButtonComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,6 +44,7 @@ export class MainLayoutComponent implements OnInit {
       exact: false,
     },
     { path: '/calendar', label: 'Calendar', shortLabel: 'Calendar', icon: 'calendar', exact: false },
+    { path: '/taxes', label: 'Tax Center', shortLabel: 'Taxes', icon: 'document', exact: false },
     { path: '/planning', label: 'Monte Carlo', shortLabel: 'MC', icon: 'spark', exact: false },
   ];
 

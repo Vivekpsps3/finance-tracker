@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, Tuple
 
 from fastapi import HTTPException
@@ -30,12 +32,26 @@ def execute_tool(
         raise HTTPException(status_code=400, detail=f"Unknown tool_id: {tool_id}")
 
     if tool_id == "mc_net_worth_paths":
-        return monte_carlo.mc_net_worth_paths(
-            snapshot,
-            profile,
-            horizon_years=horizon_years,
-            n_paths=n_paths,
-            seed=seed,
-        )
+        timeout_sec = float(os.getenv("MC_RUN_TIMEOUT_SEC", "120"))
+
+        def _run_mc() -> Tuple[Dict[str, Any], Dict[str, Any]]:
+            return monte_carlo.mc_net_worth_paths(
+                snapshot,
+                profile,
+                horizon_years=horizon_years,
+                n_paths=n_paths,
+                seed=seed,
+            )
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_run_mc)
+            try:
+                return future.result(timeout=timeout_sec)
+            except FuturesTimeoutError:
+                future.cancel()
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"Monte Carlo simulation timed out after {int(timeout_sec)}s",
+                )
 
     raise HTTPException(status_code=500, detail=f"Tool not wired: {tool_id}")

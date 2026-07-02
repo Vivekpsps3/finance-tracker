@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Optional, Tuple
 
 logger = logging.getLogger("finance_api")
@@ -50,7 +50,11 @@ def get_redis_eod(symbol: str) -> Optional[Tuple[float, date, datetime, str]]:
             return None
         data = json.loads(raw)
         fetched = datetime.fromisoformat(data["fetched_at"])
-        if datetime.utcnow() - fetched > timedelta(hours=EOD_MAX_AGE_HOURS):
+        if fetched.tzinfo is None:
+            fetched = fetched.replace(tzinfo=UTC)
+        else:
+            fetched = fetched.astimezone(UTC)
+        if datetime.now(UTC) - fetched > timedelta(hours=EOD_MAX_AGE_HOURS):
             return None
         qd = date.fromisoformat(data["quote_date"])
         logger.debug("redis eod hit symbol=%s price=%.4f quote_date=%s", symbol, float(data["close_price"]), qd)
@@ -68,7 +72,7 @@ def set_redis_eod(symbol: str, close_price: float, quote_date: date, source: str
         payload = {
             "close_price": close_price,
             "quote_date": quote_date.isoformat(),
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": datetime.now(UTC).isoformat(),
             "source": source,
         }
         client.setex(_key(symbol), timedelta(hours=EOD_MAX_AGE_HOURS), json.dumps(payload))

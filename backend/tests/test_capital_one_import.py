@@ -78,3 +78,58 @@ def test_capital_one_preview_and_commit_does_not_change_net_worth(client):
     list_banks = client.get("/api/imports/banks")
     assert list_banks.status_code == 200
     assert any(b["slug"] == "capital_one" for b in list_banks.json())
+
+
+def test_capital_one_second_commit_skips_duplicate_dedupe_key(client):
+    files = {"file": ("capital.csv", SAMPLE_CSV, "text/csv")}
+    preview = client.post("/api/imports/capital-one/preview", files=files)
+    assert preview.status_code == 200
+    row = preview.json()["rows"][0]
+    commit_body = {
+        "filename": "capital.csv",
+        "rows": [
+            {
+                "dedupe_key": row["dedupe_key"],
+                "date": row["date"],
+                "account_mask": "3866",
+                "description": row["description"],
+                "category": "Dining",
+                "amount": 140.98,
+            }
+        ],
+    }
+
+    first = client.post("/api/imports/capital-one/commit", json=commit_body)
+    assert first.status_code == 200
+    assert first.json()["inserted"] == 1
+    assert len(client.get("/api/transactions/").json()) == 1
+
+    second = client.post("/api/imports/capital-one/commit", json=commit_body)
+    assert second.status_code == 200
+    assert second.json()["inserted"] == 0
+    assert second.json()["skipped"] >= 1
+    assert len(client.get("/api/transactions/").json()) == 1
+
+
+def test_parse_capital_one_missing_headers_raises():
+    with pytest.raises(ValueError, match="Missing required columns"):
+        parse_capital_one_csv("Date,Amount\n2026-01-01,10\n")
+
+
+def test_capital_one_preview_rejects_bad_header(client):
+    bad = "Date,Amount\n2026-01-01,10\n"
+    r = client.post(
+        "/api/imports/capital-one/preview",
+        files={"file": ("bad.csv", bad, "text/csv")},
+    )
+    assert r.status_code == 400
+    assert "Missing required columns" in r.json()["detail"]
+
+
+def test_preview_rejects_csv_over_10mb(client):
+    oversized = b"a" * (10 * 1024 * 1024 + 1)
+    r = client.post(
+        "/api/imports/capital-one/preview",
+        files={"file": ("big.csv", oversized, "text/csv")},
+    )
+    assert r.status_code == 413

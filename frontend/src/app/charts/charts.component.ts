@@ -16,11 +16,12 @@ import { Subject, debounceTime, takeUntil } from 'rxjs';
 import type { Chart as ChartInstance, ChartItem } from 'chart.js';
 import { UiCardComponent, UiEmptyStateComponent } from '../shared/ui';
 import {
-  CHART_COLORS,
-  chartAccentColor,
+  chartColorAt,
   chartCartesianScales,
   chartLegendBottom,
   chartSuccessColor,
+  chartDangerColor,
+  chartAccentColor,
   chartTooltipTheme,
 } from '../../theme/chart-colors';
 
@@ -42,6 +43,7 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() embedded = false;
 
   @ViewChild('incomeExpenseChart') incomeExpenseCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('categoryChart') categoryCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('portfolioChart') portfolioCanvas!: ElementRef<HTMLCanvasElement>;
 
   transactions: Transaction[] = [];
@@ -49,15 +51,21 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
   loading = true;
 
   incomeTotal = 0;
+  expenseTotal = 0;
+  netCashflow = 0;
+  monthlyRows: { label: string; income: number; expense: number; net: number }[] = [];
+  categoryRows: { label: string; value: number; pct: number }[] = [];
   allocationRows: { label: string; value: number; pct: number; companyName?: string | null }[] = [];
 
   private incomeChart?: ChartInstance;
+  private categoryChart?: ChartInstance;
   private portfolioChart?: ChartInstance;
   private render$ = new Subject<void>();
   private destroy$ = new Subject<void>();
   private viewReady = false;
   private chartCtor: ChartConstructor | null = null;
   private paintInFlight: Promise<void> | null = null;
+  chartDimmed = false;
 
   private txOverride: Transaction[] | null = null;
 
@@ -124,6 +132,7 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.incomeChart?.destroy();
+    this.categoryChart?.destroy();
     this.portfolioChart?.destroy();
   }
 
@@ -150,6 +159,43 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.incomeTotal = txs
       .filter(t => t.type === 'income')
       .reduce((s, t) => s + t.amount, 0);
+    this.expenseTotal = txs
+      .filter(t => t.type === 'expense')
+      .reduce((s, t) => s + t.amount, 0);
+    this.netCashflow = this.incomeTotal - this.expenseTotal;
+
+    const byMonth = new Map<string, { income: number; expense: number }>();
+    const byCategory = new Map<string, number>();
+    for (const tx of txs) {
+      const month = tx.date.slice(0, 7);
+      const bucket = byMonth.get(month) || { income: 0, expense: 0 };
+      if (tx.type === 'income') {
+        bucket.income += tx.amount;
+      } else {
+        bucket.expense += tx.amount;
+        byCategory.set(tx.category, (byCategory.get(tx.category) || 0) + tx.amount);
+      }
+      byMonth.set(month, bucket);
+    }
+    this.monthlyRows = [...byMonth.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([month, totals]) => ({
+        label: this.formatMonth(month),
+        income: totals.income,
+        expense: totals.expense,
+        net: totals.income - totals.expense,
+      }));
+
+    const categoryTotal = [...byCategory.values()].reduce((s, v) => s + v, 0);
+    this.categoryRows = [...byCategory.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([label, value]) => ({
+        label,
+        value,
+        pct: categoryTotal ? (value / categoryTotal) * 100 : 0,
+      }));
 
     const totalVal = this.holdings.reduce((s, h) => s + (h.value || 0), 0);
     this.allocationRows = [...this.holdings]
@@ -166,14 +212,18 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.viewReady) {
       return;
     }
+    this.chartDimmed = true;
+    this.cdr.markForCheck();
     const Chart = await this.ensureChartCtor();
     this.updateIncomeExpense(Chart);
+    this.updateCategorySpending(Chart);
     this.updatePortfolio(Chart);
+    this.chartDimmed = false;
     this.cdr.markForCheck();
   }
 
   private chartColors(n: number): string[] {
-    return Array.from({ length: n }, (_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+    return Array.from({ length: n }, (_, i) => chartColorAt(i));
   }
 
   private upsertChart(
@@ -198,7 +248,7 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private updateIncomeExpense(Chart: ChartConstructor) {
     const canvas = this.incomeExpenseCanvas?.nativeElement;
-    if (!canvas || this.incomeTotal <= 0) {
+    if (!canvas || this.monthlyRows.length === 0) {
       this.incomeChart?.destroy();
       this.incomeChart = undefined;
       return;
@@ -206,19 +256,36 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.incomeChart = this.upsertChart(Chart, this.incomeChart, canvas, {
       type: 'bar',
       data: {
-        labels: ['Income'],
-        datasets: [{
-          label: 'Amount',
-          data: [this.incomeTotal],
-          backgroundColor: [chartSuccessColor()],
-          borderRadius: 6,
-        }],
+        labels: this.monthlyRows.map(r => r.label),
+        datasets: [
+          {
+            label: 'Income',
+            data: this.monthlyRows.map(r => r.income),
+            backgroundColor: chartSuccessColor(),
+            borderRadius: 6,
+          },
+          {
+            label: 'Spending',
+            data: this.monthlyRows.map(r => r.expense),
+            backgroundColor: chartDangerColor(),
+            borderRadius: 6,
+          },
+          {
+            type: 'line',
+            label: 'Net cashflow',
+            data: this.monthlyRows.map(r => r.net),
+            borderColor: chartAccentColor(),
+            backgroundColor: chartAccentColor(),
+            tension: 0.25,
+            pointRadius: 3,
+          },
+        ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { display: false },
+          legend: chartLegendBottom(),
           tooltip: {
             ...chartTooltipTheme(),
             callbacks: { label: (ctx: TooltipCtx) => '$' + Number(ctx.raw).toLocaleString() },
@@ -226,6 +293,49 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         scales: chartCartesianScales(),
       },
+    });
+  }
+
+  private updateCategorySpending(Chart: ChartConstructor) {
+    const canvas = this.categoryCanvas?.nativeElement;
+    if (!canvas || this.categoryRows.length === 0) {
+      this.categoryChart?.destroy();
+      this.categoryChart = undefined;
+      return;
+    }
+    this.categoryChart = this.upsertChart(Chart, this.categoryChart, canvas, {
+      type: 'doughnut',
+      data: {
+        labels: this.categoryRows.map(r => r.label),
+        datasets: [{
+          data: this.categoryRows.map(r => r.value),
+          backgroundColor: this.chartColors(this.categoryRows.length),
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: chartLegendBottom(),
+          tooltip: {
+            ...chartTooltipTheme(),
+            callbacks: {
+              label: (ctx: TooltipCtx) => {
+                const row = this.categoryRows[ctx.dataIndex];
+                return `${row.label}: $${Number(ctx.raw).toLocaleString()} (${row.pct.toFixed(1)}%)`;
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  private formatMonth(value: string): string {
+    const [year, month] = value.split('-').map(Number);
+    return new Date(year, month - 1, 1).toLocaleString(undefined, {
+      month: 'short',
+      year: '2-digit',
     });
   }
 

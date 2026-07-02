@@ -2,7 +2,7 @@
 
 from typing import Dict, List
 
-from schemas_planning import ToolDescriptor
+from schemas_planning import FAN_PATHS_PERSIST_MAX, MC_N_PATHS_MAX, MC_N_PATHS_MIN, ToolDescriptor
 
 _TOOLS: List[ToolDescriptor] = [
     ToolDescriptor(
@@ -15,7 +15,7 @@ _TOOLS: List[ToolDescriptor] = [
         ),
         parameters_schema={
             "horizon_years": "int (1–80)",
-            "n_paths": "int (100–50000); fan chart draws every simulated path",
+            "n_paths": f"int ({MC_N_PATHS_MIN}–{MC_N_PATHS_MAX}); fan chart stores up to {FAN_PATHS_PERSIST_MAX} sample paths",
             "seed": "int (reproducible runs)",
             "start_net_worth": "float | omit to use ledger snapshot total",
             "annual_spending": "float | omit to use transaction average",

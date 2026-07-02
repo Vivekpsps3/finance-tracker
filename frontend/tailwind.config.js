@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+// Chart palette mirrors tokens.css --chart-1…6 (Tailwind cannot read CSS vars at build time).
 module.exports = {
   content: ['./src/**/*.{html,ts}'],
   theme: {
@@ -14,8 +15,8 @@ module.exports = {
         muted: '#b8b8b8',
         subtle: '#8a8a8a',
         accent: {
-          DEFAULT: '#3b82f6',
-          hover: '#2563eb',
+          DEFAULT: '#14b8a6',
+          hover: '#0d9488',
         },
         border: '#333333',
         success: '#22c55e',

@@ -27,10 +27,15 @@
 </nav>
 
 @if (apiOffline) {
-  <div class="api-banner" role="status">
-    <ui-icon name="spark" size="sm" />
-    <span>API unreachable. Start the backend and dev server, then retry.</span>
-    <button type="button" class="api-banner__retry" (click)="refreshApiStatus()">Retry</button>
+  <div class="api-banner-wrap">
+    <ui-card class="api-banner-card" padding="none">
+      <div class="api-banner" role="alert">
+        <ui-icon name="spark" size="sm" />
+        <strong class="api-banner__title">API unreachable</strong>
+        <span class="api-banner__detail">Start the backend and dev server, then retry.</span>
+        <ui-button variant="secondary" size="sm" (clicked)="refreshApiStatus()">Retry</ui-button>
+      </div>
+    </ui-card>
   </div>
 }
 

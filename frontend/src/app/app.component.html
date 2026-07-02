@@ -13,9 +13,9 @@
       <span>{{ toast.message }}</span>
       <div class="toast-actions">
         @if (toast.undo) {
-          <button type="button" class="btn btn-ghost" (click)="undoToast()">Undo</button>
+          <ui-button variant="ghost" size="sm" (clicked)="undoToast()">Undo</ui-button>
         }
-        <button type="button" class="btn btn-ghost" (click)="dismissToast()">Dismiss</button>
+        <ui-button variant="ghost" size="sm" (clicked)="dismissToast()">Dismiss</ui-button>
       </div>
     </div>
   }

@@ -28,6 +28,9 @@ import {
   UiEmptyStateComponent,
   UiPageHeaderComponent,
   UiIconComponent,
+  UiSelectComponent,
+  UiSelectOption,
+  UiDataTableComponent,
 } from '../shared/ui';
 
 @Component({
@@ -42,6 +45,8 @@ import {
     UiBadgeComponent,
     UiEmptyStateComponent,
     UiIconComponent,
+    UiSelectComponent,
+    UiDataTableComponent,
   ],
   templateUrl: './transactions.component.html',
   styleUrl: './transactions.component.css',
@@ -61,6 +66,10 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   showImportModal = false;
   importBanks: BankImportOption[] = [];
   selectedImportBankSlug = '';
+
+  get importBankSelectOptions(): UiSelectOption[] {
+    return this.importBanks.map(b => ({ value: b.slug, label: b.name }));
+  }
   importStep: 'upload' | 'preview' = 'upload';
   importFile: File | null = null;
   importPreview: ImportPreviewResult | null = null;
@@ -74,6 +83,11 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   monthExpenseTotal = 0;
   monthIncomeTotal = 0;
+
+  readonly pageSize = 200;
+  loadingMore = false;
+  hasMore = true;
+  listLoading = false;
 
   private destroy$ = new Subject<void>();
 
@@ -111,7 +125,49 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
-    this.financeService.getTransactions().pipe(takeUntil(this.destroy$)).subscribe();
+    this.reloadTransactionList();
+  }
+
+  private reloadTransactionList(): void {
+    this.listLoading = true;
+    this.hasMore = true;
+    this.cdr.markForCheck();
+    const search = this.searchTerm.trim() || undefined;
+    this.financeService
+      .getTransactions({ search, skip: 0, limit: this.pageSize, append: false })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: rows => {
+          this.listLoading = false;
+          this.hasMore = rows.length >= this.pageSize;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.listLoading = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  loadMoreTransactions(): void {
+    if (this.loadingMore || !this.hasMore) return;
+    this.loadingMore = true;
+    const search = this.searchTerm.trim() || undefined;
+    const skip = this.transactions.length;
+    this.financeService
+      .getTransactions({ search, skip, limit: this.pageSize, append: true })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: rows => {
+          this.loadingMore = false;
+          this.hasMore = rows.length >= this.pageSize;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.loadingMore = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   ngOnDestroy() {
@@ -286,15 +342,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   applyFilterAndSort() {
     let result = [...this.transactions];
-    if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
-      result = result.filter(
-        t =>
-          t.category.toLowerCase().includes(term) ||
-          (t.description || '').toLowerCase().includes(term) ||
-          (t.account_display || '').toLowerCase().includes(term)
-      );
-    }
+    // Search is applied server-side when reloading; sort remains client-side on loaded rows.
 
     result.sort((a, b) => {
       let valA: string | number;
@@ -320,7 +368,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange() {
-    this.applyFilterAndSort();
+    this.reloadTransactionList();
   }
 
   toggleSort(column: 'date' | 'category' | 'amount') {

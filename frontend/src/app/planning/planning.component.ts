@@ -9,14 +9,19 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, finalize, takeUntil } from 'rxjs';
 import { PlanningService } from '../services/planning.service';
+import { ConfirmService } from '../services/confirm.service';
+import { ToastService } from '../services/toast.service';
 import {
   DEFAULT_MC_ASSUMPTIONS,
+  MC_FAN_PATHS_PERSIST_MAX,
+  MC_N_PATHS_MAX,
   MC_TOOL_ID,
   PLANNING_DISCLAIMER,
   PlanningCashflowEvent,
   PlanningCheckpoint,
   PlanningCheckpointResult,
   PlanningInputsPreview,
+  PlanningProfile,
   PlanningProjectionRow,
   PlanningRun,
   ProfilePayload,
@@ -66,22 +71,39 @@ export class PlanningComponent implements OnInit, OnDestroy {
   useLedgerStartingNetWorth = true;
   startingNetWorth: number | null = null;
 
+  readonly mcNPathsMin = 100;
+  readonly mcNPathsMax = MC_N_PATHS_MAX;
+  readonly mcFanPathsPersistMax = MC_FAN_PATHS_PERSIST_MAX;
+
   horizonYears = 30;
-  nPaths = 100;
+  nPaths = 500;
   seed = 1;
 
   lastRun: PlanningRun | null = null;
   chartData: McChartData | null = null;
 
+  profiles: PlanningProfile[] = [];
+  selectedProfileId: number | null = null;
+  savedInputName = '';
+  savingProfile = false;
+
   private destroy$ = new Subject<void>();
 
   constructor(
     private planning: PlanningService,
+    private confirm: ConfirmService,
+    private toast: ToastService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.randomizeSeed();
+    this.planning.listProfiles().pipe(takeUntil(this.destroy$)).subscribe({
+      next: list => {
+        this.profiles = list;
+        this.cdr.markForCheck();
+      },
+    });
     this.planning
       .getInputs()
       .pipe(
@@ -104,6 +126,129 @@ export class PlanningComponent implements OnInit, OnDestroy {
         },
         error: err => {
           this.error = err?.message ?? 'Could not load planning inputs.';
+        },
+      });
+
+  }
+
+  showSpendingFallbackBanner(): boolean {
+    if (!this.useTxSpending) return false;
+    const src = this.inputs?.annual_spending_source ?? '';
+    return src === 'default_fallback_40000' || src.includes('default_fallback');
+  }
+
+  private applyRunResult(run: PlanningRun): void {
+    this.lastRun = run;
+    const art = run.result_artifacts;
+    if (art.years && art.percentiles_by_year) {
+      this.chartData = {
+        years: art.years,
+        percentiles: art.percentiles_by_year,
+        fanPaths: art.fan_paths,
+      };
+    }
+    if (run.horizon_years != null) this.horizonYears = run.horizon_years;
+    if (run.n_paths != null) this.nPaths = run.n_paths;
+    if (run.seed != null) this.seed = run.seed;
+    this.cdr.markForCheck();
+  }
+
+  saveSavedInputs(): void {
+    const name = this.savedInputName.trim();
+    if (!name) return;
+    this.savingProfile = true;
+    const body = { name, payload: this.assumptions };
+    const req =
+      this.selectedProfileId != null
+        ? this.planning.updateProfile(this.selectedProfileId, body)
+        : this.planning.createProfile(body);
+    req
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.savingProfile = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: p => {
+          if (this.selectedProfileId != null) {
+            this.profiles = this.profiles.map(x => (x.id === p.id ? p : x));
+          } else {
+            this.profiles = [...this.profiles, p];
+            this.selectedProfileId = p.id;
+          }
+          this.savedInputName = p.name;
+          this.toast.success('Saved inputs updated.');
+        },
+        error: err => {
+          this.error = err?.message ?? 'Could not save inputs.';
+        },
+      });
+  }
+
+  onProfileSelected(id: string): void {
+    const pid = id === '' ? null : Number.parseInt(id, 10);
+    this.selectedProfileId = Number.isFinite(pid as number) ? (pid as number) : null;
+    const profile = this.profiles.find(p => p.id === this.selectedProfileId);
+    if (!profile?.payload) {
+      this.savedInputName = '';
+      this.resetAssumptionTogglesToDefaults();
+      this.cdr.markForCheck();
+      return;
+    }
+    this.savedInputName = profile.name;
+    this.assumptions = structuredClone(profile.payload);
+    this.syncTogglesFromProfile(profile.payload);
+    this.cdr.markForCheck();
+  }
+
+  /** Align UI toggles with saved profile (matches server merge_profile / run overrides). */
+  private syncTogglesFromProfile(payload: ProfilePayload): void {
+    this.useTxSpending = payload.annual_spending == null;
+    this.useTxIncome = payload.monthly_income == null;
+    const contrib = payload.extra_contributions?.annual_contribution;
+    this.useManualNetCashflow = contrib != null;
+    this.useInferredAllocation = payload.portfolio_allocation == null;
+    this.useLedgerStartingNetWorth = payload.start_net_worth == null;
+    if (!this.useLedgerStartingNetWorth && payload.start_net_worth != null) {
+      this.startingNetWorth = payload.start_net_worth;
+    } else if (this.inputs) {
+      this.startingNetWorth = this.inputs.net_worth_total;
+    }
+  }
+
+  private resetAssumptionTogglesToDefaults(): void {
+    this.useTxSpending = true;
+    this.useTxIncome = true;
+    this.useManualNetCashflow = false;
+    this.useInferredAllocation = true;
+    this.useLedgerStartingNetWorth = true;
+    if (this.inputs) {
+      this.startingNetWorth = this.inputs.net_worth_total;
+    }
+  }
+
+  async deleteSelectedProfile(): Promise<void> {
+    if (this.selectedProfileId == null) return;
+    const profile = this.profiles.find(p => p.id === this.selectedProfileId);
+    const ok = await this.confirm.ask(
+      'Delete profile?',
+      `Remove saved inputs "${profile?.name ?? 'preset'}"?`,
+      'Delete',
+      'Cancel'
+    );
+    if (!ok) return;
+    const id = this.selectedProfileId;
+    this.planning
+      .deleteProfile(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.profiles = this.profiles.filter(p => p.id !== id);
+          this.selectedProfileId = null;
+          this.savedInputName = '';
+          this.cdr.markForCheck();
         },
       });
   }
@@ -238,6 +383,7 @@ export class PlanningComponent implements OnInit, OnDestroy {
     this.planning
       .createRun({
         tool_id: MC_TOOL_ID,
+        profile_id: this.selectedProfileId,
         overrides,
         seed: this.seed,
         n_paths: this.nPaths,
@@ -252,15 +398,13 @@ export class PlanningComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: run => {
-          this.lastRun = run;
-          const art = run.result_artifacts;
-          if (art.years && art.percentiles_by_year) {
-            this.chartData = {
-              years: art.years,
-              percentiles: art.percentiles_by_year,
-              fanPaths: art.fan_paths,
-            };
-          }
+          this.applyRunResult(run);
+          const p50 = run.result_summary?.terminal_p50;
+          const msg =
+            p50 != null
+              ? `Simulation complete — median ending net worth ${this.formatMoney(p50)}.`
+              : 'Simulation complete.';
+          this.toast.success(msg);
         },
         error: err => {
           this.error = err?.message ?? 'Simulation failed.';
@@ -271,9 +415,13 @@ export class PlanningComponent implements OnInit, OnDestroy {
   fanPathCaption(): string | null {
     const art = this.lastRun?.result_artifacts;
     const summary = this.lastRun?.result_summary;
-    const n = art?.n_paths_simulated ?? summary?.n_paths ?? art?.fan_paths?.length;
-    if (!n) return null;
-    return `Fan shows all ${n.toLocaleString()} simulated paths (same as Paths in run setup).`;
+    const simulated = art?.n_paths_simulated ?? summary?.n_paths;
+    const displayed = art?.fan_paths?.length ?? art?.fan_paths_displayed;
+    if (!simulated) return null;
+    if (displayed != null && displayed < simulated) {
+      return `Fan chart shows ${displayed.toLocaleString()} sample paths (evenly spaced from ${simulated.toLocaleString()} simulated). Percentiles use the full run.`;
+    }
+    return `Fan shows all ${simulated.toLocaleString()} simulated paths.`;
   }
 
   checkpointRows(): PlanningCheckpointResult[] {

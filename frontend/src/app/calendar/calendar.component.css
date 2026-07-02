@@ -98,6 +98,11 @@
   background: var(--surface-hover);
 }
 
+.day-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .day-btn.today {
   border-color: var(--accent);
 }

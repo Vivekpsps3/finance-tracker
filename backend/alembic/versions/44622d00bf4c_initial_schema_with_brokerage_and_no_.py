@@ -23,9 +23,8 @@ def upgrade() -> None:
     conn = op.get_bind()
     inspector = sa.inspect(conn)
 
-    # Drop old net worth history table (feature removed) - safe
-    if inspector.has_table("net_worth_snapshots"):
-        op.drop_table("net_worth_snapshots")
+    # Preserve any legacy net_worth_snapshots table. A later migration normalizes
+    # the table for observed balance-sheet snapshots.
 
     # Create brokerages table only if missing (safe for existing DBs)
     if not inspector.has_table("brokerages"):
@@ -75,17 +74,4 @@ def downgrade() -> None:
     op.drop_table('brokerage_accounts')
     op.drop_table('brokerages')
 
-    # Recreate snapshot table on downgrade (not really used)
-    op.create_table(
-        'net_worth_snapshots',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('recorded_at', sa.DateTime(), nullable=True),
-        sa.Column('cash', sa.Float(), nullable=True),
-        sa.Column('other_assets', sa.Float(), nullable=True),
-        sa.Column('portfolio', sa.Float(), nullable=True),
-        sa.Column('liabilities', sa.Float(), nullable=True),
-        sa.Column('total', sa.Float(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('ix_net_worth_snapshots_id', 'net_worth_snapshots', ['id'], unique=False)
-    op.create_index('ix_net_worth_snapshots_recorded_at', 'net_worth_snapshots', ['recorded_at'], unique=False)
+    # net_worth_snapshots intentionally not recreated — feature removed; do not restore legacy table.

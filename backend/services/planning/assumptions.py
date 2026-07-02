@@ -94,6 +94,19 @@ def merge_profile_payload(
     profile: Optional[PlanningProfileResponse],
     overrides: dict,
 ) -> ProfilePayload:
+    """Merge run ``overrides`` onto a saved profile (or empty defaults).
+
+    Rules (BE-010):
+    - Top-level keys from ``overrides`` replace or patch the base payload.
+    - When **both** base and override values for a key are ``dict`` (e.g.
+      ``extra_contributions``), keys are merged **one level** deep.
+    - **Lists** (``annual_cashflow_events``, ``checkpoints``, etc.) are **replaced
+      entirely** when present in ``overrides`` — not appended or merged.
+    - ``null`` in an override dict can clear nested keys (see tests).
+
+    API: ``POST /planning/v1/runs`` applies this before simulation; responses do
+    not echo the merged payload (see ``result_summary`` only).
+    """
     base = profile.payload if profile else ProfilePayload()
     merged = base.model_dump()
     for k, v in overrides.items():

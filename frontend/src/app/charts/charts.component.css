@@ -19,8 +19,19 @@
   grid-column: 1 / -1;
 }
 
+.chart-wrap {
+  height: var(--chart-embed-height);
+  min-height: var(--chart-embed-height);
+  transition: opacity 150ms var(--ease-standard);
+}
+
+.chart-wrap.chart-dim {
+  opacity: 0.55;
+}
+
 .chart-wrap.tall {
-  height: 320px;
+  height: var(--chart-tall-height);
+  min-height: var(--chart-tall-height);
 }
 
 .chart-note {

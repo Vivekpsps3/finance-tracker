@@ -29,7 +29,9 @@ def client():
 def test_health(client):
     r = client.get("/api/health")
     assert r.status_code == 200
-    assert r.json()["status"] == "ok"
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["database"] == "ok"
 
 
 def test_transaction_crud_and_net_worth(client):

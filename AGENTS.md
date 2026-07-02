@@ -1,121 +1,95 @@
-# Agent onboarding (read this first)
+# AI Agent Handoff
 
-All coding agents must read this file **before** changing the repo. **Code is the source of truth**; docs explain intent and conventions.
+Read this before changing code. This app is meant to be easy for future AI agents
+to resume with minimal rediscovery.
 
-## What this project is
+## Product Story
 
-Personal finance tracker (single-user, local-first): Angular 19 frontend, FastAPI + SQLite backend. Not production-multi-tenant without adding auth.
+Personal, self-hosted finance tracker. The user wants first-class support for:
 
-## Doc map
+- current net worth
+- spending and transaction review
+- investments and portfolio imports
+- planning/retirement analysis
+- official tax document storage and yearly summaries
+- later household users and SimpleFIN, but not now
 
-| Read when | Path |
-|-----------|------|
-| Setup & commands | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), root [README.md](README.md) |
-| Doc index | [docs/README.md](docs/README.md) |
-| Balance sheet rules | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) |
-| UI polish notes | [design-review/README.md](design-review/README.md) |
-| Angular UI rules | [docs/FRONTEND.md](docs/FRONTEND.md) |
-| UI debugging | [docs/UI_DEBUG_REPORT.md](docs/UI_DEBUG_REPORT.md) |
-| Backlog (non-blocking) | [docs/ENGINEERING_BACKLOG.md](docs/ENGINEERING_BACKLOG.md) |
-| Planning lab (speculative) | [docs/SPECULATIVE_ANALYTICS.md](docs/SPECULATIVE_ANALYTICS.md) |
+Deployment target is a domain-hosted website on a Raspberry Pi or similar. SQLite
+is acceptable and should default to a repo-local DB file, configurable with
+`DATABASE_URL`.
 
-## Repo layout
+## Hard Invariants
 
-```
-backend/     main.py, app.py, models.py, schemas.py, routers/, services/, migrations.py
-frontend/    src/app/{dashboard,transactions,portfolio,calendar,assets-liabilities (balance-sheet route),...}
-docs/        Human-oriented guides (keep in sync when behavior changes)
-```
+Do not blur these data planes:
 
-## Domain rules (critical)
+1. Net worth = current manual assets + portfolio market value - liabilities.
+2. Transactions are a card/spending ledger and do not change net worth.
+3. Net worth snapshots are observed balance-sheet valuations, not transaction
+   rollups.
+4. Planning is speculative and must not mutate assets, liabilities, holdings, or
+   transactions.
+5. Imported brokerage cash sweeps and manual cash assets can double count; the
+   app currently leaves that choice to the user and documents it.
+6. Tax documents are a separate review/vault plane. They do not update net
+   worth, transactions, or planning inputs.
 
-### Net worth (balance sheet)
+## Current Stack
 
-- **Net worth = (manual assets + portfolio market value) − liabilities.**
-- **Do not** derive net worth from income/expense transactions or bank/card imports.
-- **Portfolio** (`holdings` + market prices) is the investment asset slice; do not double-count brokerage cash as both a holding and a manual asset without user intent.
-- Net worth is always **current** (computed on demand from assets + portfolio market value − liabilities). No history/snapshots (feature removed for simplicity).
+- Backend: FastAPI, SQLAlchemy, SQLite, Alembic, yfinance price lookup.
+- Frontend: Angular 19 standalone components, Tailwind, Chart.js.
+- Imports today: Capital One CSV transactions, Fidelity CSV positions.
+- Tax docs today: upload/store/download/delete W-2, 1099, 1098, 5498, 1040,
+  state return, property tax, and other files; yearly summary aggregates
+  manually entered structured values.
+- Planned later: SimpleFIN. Plaid is not expected to work for this user.
 
-### Transactions (income & expenses)
+## Where To Look
 
-- Full **income and expense** ledger plus **bank CSV import** (`/api/imports/`, registry in `import_registry.py`).
-- Used for calendar, dashboard period charts, and **monthly totals on the Transactions page**.
-- **Does not** affect net worth or `record_net_worth_snapshot`.
-- Period filters on the dashboard apply to **insights/charts**, not the net worth hero (always current).
+- `docs/ARCHITECTURE.md`: one-page architecture.
+- `docs/DATA_MODEL.md`: financial formulas and table semantics.
+- `docs/FRONTEND.md`: Angular routes, shared UI, design conventions.
+- `docs/DESIGN_GUIDE.md`: page-level metrics, chart rules, visual standards.
+- `docs/DEPLOY.md`: production/domain deployment checklist.
+- `docs/ADDING_A_BANK_IMPORT.md`: add a new CSV bank importer.
+- `backend/models.py`: ORM tables.
+- `backend/services/finance.py`: net worth, imports, response mappers.
+- `frontend/src/app/services/finance.service.ts`: frontend API contract.
 
-## Speculative analytics & planning (implemented)
+## Recent Direction
 
-**What-if lab** is a single **Monte Carlo net worth** simulator (`mc_net_worth_paths`). Outputs are **not** ledger truth.
+The user clarified:
 
-**Design reference:** [docs/SPECULATIVE_ANALYTICS.md](docs/SPECULATIVE_ANALYTICS.md). **Tables:** [docs/DATA_MODEL.md](docs/DATA_MODEL.md#planning-lab-speculative).
+- all major finance surfaces matter; do not optimize for only budgeting or only
+  investments
+- current net worth must stay separate from transaction history
+- transactions are mostly card-based, but rent/utilities can be first-class
+  manual recurring/cashflow items later
+- CSV import is fine now; SimpleFIN later; Plaid later is not desired
+- domain access is required
+- DB location should be configurable, defaulting to a repo-local SQLite file
+- backups are user-managed for now
+- login/household users are later, not part of the current pass
+- tax UI must display important yearly and per-document values directly, not
+  hide them in backend-only metadata
 
-### Purpose
+## Implementation Notes
 
-- Let the user explore uncertainty (markets, inflation, spending, tax brackets) and long horizons (FI/retirement, runway, depletion) using **current** balance sheet, portfolio, liabilities, and transaction history as **inputs**.
-- Persist **assumption profiles** and **scenario runs** (seed, parameters, results) for reproducibility and comparison — separate from the ledger.
+Prefer additive API changes. Preserve current endpoints unless intentionally
+migrating them with tests and docs. Add tests for any financial invariant.
 
-### Hard rules (same as production domain)
+For tax work, keep `summary_json` as the stable structured-value contract.
+Future OCR/LLM extraction should populate the same fields rather than inventing
+a parallel model.
 
-- Simulations **must not** write to `assets`, `liabilities`, `holdings`, or `transactions`, and **must not** change how `GET /api/net-worth/` is computed.
-- Transaction aggregates are allowed only as **inputs** (e.g. average monthly spend, seasonality); they never become net worth.
-- Do **not** reintroduce net-worth snapshots/history as a by-product of planning runs.
-- Every planning/analytics API response should be clearly **speculative** (disclaimer + `as_of` for inputs). Tax outputs are **educational**, not filing advice; require user-configured jurisdiction/year rulesets.
+For UI work, keep operational density. Avoid marketing/landing pages. Use shared
+`ui-*` components where practical and keep cards for real grouped surfaces.
 
-### Architecture (as built)
-
-| Layer | Location |
-|-------|----------|
-| REST | `backend/routers/planning.py` — `/api/planning/v1` (`GET /inputs`, `POST /runs`, profiles CRUD optional) |
-| Snapshot | `backend/services/planning/snapshot.py`, `runner.py`, `tools_registry.py` (one tool) |
-| Engine | `backend/services/analytics/monte_carlo.py` |
-| UI | `frontend/src/app/planning/` — `/planning` Monte Carlo page + fan chart |
-| Client API | `PlanningService` (alongside `FinanceService`) |
-
-Read-only snapshots: `build_planning_snapshot()` + `snapshot_hash()` from `services/finance.compute_net_worth`, transactions summary, liabilities list. Runs persist in `planning_scenario_runs` with `input_snapshot_hash` and `input_as_of`.
-
-### Tool inventory
-
-Single registered tool: **`mc_net_worth_paths`** (`tools_registry.py`).
-
-### Agent checklist when changing planning
-
-1. Preserve ledger/net-worth invariants above.
-2. Keep `tools_registry.py` and `runner.py` in sync; test in `backend/tests/test_planning.py`.
-3. Run `make test-backend` and `npx ng build --configuration development`.
-
-## Engineering conventions
-
-### Backend
-
-- Routers in `backend/routers/`; domain logic in `backend/services/finance.py` and `services/market_data.py`.
-- Pydantic models in `schemas.py`; SQLAlchemy in `models.py`.
-- SQLite schema drift: extend `backend/migrations.py` for existing DBs.
-- Run tests: `make test-backend` from repo root.
-
-### Frontend
-
-- Standalone components, **OnPush**, shared primitives under `shared/ui` (`ui-*` selectors).
-- Central HTTP/state: `FinanceService`; dashboard uses `loadDashboard()` for coordinated fetch.
-- Design tokens: `frontend/src/theme/tokens.css`, `tailwind.config.js`.
-- Dev proxy: `frontend/proxy.conf.js` (`/api/**`); `apiUrl: '/api'` in `environment.development.ts`.
-
-## Safe change checklist
-
-1. Read affected router, service, and Angular feature component.
-2. Update API schema + `FinanceService` + models together (avoid half-migrated `cash` vs `other_assets`).
-3. Update **README.md** data model section and **docs/FRONTEND.md** routes table when adding pages.
-4. Run `make test-backend` and `cd frontend && npx ng build --configuration development`.
-
-## Commands
+Before finalizing a substantial change, run:
 
 ```bash
-make install   # once
-make dev       # API :8000 + UI :4200
 make test-backend
+cd frontend && npx ng build --configuration development
 ```
 
-## Do not
-
-- Expose the API publicly without authentication.
-- Commit `backend/finance.db` or secrets.
-- Break `FinanceService` method signatures without updating all callers and docs.
+If frontend tests need Chrome and fail due environment setup, report that
+explicitly.

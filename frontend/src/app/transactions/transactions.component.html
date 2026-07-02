@@ -47,12 +47,16 @@
       <ui-button variant="secondary" size="sm" (clicked)="exportToCsv()">Export CSV</ui-button>
     </div>
 
-    <div *ngIf="loading" class="loading-overlay" role="status">
+    <div *ngIf="loading || listLoading" class="loading-overlay" role="status">
       <span class="spinner-inline" aria-hidden="true"></span> Loading transactions…
     </div>
 
-    <div class="table-scroll" *ngIf="filteredTransactions.length > 0; else empty">
-      <table class="data-table tx-table" role="table" aria-label="Transactions history">
+    @if (hasMore && filteredTransactions.length > 0) {
+      <p class="list-hint">Monthly totals and table reflect loaded rows. Load more for older history.</p>
+    }
+
+    <div class="tx-table-wrap" *ngIf="filteredTransactions.length > 0; else empty">
+      <ui-data-table ariaLabel="Transactions history">
         <thead>
           <tr>
             <th scope="col" (click)="toggleSort('date')" class="sortable">Date {{ sortIcon('date') }}</th>
@@ -77,14 +81,22 @@
             <td class="amount-col" [class.positive]="tx.type === 'income'">
               {{ tx.type === 'income' ? '+' : '−' }}${{ tx.amount | number: '1.2-2' }}
             </td>
-            <td class="actions">
-              <button type="button" class="btn-edit" (click)="editTransaction(tx)">Edit</button>
-              <button type="button" class="btn-delete" (click)="deleteTransaction(tx)">Delete</button>
+            <td class="actions actions--row">
+              <ui-button variant="ghost" size="sm" (clicked)="editTransaction(tx)">Edit</ui-button>
+              <ui-button variant="ghost" size="sm" (clicked)="deleteTransaction(tx)">Delete</ui-button>
             </td>
           </tr>
         </tbody>
-      </table>
+      </ui-data-table>
     </div>
+
+    @if (hasMore && filteredTransactions.length > 0) {
+      <div class="load-more-row">
+        <ui-button variant="secondary" size="sm" (clicked)="loadMoreTransactions()" [disabled]="loadingMore">
+          {{ loadingMore ? 'Loading…' : 'Load more' }}
+        </ui-button>
+      </div>
+    }
 
     <ng-template #empty>
       @if (!loading) {
@@ -102,14 +114,13 @@
     <h3 id="import-modal-title">Import bank statement</h3>
 
     @if (importStep === 'upload') {
-      <div class="form-group">
-        <label for="import-bank">Bank</label>
-        <select id="import-bank" [(ngModel)]="selectedImportBankSlug" (ngModelChange)="onImportBankChange()">
-          @for (bank of importBanks; track bank.slug) {
-            <option [value]="bank.slug">{{ bank.name }}</option>
-          }
-        </select>
-      </div>
+      <ui-select
+        selectId="import-bank"
+        label="Bank"
+        [(value)]="selectedImportBankSlug"
+        [options]="importBankSelectOptions"
+        (valueChange)="onImportBankChange()"
+      />
       @if (selectedImportBank) {
         <p class="import-hint">{{ selectedImportBank.hint }}</p>
       }
@@ -121,10 +132,10 @@
         }
       </div>
       <div class="form-actions">
-        <button type="button" class="btn btn-primary" (click)="runImportPreview()" [disabled]="!importFile || importParsing">
+        <ui-button variant="primary" (clicked)="runImportPreview()" [disabled]="!importFile || importParsing">
           Preview import
-        </button>
-        <button type="button" class="btn btn-secondary" (click)="closeImportModal()">Cancel</button>
+        </ui-button>
+        <ui-button variant="secondary" (clicked)="closeImportModal()">Cancel</ui-button>
       </div>
     } @else {
       <p class="import-summary">
@@ -133,10 +144,10 @@
         ({{ importPreview?.summary?.total_parsed }} parsed)
       </p>
       <div class="import-preview-actions">
-        <button type="button" class="btn btn-secondary btn-sm" (click)="selectAllNewImportRows()">Select all new</button>
+        <ui-button variant="secondary" size="sm" (clicked)="selectAllNewImportRows()">Select all new</ui-button>
       </div>
       <div class="import-table-scroll">
-        <table class="data-table">
+        <ui-data-table ariaLabel="Import preview">
           <thead>
             <tr>
               <th></th>
@@ -161,22 +172,23 @@
                 <td>{{ row.category }}</td>
                 <td>{{ row.description }}</td>
                 <td>${{ row.amount | number: '1.2-2' }}</td>
-                <td><span class="badge" [class.duplicate]="row.status === 'duplicate'">{{ row.status }}</span></td>
+                <td>
+                  <ui-badge [variant]="row.status === 'duplicate' ? 'default' : 'success'">{{ row.status }}</ui-badge>
+                </td>
               </tr>
             }
           </tbody>
-        </table>
+        </ui-data-table>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn btn-secondary" (click)="importStep = 'upload'">Back</button>
-        <button
-          type="button"
-          class="btn btn-primary"
-          (click)="commitImport()"
+        <ui-button variant="secondary" (clicked)="importStep = 'upload'">Back</ui-button>
+        <ui-button
+          variant="primary"
+          (clicked)="commitImport()"
           [disabled]="importCommitting || importSelected.size === 0">
           Import {{ importSelected.size }} transaction(s)
-        </button>
-        <button type="button" class="btn btn-secondary" (click)="closeImportModal()">Cancel</button>
+        </ui-button>
+        <ui-button variant="secondary" (clicked)="closeImportModal()">Cancel</ui-button>
       </div>
     }
   </div>
@@ -214,8 +226,8 @@
         <input id="tx-desc" type="text" [(ngModel)]="newTx.description" name="description" />
       </div>
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="!txForm.form.valid || saving">Save</button>
-        <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancel</button>
+        <ui-button type="submit" variant="primary" [disabled]="!txForm.form.valid || saving">Save</ui-button>
+        <ui-button variant="secondary" (clicked)="closeModal()">Cancel</ui-button>
       </div>
     </form>
   </div>

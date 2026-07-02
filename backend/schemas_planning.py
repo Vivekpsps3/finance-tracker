@@ -10,6 +10,12 @@ SPECULATIVE_DISCLAIMER = (
     "Does not modify your ledger or net worth."
 )
 
+# Monte Carlo API limits (BE-002 / BE-003)
+MC_N_PATHS_MIN = 100
+MC_N_PATHS_MAX = 5000
+MC_HORIZON_YEARS_MAX = 80
+FAN_PATHS_PERSIST_MAX = 500
+
 
 class PlanningCheckpoint(BaseModel):
     label: str = Field(default="Goal", min_length=1, max_length=80)
@@ -144,14 +150,23 @@ class PlanningInputsPreview(BaseModel):
 class PlanningRunCreate(BaseModel):
     tool_id: str
     profile_id: Optional[int] = None
-    overrides: Dict[str, Any] = Field(default_factory=dict)
+    overrides: Dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Shallow merge over profile_id payload: nested dicts merge one level; "
+            "lists (events, checkpoints) replace entirely when provided."
+        ),
+    )
     seed: Optional[int] = 42
-    n_paths: Optional[int] = Field(default=100, ge=100, le=50000)
-    horizon_years: Optional[int] = Field(default=30, ge=1, le=80)
+    n_paths: Optional[int] = Field(default=100, ge=MC_N_PATHS_MIN, le=MC_N_PATHS_MAX)
+    horizon_years: Optional[int] = Field(default=30, ge=1, le=MC_HORIZON_YEARS_MAX)
 
 
 class PlanningRunResponse(BaseModel):
-    id: int
+    id: Optional[int] = Field(
+        default=None,
+        description="Ephemeral simulations are not stored; id is null.",
+    )
     tool_id: str
     profile_id: Optional[int]
     status: str
@@ -166,21 +181,6 @@ class PlanningRunResponse(BaseModel):
     result_artifacts: Dict[str, Any] = Field(default_factory=dict)
     started_at: datetime
     finished_at: Optional[datetime] = None
-
-
-class TxStatsRequest(BaseModel):
-    tool_id: str
-    category: Optional[str] = None
-    months: int = Field(default=24, ge=3, le=120)
-    overrides: Dict[str, Any] = Field(default_factory=dict)
-
-
-class TxStatsResponse(BaseModel):
-    disclaimer: str = SPECULATIVE_DISCLAIMER
-    tool_id: str
-    as_of: datetime
-    result_summary: Dict[str, Any] = Field(default_factory=dict)
-    result_artifacts: Dict[str, Any] = Field(default_factory=dict)
 
 
 class PlanningExportBundle(BaseModel):

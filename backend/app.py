@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
-load_dotenv()  # Load .env for local development (Plaid, DB, etc.)
+load_dotenv()  # Load .env for local development (DB, Redis, API_KEY, etc.)
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,8 +12,10 @@ from fastapi.responses import JSONResponse
 
 from logging_config import get_logger, redact_database_url, setup_logging, uvicorn_log_config
 from price_cache import EOD_MAX_AGE_HOURS, REDIS_URL
+from api_auth import ApiKeyMiddleware
+from rate_limit import RateLimitMiddleware
 from request_logging import RequestLoggingMiddleware
-from routers import assets, health, holdings, imports, liabilities, market, net_worth, planning, transactions
+from routers import assets, health, holdings, imports, liabilities, market, net_worth, planning, taxes, transactions
 
 setup_logging()
 logger = get_logger()
@@ -45,7 +47,15 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    application = FastAPI(title="Finance Tracker API", version="2.0.0", lifespan=lifespan)
+    disable_openapi = os.getenv("DISABLE_OPENAPI", "").lower() in ("1", "true", "yes")
+    application = FastAPI(
+        title="Finance Tracker API",
+        version="2.0.0",
+        lifespan=lifespan,
+        docs_url=None if disable_openapi else "/docs",
+        redoc_url=None if disable_openapi else "/redoc",
+        openapi_url=None if disable_openapi else "/openapi.json",
+    )
 
     cors_origins = os.getenv(
         "CORS_ORIGINS",
@@ -56,8 +66,10 @@ def create_app() -> FastAPI:
         allow_origins=[o.strip() for o in cors_origins if o.strip()],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-API-Key"],
     )
+    application.add_middleware(RateLimitMiddleware)
+    application.add_middleware(ApiKeyMiddleware)
     application.add_middleware(RequestLoggingMiddleware)
 
     @application.exception_handler(HTTPException)
@@ -92,6 +104,7 @@ def create_app() -> FastAPI:
     application.include_router(market.router, prefix=api_prefix)
     application.include_router(holdings.router, prefix=api_prefix)
     application.include_router(net_worth.router, prefix=api_prefix)
+    application.include_router(taxes.router, prefix=api_prefix)
     application.include_router(planning.router, prefix=api_prefix)
 
     return application

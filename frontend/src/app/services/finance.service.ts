@@ -29,6 +29,11 @@ import {
   ImportPreviewRow,
   Liability,
   LiabilityCreate,
+  NetWorthSnapshot,
+  TaxDocument,
+  TaxDocumentType,
+  TaxSummaryValues,
+  TaxYearSummary,
   Transaction,
   TransactionCreate,
 } from '../models/transaction.model';
@@ -37,6 +42,7 @@ export type DashboardLoadResult = [
   Transaction[],
   Holding[],
   NetWorth,
+  NetWorthSnapshot[],
 ];
 
 @Injectable({ providedIn: 'root' })
@@ -44,12 +50,14 @@ export class FinanceService {
   private _transactions = new BehaviorSubject<Transaction[]>([]);
   private _holdings = new BehaviorSubject<Holding[]>([]);
   private _netWorth = new BehaviorSubject<NetWorth | null>(null);
+  private _netWorthSnapshots = new BehaviorSubject<NetWorthSnapshot[]>([]);
   private _assets = new BehaviorSubject<Asset[]>([]);
   private _liabilities = new BehaviorSubject<Liability[]>([]);
 
   transactions$ = this._transactions.asObservable();
   holdings$ = this._holdings.asObservable();
   netWorth$ = this._netWorth.asObservable();
+  netWorthSnapshots$ = this._netWorthSnapshots.asObservable();
   assets$ = this._assets.asObservable();
   liabilities$ = this._liabilities.asObservable();
 
@@ -69,9 +77,10 @@ export class FinanceService {
     }
     if (!this.dashboardLoad$) {
       this.dashboardLoad$ = forkJoin([
-        this.getTransactions(),
+        this.getTransactions({ limit: 5000 }),
         this.getHoldings(false),
         this.getNetWorth(),
+        this.getNetWorthSnapshots(),
       ]).pipe(
         shareReplay({ bufferSize: 1, refCount: false }),
         catchError(err => {
@@ -93,7 +102,7 @@ export class FinanceService {
 
   private refreshAfterImport(): void {
     this.invalidateDashboardCache();
-    this.getTransactions().pipe(take(1)).subscribe();
+    this.getTransactions({ limit: 5000 }).pipe(take(1)).subscribe();
   }
 
   /**
@@ -104,9 +113,10 @@ export class FinanceService {
     this.dashboardLoad$ = null;
     this.isLoading.next(true);
     return forkJoin([
-      this.getTransactions(),
+      this.getTransactions({ limit: 5000 }),
       this.getHoldings(false),
       this.getNetWorth(),
+      this.getNetWorthSnapshots(),
     ]).pipe(
       timeout(60_000),
       tap({
@@ -122,13 +132,41 @@ export class FinanceService {
     );
   }
 
-  getTransactions(search?: string): Observable<Transaction[]> {
-    let params = new HttpParams().set('limit', '5000');
-    if (search?.trim()) {
-      params = params.set('search', search.trim());
+  /**
+   * List transactions. Dashboard uses a high limit; the transactions page paginates with skip/limit.
+   */
+  getTransactions(options?: {
+    search?: string;
+    skip?: number;
+    limit?: number;
+    append?: boolean;
+  }): Observable<Transaction[]> {
+    const search = options?.search?.trim();
+    const skip = options?.skip ?? 0;
+    const limit = options?.limit ?? 5000;
+    const append = options?.append ?? false;
+
+    let params = new HttpParams().set('skip', String(skip)).set('limit', String(limit));
+    if (search) {
+      params = params.set('search', search);
     }
     return this.http.get<Transaction[]>(apiUrl('/transactions/'), { params }).pipe(
-      tap(data => this._transactions.next(data))
+      tap(data => {
+        if (append) {
+          const existing = this._transactions.value;
+          const seen = new Set(existing.map(t => t.id));
+          const merged = [...existing];
+          for (const t of data) {
+            if (!seen.has(t.id)) {
+              merged.push(t);
+              seen.add(t.id);
+            }
+          }
+          this._transactions.next(merged);
+        } else {
+          this._transactions.next(data);
+        }
+      })
     );
   }
 
@@ -136,7 +174,6 @@ export class FinanceService {
     return this.http.post<Transaction>(apiUrl('/transactions/'), tx).pipe(
       tap(created => {
         this._transactions.next([created, ...this._transactions.value]);
-        this.refreshDerivedMetrics();
       })
     );
   }
@@ -147,7 +184,6 @@ export class FinanceService {
         this._transactions.next(
           this._transactions.value.map(t => (t.id === id ? updated : t))
         );
-        this.refreshDerivedMetrics();
       })
     );
   }
@@ -156,7 +192,6 @@ export class FinanceService {
     return this.http.delete<{ ok: boolean }>(apiUrl(`/transactions/${id}`)).pipe(
       tap(() => {
         this._transactions.next(this._transactions.value.filter(t => t.id !== id));
-        this.refreshDerivedMetrics();
       })
     );
   }
@@ -244,6 +279,23 @@ export class FinanceService {
   getNetWorth(): Observable<NetWorth> {
     return this.http.get<NetWorth>(apiUrl('/net-worth/')).pipe(
       tap(data => this._netWorth.next(data))
+    );
+  }
+
+  getNetWorthSnapshots(limit = 120): Observable<NetWorthSnapshot[]> {
+    const params = new HttpParams().set('limit', String(limit));
+    return this.http.get<NetWorthSnapshot[]>(apiUrl('/net-worth/snapshots'), { params }).pipe(
+      tap(data => this._netWorthSnapshots.next(data))
+    );
+  }
+
+  recordNetWorthSnapshot(note?: string): Observable<NetWorthSnapshot> {
+    return this.http.post<NetWorthSnapshot>(apiUrl('/net-worth/snapshots'), {
+      note: note?.trim() || undefined,
+    }).pipe(
+      tap(created => {
+        this._netWorthSnapshots.next([created, ...this._netWorthSnapshots.value]);
+      })
     );
   }
 
@@ -400,5 +452,47 @@ export class FinanceService {
         this.getHoldings().pipe(take(1)).subscribe();
       })
     );
+  }
+
+  getTaxDocuments(taxYear?: number): Observable<TaxDocument[]> {
+    let params = new HttpParams();
+    if (taxYear) {
+      params = params.set('tax_year', String(taxYear));
+    }
+    return this.http.get<TaxDocument[]>(apiUrl('/taxes/documents'), { params });
+  }
+
+  getTaxYearSummary(taxYear: number): Observable<TaxYearSummary> {
+    return this.http.get<TaxYearSummary>(apiUrl(`/taxes/years/${taxYear}/summary`));
+  }
+
+  uploadTaxDocument(body: {
+    taxYear: number;
+    documentType: TaxDocumentType;
+    file: File;
+    issuer?: string;
+    taxpayer?: string;
+    notes?: string;
+    summary?: TaxSummaryValues;
+  }): Observable<TaxDocument> {
+    const form = new FormData();
+    form.append('tax_year', String(body.taxYear));
+    form.append('document_type', body.documentType);
+    form.append('file', body.file, body.file.name);
+    if (body.issuer?.trim()) form.append('issuer', body.issuer.trim());
+    if (body.taxpayer?.trim()) form.append('taxpayer', body.taxpayer.trim());
+    if (body.notes?.trim()) form.append('notes', body.notes.trim());
+    if (body.summary) form.append('summary_json', JSON.stringify(body.summary));
+    return this.http.post<TaxDocument>(apiUrl('/taxes/documents'), form);
+  }
+
+  downloadTaxDocument(documentId: number): Observable<Blob> {
+    return this.http.get(apiUrl(`/taxes/documents/${documentId}/download`), {
+      responseType: 'blob',
+    });
+  }
+
+  deleteTaxDocument(documentId: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(apiUrl(`/taxes/documents/${documentId}`));
   }
 }

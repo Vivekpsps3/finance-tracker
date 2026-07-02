@@ -13,7 +13,13 @@ from services.planning.assumptions import merge_profile_payload
 from services.planning.snapshot import build_planning_snapshot, snapshot_hash
 from services.planning.tools_registry import all_tool_ids
 from services.analytics.monte_carlo import mc_net_worth_paths
-from schemas_planning import PlanningCashflowEvent, PlanningProfileResponse, ProfilePayload
+from schemas_planning import (
+    FAN_PATHS_PERSIST_MAX,
+    PlanningCashflowEvent,
+    PlanningCheckpoint,
+    PlanningProfileResponse,
+    ProfilePayload,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -181,9 +187,72 @@ def test_mc_run_api(client):
     assert run.status_code == 200
     body = run.json()
     assert body["status"] == "completed"
+    assert body["id"] is None
     assert body["result_summary"]["success_rate_pct"] is not None
     assert body["result_artifacts"]["percentiles_by_year"]["p50"]
     assert body["disclaimer"]
+
+
+def test_mc_run_api_same_seed_same_terminal_p50(client):
+    client.post(
+        "/api/assets/",
+        json={
+            "name": "Cash",
+            "category": "cash",
+            "current_value": 400_000,
+            "as_of_date": str(date.today()),
+        },
+    )
+    payload = {
+        "tool_id": "mc_net_worth_paths",
+        "overrides": {"annual_spending": 55_000},
+        "seed": 4242,
+        "n_paths": 400,
+        "horizon_years": 15,
+    }
+    r1 = client.post("/api/planning/v1/runs", json=payload)
+    r2 = client.post("/api/planning/v1/runs", json=payload)
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    p50_1 = r1.json()["result_summary"]["terminal_p50"]
+    p50_2 = r2.json()["result_summary"]["terminal_p50"]
+    assert p50_1 == p50_2
+
+
+def test_mc_persisted_fan_paths_capped_via_api(client):
+    client.post(
+        "/api/assets/",
+        json={
+            "name": "Cash",
+            "category": "cash",
+            "current_value": 100_000,
+            "as_of_date": str(date.today()),
+        },
+    )
+    run = client.post(
+        "/api/planning/v1/runs",
+        json={
+            "tool_id": "mc_net_worth_paths",
+            "overrides": {"annual_spending": 40_000},
+            "seed": 7,
+            "n_paths": 2000,
+            "horizon_years": 10,
+        },
+    )
+    assert run.status_code == 200
+    art = run.json()["result_artifacts"]
+    assert len(art["fan_paths"]) <= FAN_PATHS_PERSIST_MAX
+    assert art["n_paths_simulated"] == 2000
+    assert art["fan_paths_displayed"] == FAN_PATHS_PERSIST_MAX
+
+
+def test_mc_fan_paths_downsampled_in_engine():
+    snapshot = _minimal_snapshot(250_000.0)
+    _, artifacts = mc_net_worth_paths(
+        snapshot, ProfilePayload(annual_spending=50_000.0), horizon_years=5, n_paths=1200, seed=99
+    )
+    assert len(artifacts["fan_paths"]) == FAN_PATHS_PERSIST_MAX
+    assert artifacts["n_paths_simulated"] == 1200
 
 
 def test_unknown_tool_rejected(client):
@@ -298,6 +367,33 @@ def test_mc_recurring_half_year_interval():
     assert amounts[1] == 2_000.0  # t=1.5 and 2.0 in year 2
 
 
+def test_merge_profile_payload_lists_replaced_not_merged():
+    base_event = PlanningCashflowEvent(label="Base", amount=-1_000.0, year=2, recurring=False)
+    payload = ProfilePayload(
+        annual_cashflow_events=[base_event],
+        checkpoints=[PlanningCheckpoint(label="A", year=5, target_net_worth=1_000_000)],
+    )
+    profile = PlanningProfileResponse(
+        id=1,
+        name="Base",
+        base_currency="USD",
+        payload=payload,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    override_event = PlanningCashflowEvent(label="Only", amount=-9_000.0, year=3, recurring=False)
+    merged = merge_profile_payload(
+        profile,
+        {
+            "annual_cashflow_events": [override_event.model_dump()],
+            "checkpoints": [],
+        },
+    )
+    assert len(merged.annual_cashflow_events) == 1
+    assert merged.annual_cashflow_events[0].label == "Only"
+    assert merged.checkpoints == []
+
+
 def test_merge_profile_payload_null_clears_manual_net_cashflow():
     payload = ProfilePayload(extra_contributions={"annual_contribution": 25_000.0})
     profile = PlanningProfileResponse(
@@ -337,3 +433,50 @@ def test_inputs_implied_spending_matches_mc_when_zero_tx_expense(client):
     assert mc_summary["spend_assumption_source"] == "default_fallback_40000"
     assert inputs["implied_annual_spending"] == mc_summary["annual_spending_start"]
     assert inputs["annual_spending_source"] == "default_fallback_40000"
+
+
+def test_mc_run_not_persisted(client):
+    run = client.post(
+        "/api/planning/v1/runs",
+        json={
+            "tool_id": "mc_net_worth_paths",
+            "overrides": {"annual_spending": 50_000},
+            "seed": 11,
+            "n_paths": 200,
+            "horizon_years": 8,
+        },
+    )
+    assert run.status_code == 200
+    body = run.json()
+    assert body.get("id") is None
+    assert body["status"] == "completed"
+    from database import SessionLocal
+    from models import PlanningScenarioRun
+
+    db = SessionLocal()
+    try:
+        assert db.query(PlanningScenarioRun).count() == 0
+    finally:
+        db.close()
+
+
+def test_mc_run_wall_clock_timeout(client, monkeypatch):
+    import time
+
+    def slow_mc(*args, **kwargs):
+        time.sleep(3)
+        return ({}, {})
+
+    monkeypatch.setenv("MC_RUN_TIMEOUT_SEC", "1")
+    monkeypatch.setattr("services.analytics.monte_carlo.mc_net_worth_paths", slow_mc)
+    r = client.post(
+        "/api/planning/v1/runs",
+        json={
+            "tool_id": "mc_net_worth_paths",
+            "n_paths": 100,
+            "horizon_years": 2,
+            "seed": 1,
+        },
+    )
+    assert r.status_code == 504
+    assert "timed out" in r.json()["detail"].lower()

@@ -137,6 +137,57 @@ def test_fidelity_commit_changes_net_worth_via_portfolio(client, monkeypatch):
     assert nw_after["total"] == nw_before + 2000.0
 
 
+MULTI_ACCOUNT_CSV = """Account Number,Account Name,Symbol,Quantity,Average Cost Basis
+Z111,Individual,VOO,1,100
+Z222,Roth IRA,VT,2,50
+"""
+
+
+def test_fidelity_multi_account_preview_lists_two_accounts(client):
+    files = {"file": ("multi.csv", MULTI_ACCOUNT_CSV, "text/csv")}
+    r = client.post("/api/imports/fidelity/preview", files=files)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["summary"]["accounts"] == 2
+    assert body["summary"]["positions"] == 2
+    masks = {row["account_mask"] for row in body["rows"]}
+    assert masks == {"Z111", "Z222"}
+
+
+def test_fidelity_multi_account_commit_replaces_per_account(client, monkeypatch):
+    monkeypatch.setattr(
+        "main.market_data.get_price",
+        lambda symbol, force_refresh=False, db=None: (10.0, "live", None),
+    )
+
+    preview = client.post(
+        "/api/imports/fidelity/preview",
+        files={"file": ("multi.csv", MULTI_ACCOUNT_CSV, "text/csv")},
+    ).json()
+    commit = client.post(
+        "/api/imports/fidelity/commit",
+        json={
+            "filename": "multi.csv",
+            "rows": [
+                {
+                    "account_mask": row["account_mask"],
+                    "symbol": row["symbol"],
+                    "shares": row["shares"],
+                    "avg_cost_basis": row["avg_cost_basis"],
+                }
+                for row in preview["rows"]
+            ],
+        },
+    )
+    assert commit.status_code == 200
+    assert commit.json()["inserted"] == 2
+    holdings = client.get("/api/holdings/").json()
+    brokerage = [h for h in holdings if h.get("brokerage_account_id")]
+    assert len(brokerage) == 2
+    symbols = {h["symbol"] for h in brokerage}
+    assert symbols == {"VOO", "VT"}
+
+
 def test_fidelity_second_commit_replaces_not_appends(client, monkeypatch):
     monkeypatch.setattr(
         "main.market_data.get_price",

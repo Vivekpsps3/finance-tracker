@@ -9,23 +9,24 @@
   </ui-page-header>
 
   @if (netWorth) {
-    <ui-card class="summary-card">
-      <div class="summary-grid">
-        <div>
+    <ui-card class="summary-card net-worth-hero">
+      <p class="section-eyebrow">Net worth</p>
+      <div class="stat-display money" aria-live="polite">${{ netWorth.total | number: '1.2-2' }}</div>
+      <div class="summary-grid breakdown-row">
+        <div class="breakdown-item">
+          <ui-icon name="building" size="sm" />
           <span class="summary-label">Other assets</span>
-          <strong>${{ netWorth.other_assets | number: '1.2-2' }}</strong>
+          <strong class="money">${{ netWorth.other_assets | number: '1.2-2' }}</strong>
         </div>
-        <div>
+        <div class="breakdown-item">
+          <ui-icon name="trending" size="sm" />
           <span class="summary-label">Investments</span>
-          <strong>${{ netWorth.portfolio | number: '1.2-2' }}</strong>
+          <strong class="money">${{ netWorth.portfolio | number: '1.2-2' }}</strong>
         </div>
-        <div>
+        <div class="breakdown-item">
+          <ui-icon name="credit-card" size="sm" />
           <span class="summary-label">Liabilities</span>
-          <strong class="negative">${{ netWorth.liabilities | number: '1.2-2' }}</strong>
-        </div>
-        <div>
-          <span class="summary-label">Net worth</span>
-          <strong class="hero">${{ netWorth.total | number: '1.2-2' }}</strong>
+          <strong class="money negative">−${{ netWorth.liabilities | number: '1.2-2' }}</strong>
         </div>
       </div>
       <p class="hint">Income transactions do not change these totals—update balances here when they change.</p>
@@ -34,8 +35,7 @@
 
   <ui-card title="Assets">
     @if (assets.length) {
-      <ui-data-table>
-      <table class="data-table" aria-label="Assets">
+      <ui-data-table ariaLabel="Assets">
         <thead>
           <tr>
             <th>Name</th>
@@ -52,14 +52,13 @@
               <td>{{ row.category | formatCategory }}</td>
               <td>${{ row.current_value | number: '1.2-2' }}</td>
               <td>{{ row.as_of_date }}</td>
-              <td class="actions">
-                <button type="button" class="btn-edit" (click)="openEditAsset(row)">Edit</button>
-                <button type="button" class="btn-delete" (click)="deleteAsset(row)">Delete</button>
+              <td class="actions actions--row">
+                <ui-button variant="ghost" size="sm" (clicked)="openEditAsset(row)">Edit</ui-button>
+                <ui-button variant="danger" size="sm" (clicked)="deleteAsset(row)">Delete</ui-button>
               </td>
             </tr>
           }
         </tbody>
-      </table>
       </ui-data-table>
     } @else {
       <ui-empty-state message="Add checking, savings, property, or other asset balances.">
@@ -70,8 +69,7 @@
 
   <ui-card title="Liabilities">
     @if (liabilities.length) {
-      <ui-data-table>
-      <table class="data-table" aria-label="Liabilities">
+      <ui-data-table ariaLabel="Liabilities">
         <thead>
           <tr>
             <th>Name</th>
@@ -88,14 +86,13 @@
               <td>{{ row.category | formatCategory }}</td>
               <td>${{ row.balance_owed | number: '1.2-2' }}</td>
               <td>{{ row.as_of_date }}</td>
-              <td class="actions">
-                <button type="button" class="btn-edit" (click)="openEditLiability(row)">Edit</button>
-                <button type="button" class="btn-delete" (click)="deleteLiability(row)">Delete</button>
+              <td class="actions actions--row">
+                <ui-button variant="ghost" size="sm" (clicked)="openEditLiability(row)">Edit</ui-button>
+                <ui-button variant="danger" size="sm" (clicked)="deleteLiability(row)">Delete</ui-button>
               </td>
             </tr>
           }
         </tbody>
-      </table>
       </ui-data-table>
     } @else {
       <ui-empty-state message="Add mortgages, loans, or credit card balances you owe.">
