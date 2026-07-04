@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
+from auth import get_current_user
 from database import get_db
-from models import TaxDocumentType
+from models import TaxDocumentType, User
 from schemas import TaxDocumentResponse, TaxYearSummary
 from services.taxes import (
     delete_tax_document,
@@ -23,8 +24,9 @@ router = APIRouter(tags=["taxes"])
 def get_tax_documents(
     tax_year: Optional[int] = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    return list_tax_documents(db, tax_year=tax_year)
+    return list_tax_documents(db, current_user.id, tax_year=tax_year)
 
 
 @router.post("/taxes/documents", response_model=TaxDocumentResponse)
@@ -37,6 +39,7 @@ async def upload_tax_document(
     notes: Optional[str] = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return await store_tax_document(
         db,
@@ -47,17 +50,18 @@ async def upload_tax_document(
         summary_json=summary_json,
         notes=notes,
         file=file,
+        user_id=current_user.id,
     )
 
 
 @router.get("/taxes/years/{tax_year}/summary", response_model=TaxYearSummary)
-def get_tax_year_summary(tax_year: int, db: Session = Depends(get_db)):
-    return summarize_tax_year(db, tax_year)
+def get_tax_year_summary(tax_year: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return summarize_tax_year(db, current_user.id, tax_year)
 
 
 @router.get("/taxes/documents/{document_id}/download")
-def download_tax_document(document_id: int, db: Session = Depends(get_db)):
-    doc = get_tax_document(db, document_id)
+def download_tax_document(document_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    doc = get_tax_document(db, current_user.id, document_id)
     safe_filename = "".join(ch if ch.isprintable() and ch not in '"\r\n;' else "_" for ch in doc.filename)
     headers = {
         "Content-Disposition": (
@@ -70,5 +74,5 @@ def download_tax_document(document_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/taxes/documents/{document_id}")
-def remove_tax_document(document_id: int, db: Session = Depends(get_db)):
-    return delete_tax_document(db, document_id)
+def remove_tax_document(document_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return delete_tax_document(db, current_user.id, document_id)

@@ -1,10 +1,17 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './core/layout/main-layout.component';
+import { adminGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
   {
+    path: 'login',
+    title: 'Sign in · Finance',
+    loadComponent: () => import('./auth/login.component').then(m => m.LoginComponent),
+  },
+  {
     path: '',
     component: MainLayoutComponent,
+    canActivate: [authGuard],
     children: [
       {
         path: '',
@@ -43,6 +50,14 @@ export const routes: Routes = [
         title: 'Planning · Finance',
         loadComponent: () =>
           import('./planning/planning.component').then(m => m.PlanningComponent),
+      },
+
+      {
+        path: 'admin/users',
+        title: 'Users · Finance',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./admin/users/admin-users.component').then(m => m.AdminUsersComponent),
       },
       {
         path: 'taxes',

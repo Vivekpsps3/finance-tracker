@@ -1,0 +1,87 @@
+from datetime import datetime
+from typing import Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+UserRoleValue = Literal["admin", "user"]
+
+
+class EmailMixin(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def email_basic(cls, value: str) -> str:
+        clean = value.strip().lower()
+        if "@" not in clean or clean.startswith("@") or clean.endswith("@"):
+            raise ValueError("Invalid email")
+        return clean
+
+
+class UserPublic(EmailMixin):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    display_name: str
+    role: UserRoleValue
+    is_active: bool
+    must_change_password: bool
+    created_at: datetime
+    updated_at: datetime
+    last_login_at: Optional[datetime] = None
+
+
+class LoginRequest(EmailMixin):
+    password: str = Field(..., min_length=1)
+
+
+class LoginResponse(BaseModel):
+    user: UserPublic
+    csrf_token: str
+
+
+class MeResponse(BaseModel):
+    user: UserPublic
+    csrf_token: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=12, max_length=256)
+
+
+class AdminUserCreate(EmailMixin):
+    display_name: str = Field(..., min_length=1, max_length=160)
+    role: UserRoleValue = "user"
+    password: str = Field(..., min_length=12, max_length=256)
+    must_change_password: bool = True
+
+
+class AdminUserUpdate(BaseModel):
+    display_name: Optional[str] = Field(None, min_length=1, max_length=160)
+    role: Optional[UserRoleValue] = None
+    is_active: Optional[bool] = None
+    must_change_password: Optional[bool] = None
+
+
+class AdminPasswordReset(BaseModel):
+    new_password: str = Field(..., min_length=12, max_length=256)
+    must_change_password: bool = True
+
+
+class BootstrapStatusResponse(BaseModel):
+    needs_setup: bool
+
+
+class BootstrapRequest(EmailMixin):
+    display_name: str = Field(..., min_length=1, max_length=160)
+    password: str = Field(..., min_length=12, max_length=256)
+
+
+class SignupRequest(EmailMixin):
+    display_name: str = Field(..., min_length=1, max_length=160)
+    password: str = Field(..., min_length=12, max_length=256)
+
+
+class AdminSqlRequest(BaseModel):
+    sql: str = Field(..., min_length=1, max_length=10000)

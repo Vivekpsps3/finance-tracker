@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, model, signal } from '@angular/core';
 
 let uiInputIdSeq = 0;
 
@@ -19,7 +19,18 @@ export class UiInputComponent {
   required = input(false);
   autocomplete = input<string | undefined>(undefined);
   describedBy = input<string | undefined>(undefined);
+  showPasswordToggle = input(false);
+  passwordVisible = signal(false);
 
   private readonly fallbackId = `ui-input-${++uiInputIdSeq}`;
   readonly resolvedId = computed(() => this.inputId() ?? this.fallbackId);
+  readonly resolvedType = computed(() => {
+    if (this.type() !== 'password' || !this.showPasswordToggle()) return this.type();
+    return this.passwordVisible() ? 'text' : 'password';
+  });
+
+  togglePasswordVisibility(): void {
+    if (this.disabled()) return;
+    this.passwordVisible.update(visible => !visible);
+  }
 }

@@ -1,6 +1,6 @@
 # Production / domain deployment checklist
 
-This app is **local-first and single-user**. Use this list only if the API is reachable beyond your own machine.
+This app is **local-first with app-native user accounts**. Use this list when the UI/API is reachable beyond your own machine.
 
 The current intended deployment is a domain-accessible website on a Raspberry Pi
 or similar host:
@@ -16,13 +16,14 @@ domain / LAN / VPN
 
 | Step | Action |
 |------|--------|
-| 1 | Choose an auth mode: external auth in front of `web`, or trusted reverse proxy that injects an upstream `X-API-Key`. Do **not** bake a shared API key into static Angular files. |
-| 2 | Bind the API privately or place it behind a reverse proxy with TLS and auth. Do not run `uvicorn` on `0.0.0.0` on a public host without protection. |
+| 1 | Put TLS in front of the web container and keep the API private to Compose or loopback. |
+| 2 | Open `/login` on a fresh database and create the first admin in setup mode; use `/admin/users` after that. |
 | 3 | Set **`CORS_ORIGINS`** to your UI origin(s) only (comma-separated). Avoid `*`. |
-| 4 | **`allow_credentials=True`** is enabled in CORS today for dev; with cookie-less API keys this is harmless. If you add cookie sessions later, keep origins explicit and never combine `*` with credentials. |
-| 5 | Set **`DISABLE_OPENAPI=1`** to hide `/docs` and `/redoc` on exposed hosts. |
-| 6 | Optional **`RATE_LIMIT_PER_MIN=60`** to throttle `POST /api/planning/v1/runs` and import preview/commit. |
-| 7 | **`ALEMBIC_STRICT=1`** (default): fail startup if migrations cannot upgrade. |
+| 4 | Keep **`allow_credentials=True`** and explicit origins because browser auth uses cookies. |
+| 5 | Set **`SESSION_COOKIE_SECURE=1`** for HTTPS deployments. Use `0` only for local HTTP development. |
+| 6 | Set **`DISABLE_OPENAPI=1`** to hide `/docs` and `/redoc` on exposed hosts. |
+| 7 | Optional **`RATE_LIMIT_PER_MIN=60`** to throttle `POST /api/planning/v1/runs` and import preview/commit. |
+| 8 | **`ALEMBIC_STRICT=1`** (default): fail startup if migrations cannot upgrade. |
 
 ## Data & backups
 
@@ -63,52 +64,37 @@ mount too. The default bind mount is the parent data directory:
 The API container uses `sqlite:////data/finance.db`, so the SQLite database is
 still a normal file on the host.
 
-## Domain recipe with Caddy
+## Domain reverse proxy recipe
 
-Run Compose on the Pi, then put Caddy on the same host:
+Run Compose on the host, then proxy HTTPS traffic to the loopback web port. Finance Tracker handles login and account management inside the app.
 
 ```caddyfile
 finance.example.com {
-  basicauth {
-    your-user $2a$14$replace-with-caddy-hash
-  }
-
   reverse_proxy 127.0.0.1:8080
 }
 ```
 
-Generate the password hash:
+Create the first admin by opening `/login` after the API starts. After that, `/login` allows self-service signup for normal users, and admins can manage all accounts at `/admin/users`. The CLI command is available for recovery or automation:
 
 ```bash
-caddy hash-password
+docker compose exec api python manage.py create-admin --email you@example.com --display-name "Your Name"
 ```
-
-For this mode, keep `API_KEY` unset because Caddy protects the whole website.
-If you set `API_KEY`, configure Caddy to inject it only on upstream `/api/*`
-requests after user auth:
-
-```caddyfile
-handle /api/* {
-  reverse_proxy 127.0.0.1:8080 {
-    header_up X-API-Key {env.FINANCE_API_KEY}
-  }
-}
-```
-
-Static browser JavaScript should never contain the API key.
 
 ## Environment reference
 
 | Variable | Purpose |
 |----------|---------|
 | `DATABASE_URL` | SQLite path (default `sqlite:///./finance.db`) |
-| `API_KEY` | Optional shared secret for `/api/*` |
+| `API_KEY` | Optional legacy shared secret for non-browser API clients; normally unset for the web app |
 | `CORS_ORIGINS` | Allowed browser origins |
 | `RATE_LIMIT_PER_MIN` | Optional POST throttle |
 | `DEBUG_HEALTH=1` | Include `cache_size` in `/api/health` (dev only; BE-017 / OPS-008) |
 | `LOG_SQL` | **Avoid in prod** — logs SQL with financial row data (SEC-006) |
 | `ALEMBIC_STRICT` | `1` (default) fail startup on migration errors |
 | `DISABLE_OPENAPI` | `1` hides `/docs` on exposed hosts |
+| `SESSION_DAYS` | Session lifetime in days |
+| `SESSION_COOKIE_SECURE` | `1` for HTTPS, `0` only for local HTTP |
+| `SESSION_COOKIE_SAMESITE` | Cookie SameSite setting, default `lax` |
 
 ## Logging (OPS-011)
 
@@ -120,7 +106,8 @@ Static browser JavaScript should never contain the API key.
 
 Before go-live, confirm:
 
-- `API_KEY` set when the API is not loopback-only.
+- First admin exists, can log in, and can open `/admin/users`.
+- `SESSION_COOKIE_SECURE=1` on HTTPS deployments.
 - `CORS_ORIGINS` lists only your UI origin(s).
 - `DATABASE_URL` points at a backed-up SQLite file or mounted volume.
 - `ALEMBIC_STRICT=1` and startup logs show successful migration.
@@ -129,7 +116,5 @@ Before go-live, confirm:
 
 ## Current non-goals
 
-- No app-native household login yet; use Caddy, Cloudflare Access, Tailscale, or
-  another external auth layer for domain exposure.
 - No automated backup job yet; the user manages backups manually for now.
 - No Plaid integration planned. SimpleFIN is the likely future aggregation path.

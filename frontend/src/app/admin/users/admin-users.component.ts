@@ -1,0 +1,190 @@
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { apiUrl } from '../../core/api-url';
+import { AuthService } from '../../auth/auth.service';
+import { AuthUser, UserRole } from '../../auth/auth.models';
+import { UiButtonComponent, UiDataTableComponent, UiInputComponent, UiPageHeaderComponent } from '../../shared/ui';
+
+interface AdminMetrics {
+  totals: Record<string, number>;
+  finance_rows: Record<string, number>;
+  per_user: Array<Record<string, string | number | boolean>>;
+  tables: Array<{ name: string; rows: number | null }>;
+}
+
+interface SqlResult {
+  columns: string[];
+  rows: Array<Record<string, unknown>>;
+  row_count: number;
+  truncated: boolean;
+}
+
+@Component({
+  selector: 'app-admin-users',
+  standalone: true,
+  imports: [FormsModule, UiButtonComponent, UiDataTableComponent, UiInputComponent, UiPageHeaderComponent],
+  templateUrl: './admin-users.component.html',
+  styleUrl: './admin-users.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class AdminUsersComponent implements OnInit {
+  private http = inject(HttpClient);
+  private auth = inject(AuthService);
+
+  users: AuthUser[] = [];
+  usersLoading = false;
+  usersError = '';
+  usersMessage = '';
+  createError = '';
+  createMessage = '';
+  error = '';
+  message = '';
+  metrics: AdminMetrics | null = null;
+  sql = 'SELECT name, email, role, is_active FROM users ORDER BY email';
+  sqlResult: SqlResult | null = null;
+  sqlRunning = false;
+  email = '';
+  displayName = '';
+  password = '';
+  role: UserRole = 'user';
+
+  ngOnInit(): void {
+    this.loadUsers();
+    this.loadMetrics();
+  }
+
+  isSelf(user: AuthUser): boolean {
+    return this.auth.currentUser?.id === user.id;
+  }
+
+  wouldRemoveFinalActiveAdmin(user: AuthUser): boolean {
+    if (user.role !== 'admin' || !user.is_active) return false;
+    return this.users.filter(candidate => candidate.role === 'admin' && candidate.is_active && candidate.id !== user.id).length === 0;
+  }
+
+  canDelete(user: AuthUser): boolean {
+    return !this.isSelf(user) && !this.wouldRemoveFinalActiveAdmin(user);
+  }
+
+  loadUsers(): void {
+    this.usersLoading = true;
+    this.usersError = '';
+    this.http.get<AuthUser[]>(apiUrl('/admin/users')).subscribe({
+      next: users => {
+        this.users = users;
+        this.usersLoading = false;
+      },
+      error: err => {
+        this.usersError = err?.error?.detail || 'Could not load users';
+        this.usersLoading = false;
+      },
+    });
+  }
+
+  loadMetrics(): void {
+    this.http.get<AdminMetrics>(apiUrl('/admin/metrics')).subscribe({
+      next: metrics => this.metrics = metrics,
+      error: err => this.error = err?.error?.detail || 'Could not load metrics',
+    });
+  }
+
+  runSql(): void {
+    if (!this.sql.trim()) return;
+    this.sqlRunning = true;
+    this.error = '';
+    this.message = '';
+    this.http.post<SqlResult>(apiUrl('/admin/sql'), { sql: this.sql }).subscribe({
+      next: result => {
+        this.sqlResult = result;
+        this.sqlRunning = false;
+        this.message = 'SQL executed';
+        this.loadMetrics();
+      },
+      error: err => {
+        this.error = err?.error?.detail || 'SQL failed';
+        this.sqlRunning = false;
+      },
+    });
+  }
+
+  createUser(): void {
+    if (!this.email.trim() || !this.displayName.trim() || this.password.length < 12) return;
+    this.createError = '';
+    this.createMessage = '';
+    this.http.post<AuthUser>(apiUrl('/admin/users'), {
+      email: this.email,
+      display_name: this.displayName,
+      password: this.password,
+      role: this.role,
+      must_change_password: true,
+    }).subscribe({
+      next: user => {
+        this.users = [...this.users, user].sort((a, b) => a.email.localeCompare(b.email));
+        this.email = '';
+        this.displayName = '';
+        this.password = '';
+        this.role = 'user';
+        this.createMessage = 'User created';
+        this.loadMetrics();
+      },
+      error: err => this.createError = err?.error?.detail || 'Could not create user',
+    });
+  }
+
+  setActive(user: AuthUser, isActive: boolean): void {
+    this.patchUser(user, { is_active: isActive });
+  }
+
+  setRole(user: AuthUser, role: UserRole): void {
+    this.patchUser(user, { role });
+  }
+
+  deleteUser(user: AuthUser): void {
+    if (!this.canDelete(user)) {
+      this.usersError = this.isSelf(user) ? 'You cannot delete your own account' : 'Cannot remove the final active admin';
+      return;
+    }
+    const ok = window.confirm(`Delete ${user.email} and all finance data owned by this account?`);
+    if (!ok) return;
+    this.usersError = '';
+    this.usersMessage = '';
+    this.http.delete<{ ok: boolean }>(apiUrl(`/admin/users/${user.id}`)).subscribe({
+      next: () => {
+        this.users = this.users.filter(u => u.id !== user.id);
+        this.usersMessage = 'User deleted';
+        this.loadMetrics();
+      },
+      error: err => this.usersError = err?.error?.detail || 'Could not delete user',
+    });
+  }
+
+  resetPassword(user: AuthUser): void {
+    const nextPassword = window.prompt(`New password for ${user.email}`);
+    if (!nextPassword) return;
+    if (nextPassword.length < 12) {
+      this.usersError = 'Password must be at least 12 characters';
+      return;
+    }
+    this.http.post(apiUrl(`/admin/users/${user.id}/reset-password`), {
+      new_password: nextPassword,
+      must_change_password: true,
+    }).subscribe({
+      next: () => this.usersMessage = 'Password reset',
+      error: err => this.usersError = err?.error?.detail || 'Could not reset password',
+    });
+  }
+
+  private patchUser(user: AuthUser, patch: Partial<AuthUser>): void {
+    this.usersError = '';
+    this.usersMessage = '';
+    this.http.patch<AuthUser>(apiUrl(`/admin/users/${user.id}`), patch).subscribe({
+      next: updated => {
+        this.users = this.users.map(u => u.id === updated.id ? updated : u);
+        this.usersMessage = 'User updated';
+        this.loadMetrics();
+      },
+      error: err => this.usersError = err?.error?.detail || 'Could not update user',
+    });
+  }
+}

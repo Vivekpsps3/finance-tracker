@@ -1,0 +1,33 @@
+<main class="login-shell">
+  <section class="login-panel" aria-labelledby="login-title">
+    <div class="brand-lockup">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="var(--accent-glow)" stroke="var(--accent)" stroke-width="1"/>
+        <path d="M8 22V10M14 22V6M20 22v-6M26 22H6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <h1 id="login-title">{{ setupMode ? 'Set up Finance' : signupMode ? 'Create account' : 'Finance' }}</h1>
+    </div>
+
+    <ui-card>
+      <form class="login-form" (ngSubmit)="submit()">
+        <ui-input label="Email" type="email" autocomplete="username" [required]="true" [(value)]="email" />
+        @if (needsDisplayName) {
+          <ui-input label="Display name" autocomplete="name" [required]="true" [(value)]="displayName" />
+        }
+        <ui-input label="Password" type="password" [showPasswordToggle]="true" [autocomplete]="needsDisplayName ? 'new-password' : 'current-password'" [required]="true" [(value)]="password" />
+        @if (passwordHint) { <p class="password-hint">{{ passwordHint }}</p> }
+        @if (error) {
+          <p class="login-error" role="alert">{{ error }}</p>
+        }
+        <ui-button type="submit" [disabled]="loading || !email.trim() || !password">
+          {{ loading ? (needsDisplayName ? 'Creating account' : 'Signing in') : (setupMode ? 'Create admin account' : signupMode ? 'Create account' : 'Sign in') }}
+        </ui-button>
+      </form>
+      @if (!setupMode) {
+        <button type="button" class="mode-link" (click)="toggleSignup()">
+          {{ signupMode ? 'Sign in instead' : 'Create a new account' }}
+        </button>
+      }
+    </ui-card>
+  </section>
+</main>

@@ -2,6 +2,24 @@
 
 Code truth: `backend/models.py`, `backend/services/finance.py`.
 
+
+## Users and ownership
+
+App-native auth uses three security tables:
+
+| Table | Purpose |
+|-------|---------|
+| `users` | Email, display name, role, active flag, password hash, timestamps |
+| `user_sessions` | Hashed session tokens, CSRF token hashes, expiry/revocation metadata |
+| `audit_events` | Login, logout, user create/update, password reset, and related account events |
+
+The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions,
+bank accounts, import batches, assets, liabilities, holdings, brokerage
+accounts, net worth snapshots, tax documents, planning profiles, and planning
+runs. Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics and the guarded SQL console read from the same SQLite database.
+
+Deleting an account is destructive: the admin API removes that user, their sessions, and all rows in user-owned finance tables. It does not delete global provider/cache tables. The API refuses self-delete and refuses deleting an account only when that account is the final active admin. Inactive admins can be deleted when at least one other active admin remains.
+
 ## Net worth
 
 ```
@@ -69,7 +87,7 @@ Each row has `name`, `category`, value (`current_value` or `balance_owed`), `as_
 
 ## Transactions ledger
 
-`transactions` — `income` and `expense` (manual or `source=import` from bank CSV). Powers calendar, dashboard period views, and monthly expense/income totals on the Transactions page. **Does not** update net worth.
+`transactions` - per-user `income` and `expense` (manual or `source=import` from bank CSV). Powers calendar, dashboard period views, and monthly expense/income totals on the Transactions page. **Does not** update net worth.
 
 The user mostly transacts by card. Rent and utilities should become first-class
 manual/recurring cashflow items later, but still should not directly mutate net
@@ -82,7 +100,7 @@ env examples, but Plaid is not the intended integration for this user.
 
 ## Tax document vault
 
-`tax_documents` stores official tax files and user-entered structured values for
+`tax_documents` stores per-user official tax files and user-entered structured values for
 yearly review.
 
 | Field group | Purpose |

@@ -9,13 +9,36 @@
       </svg>
       <span class="logo-text">Finance</span>
     </a>
-    <div class="nav-links">
-      @for (item of navItems; track item.path) {
+    <div class="nav-tabs" role="tablist" aria-label="Finance sections">
+      @for (group of visibleNavGroups; track group.label) {
+        <a
+          [routerLink]="group.items[0].path"
+          class="nav-tab"
+          [class.active]="isActiveGroup(group)"
+          [attr.aria-selected]="isActiveGroup(group)"
+          [attr.title]="group.label"
+          role="tab">
+          <ui-icon [name]="group.icon" size="sm" />
+          <span class="nav-link__label">{{ group.label }}</span>
+          <span class="nav-link__short">{{ group.shortLabel }}</span>
+        </a>
+      }
+    </div>
+    <div class="account-menu">
+      @if (user) {
+        <span class="account-email">{{ user.email }}</span>
+      }
+      <ui-button variant="ghost" size="sm" (clicked)="logout()">Logout</ui-button>
+    </div>
+  </div>
+  <div class="subnav-content">
+    <div class="subnav-links" aria-label="Section navigation">
+      @for (item of activeNavGroup.items; track item.path) {
         <a
           [routerLink]="item.path"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: item.exact }"
-          class="nav-link"
+          class="subnav-link"
+          [class.active]="isActiveItem(item)"
+          [attr.aria-current]="isActiveItem(item) ? 'page' : null"
           [attr.title]="item.label">
           <ui-icon [name]="item.icon" size="sm" />
           <span class="nav-link__label">{{ item.label }}</span>

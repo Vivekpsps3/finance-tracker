@@ -43,20 +43,20 @@ from services.market_data import market_data
 logger = get_logger()
 
 
-def compute_other_assets(db: Session) -> float:
-    total = db.query(Asset).with_entities(Asset.current_value).all()
+def compute_other_assets(db: Session, user_id: int) -> float:
+    total = db.query(Asset).filter(Asset.user_id == user_id).with_entities(Asset.current_value).all()
     return round(sum(row[0] for row in total), 2)
 
 
-def compute_liabilities(db: Session) -> float:
-    total = db.query(Liability).with_entities(Liability.balance_owed).all()
+def compute_liabilities(db: Session, user_id: int) -> float:
+    total = db.query(Liability).filter(Liability.user_id == user_id).with_entities(Liability.balance_owed).all()
     return round(sum(row[0] for row in total), 2)
 
 
-def compute_net_worth(db: Session) -> NetWorthResponse:
-    other_assets = compute_other_assets(db)
-    portfolio, sources, breakdown = compute_portfolio(db)
-    liabilities = compute_liabilities(db)
+def compute_net_worth(db: Session, user_id: int) -> NetWorthResponse:
+    other_assets = compute_other_assets(db, user_id)
+    portfolio, sources, breakdown = compute_portfolio(db, user_id)
+    liabilities = compute_liabilities(db, user_id)
     total_assets = round(other_assets + portfolio, 2)
     total = round(total_assets - liabilities, 2)
     return NetWorthResponse(
@@ -73,6 +73,7 @@ def compute_net_worth(db: Session) -> NetWorthResponse:
 
 def create_net_worth_snapshot(
     db: Session,
+    user_id: int,
     snapshot_date: Optional[date] = None,
     note: Optional[str] = None,
 ) -> NetWorthSnapshotResponse:
@@ -81,8 +82,9 @@ def create_net_worth_snapshot(
     Transactions are intentionally not read here. Net worth remains:
     manual assets + portfolio market value - liabilities.
     """
-    nw = compute_net_worth(db)
+    nw = compute_net_worth(db, user_id)
     snap = NetWorthSnapshot(
+        user_id=user_id,
         snapshot_date=snapshot_date or date.today(),
         other_assets=nw.other_assets,
         portfolio=nw.portfolio,
@@ -115,9 +117,10 @@ def net_worth_snapshot_to_response(snap: NetWorthSnapshot) -> NetWorthSnapshotRe
     )
 
 
-def list_net_worth_snapshots(db: Session, limit: int = 120) -> List[NetWorthSnapshotResponse]:
+def list_net_worth_snapshots(db: Session, user_id: int, limit: int = 120) -> List[NetWorthSnapshotResponse]:
     rows = (
         db.query(NetWorthSnapshot)
+        .filter(NetWorthSnapshot.user_id == user_id)
         .order_by(NetWorthSnapshot.snapshot_date.desc(), NetWorthSnapshot.id.desc())
         .limit(limit)
         .all()
@@ -184,7 +187,7 @@ def holding_to_response(
 
     account_display = None
     if h.brokerage_account_id and db is not None:
-        displays = brokerage_account_display_map(db, [h.brokerage_account_id])
+        displays = brokerage_account_display_map(db, h.user_id, [h.brokerage_account_id])
         account_display = displays.get(h.brokerage_account_id)
 
     return HoldingResponse(
@@ -203,12 +206,12 @@ def holding_to_response(
     )
 
 
-def compute_portfolio(db: Session) -> Tuple[float, Dict[str, str], Dict[str, float]]:
-    holdings = db.query(Holding).all()
+def compute_portfolio(db: Session, user_id: int) -> Tuple[float, Dict[str, str], Dict[str, float]]:
+    holdings = db.query(Holding).filter(Holding.user_id == user_id).all()
     total = 0.0
     sources: Dict[str, str] = {}
     breakdown: Dict[str, float] = {}
-    displays = brokerage_account_display_map(db, [h.brokerage_account_id for h in holdings if h.brokerage_account_id])
+    displays = brokerage_account_display_map(db, user_id, [h.brokerage_account_id for h in holdings if h.brokerage_account_id])
     price_cache: Dict[str, Tuple[float, str, Optional[datetime]]] = {}
     for h in holdings:
         resp = holding_to_response(h, db=db, price_cache=price_cache)
@@ -230,16 +233,17 @@ def get_or_create_bank(db: Session, slug: str, name: str) -> Bank:
     return bank
 
 
-def get_or_create_bank_account(db: Session, bank: Bank, account_mask: str) -> BankAccount:
+def get_or_create_bank_account(db: Session, user_id: int, bank: Bank, account_mask: str) -> BankAccount:
     acc = (
         db.query(BankAccount)
-        .filter(BankAccount.bank_id == bank.id, BankAccount.account_mask == account_mask)
+        .filter(BankAccount.user_id == user_id, BankAccount.bank_id == bank.id, BankAccount.account_mask == account_mask)
         .first()
     )
     if acc:
         return acc
     label = f"{bank.name} ···{account_mask}"
     acc = BankAccount(
+        user_id=user_id,
         bank_id=bank.id,
         account_mask=account_mask,
         label=label,
@@ -251,13 +255,13 @@ def get_or_create_bank_account(db: Session, bank: Bank, account_mask: str) -> Ba
     return acc
 
 
-def account_display_map(db: Session, account_ids: List[int]) -> Dict[int, str]:
+def account_display_map(db: Session, user_id: int, account_ids: List[int]) -> Dict[int, str]:
     if not account_ids:
         return {}
     rows = (
         db.query(BankAccount, Bank)
         .join(Bank, Bank.id == BankAccount.bank_id)
-        .filter(BankAccount.id.in_(account_ids))
+        .filter(BankAccount.user_id == user_id, BankAccount.id.in_(account_ids))
         .all()
     )
     out: Dict[int, str] = {}
@@ -286,10 +290,10 @@ def get_or_create_brokerage(db: Session, slug: str, name: str) -> Brokerage:
     return br
 
 
-def get_or_create_brokerage_account(db: Session, br: Brokerage, account_mask: str, account_name: str = "") -> BrokerageAccount:
+def get_or_create_brokerage_account(db: Session, user_id: int, br: Brokerage, account_mask: str, account_name: str = "") -> BrokerageAccount:
     acc = (
         db.query(BrokerageAccount)
-        .filter(BrokerageAccount.brokerage_id == br.id, BrokerageAccount.account_mask == account_mask)
+        .filter(BrokerageAccount.user_id == user_id, BrokerageAccount.brokerage_id == br.id, BrokerageAccount.account_mask == account_mask)
         .first()
     )
     if acc:
@@ -298,6 +302,7 @@ def get_or_create_brokerage_account(db: Session, br: Brokerage, account_mask: st
     if account_name:
         label = f"{br.name} ···{account_mask} ({account_name})"
     acc = BrokerageAccount(
+        user_id=user_id,
         brokerage_id=br.id,
         account_mask=account_mask,
         label=label,
@@ -308,8 +313,8 @@ def get_or_create_brokerage_account(db: Session, br: Brokerage, account_mask: st
     return acc
 
 
-def set_brokerage_account_nickname(db: Session, brokerage_account_id: int, nickname: str) -> BrokerageAccount:
-    acc = db.query(BrokerageAccount).filter(BrokerageAccount.id == brokerage_account_id).first()
+def set_brokerage_account_nickname(db: Session, user_id: int, brokerage_account_id: int, nickname: str) -> BrokerageAccount:
+    acc = db.query(BrokerageAccount).filter(BrokerageAccount.id == brokerage_account_id, BrokerageAccount.user_id == user_id).first()
     if not acc:
         raise HTTPException(status_code=404, detail="Brokerage account not found")
     acc.nickname = nickname.strip() or None
@@ -318,13 +323,13 @@ def set_brokerage_account_nickname(db: Session, brokerage_account_id: int, nickn
     return acc
 
 
-def brokerage_account_display_map(db: Session, account_ids: List[int]) -> Dict[int, str]:
+def brokerage_account_display_map(db: Session, user_id: int, account_ids: List[int]) -> Dict[int, str]:
     if not account_ids:
         return {}
     rows = (
         db.query(BrokerageAccount, Brokerage)
         .join(Brokerage, Brokerage.id == BrokerageAccount.brokerage_id)
-        .filter(BrokerageAccount.id.in_(account_ids))
+        .filter(BrokerageAccount.user_id == user_id, BrokerageAccount.id.in_(account_ids))
         .all()
     )
     out: Dict[int, str] = {}
@@ -346,22 +351,22 @@ def transaction_to_response(tx: Transaction, displays: Dict[int, str]) -> Transa
     )
 
 
-def transactions_to_responses(db: Session, txs: List[Transaction]) -> List[TransactionResponse]:
+def transactions_to_responses(db: Session, user_id: int, txs: List[Transaction]) -> List[TransactionResponse]:
     ids = list({t.bank_account_id for t in txs if t.bank_account_id})
-    displays = account_display_map(db, ids)
+    displays = account_display_map(db, user_id, ids)
     return [transaction_to_response(t, displays) for t in txs]
 
 
-def _existing_dedupe_keys(db: Session) -> set:
+def _existing_dedupe_keys(db: Session, user_id: int) -> set:
     return {
         row[0]
-        for row in db.query(Transaction.dedupe_key).filter(Transaction.dedupe_key.isnot(None)).all()
+        for row in db.query(Transaction.dedupe_key).filter(Transaction.user_id == user_id, Transaction.dedupe_key.isnot(None)).all()
         if row[0]
     }
 
 
 async def preview_bank_import(
-    bank_slug: str, file: UploadFile, db: Session
+    bank_slug: str, file: UploadFile, db: Session, user_id: int
 ) -> ImportPreviewResponse:
     cfg = get_bank_import(bank_slug)
     if not cfg:
@@ -381,7 +386,7 @@ async def preview_bank_import(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    existing_keys = _existing_dedupe_keys(db)
+    existing_keys = _existing_dedupe_keys(db, user_id)
     seen_in_file: set[str] = set()
     preview_rows: List[ImportPreviewRow] = []
     new_count = duplicate_count = 0
@@ -430,7 +435,7 @@ async def preview_bank_import(
 
 
 def commit_bank_import(
-    bank_slug: str, body: ImportCommitRequest, db: Session
+    bank_slug: str, body: ImportCommitRequest, db: Session, user_id: int
 ) -> ImportCommitResponse:
     logger.info(
         "import_commit_start bank=%s filename=%s rows=%s",
@@ -442,7 +447,7 @@ def commit_bank_import(
     if not cfg:
         raise HTTPException(status_code=404, detail="Unknown bank import type")
     bank = get_or_create_bank(db, cfg.bank_slug, cfg.bank_name)
-    batch = ImportBatch(bank_id=bank.id, filename=body.filename, rows_inserted=0)
+    batch = ImportBatch(user_id=user_id, bank_id=bank.id, filename=body.filename, rows_inserted=0)
     db.add(batch)
     db.flush()
 
@@ -459,12 +464,13 @@ def commit_bank_import(
         if dedupe_key in seen_keys:
             skipped += 1
             continue
-        if db.query(Transaction).filter(Transaction.dedupe_key == dedupe_key).first():
+        if db.query(Transaction).filter(Transaction.user_id == user_id, Transaction.dedupe_key == dedupe_key).first():
             skipped += 1
             continue
         try:
-            acc = get_or_create_bank_account(db, bank, row.account_mask)
+            acc = get_or_create_bank_account(db, user_id, bank, row.account_mask)
             db_tx = Transaction(
+                user_id=user_id,
                 date=row.date,
                 type=TransactionType.expense,
                 category=row.category,
@@ -580,7 +586,7 @@ async def preview_fidelity_import(
 
 
 def commit_fidelity_import(
-    body: FidelityCommitRequest, db: Session
+    body: FidelityCommitRequest, db: Session, user_id: int
 ) -> FidelityCommitResponse:
     cfg = get_brokerage_import("fidelity")
     if not cfg:
@@ -606,16 +612,17 @@ def commit_fidelity_import(
 
     acc_map: dict[str, BrokerageAccount] = {}
     for mask in accounts_in_file:
-        acc = get_or_create_brokerage_account(db, br, mask)
+        acc = get_or_create_brokerage_account(db, user_id, br, mask)
         acc_map[mask] = acc
         # Replace: delete existing holdings for this account
-        deleted = db.query(Holding).filter(Holding.brokerage_account_id == acc.id).delete()
+        deleted = db.query(Holding).filter(Holding.user_id == user_id, Holding.brokerage_account_id == acc.id).delete()
         holdings_replaced += deleted
         account_displays.append(acc.label or f"{br.name} ···{mask}")
 
     for r in body.rows:
         acc = acc_map[r.account_mask]
         h = Holding(
+            user_id=user_id,
             symbol=r.symbol.upper().strip(),
             shares=round(r.shares, 6),
             purchase_price=round(r.avg_cost_basis or 0.0, 4),

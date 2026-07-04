@@ -127,6 +127,7 @@ async def store_tax_document(
     taxpayer: str | None = None,
     summary_json: str | None = None,
     notes: str | None = None,
+    user_id: int,
 ) -> TaxDocumentResponse:
     current_year = date.today().year + 1
     if tax_year < 1990 or tax_year > current_year:
@@ -143,6 +144,7 @@ async def store_tax_document(
     duplicate = (
         db.query(TaxDocument)
         .filter(
+            TaxDocument.user_id == user_id,
             TaxDocument.tax_year == tax_year,
             TaxDocument.document_type == document_type,
             TaxDocument.sha256 == digest,
@@ -154,6 +156,7 @@ async def store_tax_document(
 
     summary = parse_summary_json(summary_json)
     doc = TaxDocument(
+        user_id=user_id,
         tax_year=tax_year,
         document_type=document_type,
         issuer=(issuer or "").strip() or None,
@@ -172,32 +175,32 @@ async def store_tax_document(
     return tax_document_to_response(doc)
 
 
-def list_tax_documents(db: Session, tax_year: int | None = None) -> List[TaxDocumentResponse]:
-    query = db.query(TaxDocument)
+def list_tax_documents(db: Session, user_id: int, tax_year: int | None = None) -> List[TaxDocumentResponse]:
+    query = db.query(TaxDocument).filter(TaxDocument.user_id == user_id)
     if tax_year is not None:
         query = query.filter(TaxDocument.tax_year == tax_year)
     rows = query.order_by(TaxDocument.tax_year.desc(), TaxDocument.uploaded_at.desc()).all()
     return [tax_document_to_response(row) for row in rows]
 
 
-def get_tax_document(db: Session, document_id: int) -> TaxDocument:
-    doc = db.query(TaxDocument).filter(TaxDocument.id == document_id).first()
+def get_tax_document(db: Session, user_id: int, document_id: int) -> TaxDocument:
+    doc = db.query(TaxDocument).filter(TaxDocument.id == document_id, TaxDocument.user_id == user_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Tax document not found")
     return doc
 
 
-def delete_tax_document(db: Session, document_id: int) -> dict:
-    doc = get_tax_document(db, document_id)
+def delete_tax_document(db: Session, user_id: int, document_id: int) -> dict:
+    doc = get_tax_document(db, user_id, document_id)
     db.delete(doc)
     db.commit()
     return {"ok": True}
 
 
-def summarize_tax_year(db: Session, tax_year: int) -> TaxYearSummary:
+def summarize_tax_year(db: Session, user_id: int, tax_year: int) -> TaxYearSummary:
     docs = (
         db.query(TaxDocument)
-        .filter(TaxDocument.tax_year == tax_year)
+        .filter(TaxDocument.user_id == user_id, TaxDocument.tax_year == tax_year)
         .order_by(TaxDocument.uploaded_at.desc())
         .all()
     )

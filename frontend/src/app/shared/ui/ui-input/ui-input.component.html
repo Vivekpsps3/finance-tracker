@@ -2,15 +2,29 @@
   @if (label()) {
     <label class="ui-field__label" [for]="resolvedId()">{{ label() }}</label>
   }
-  <input
-    class="ui-field__control"
-    [id]="resolvedId()"
-    [type]="type()"
-    [placeholder]="placeholder() ?? ''"
-    [disabled]="disabled()"
-    [required]="required()"
-    [attr.autocomplete]="autocomplete()"
-    [attr.aria-describedby]="describedBy()"
-    [value]="value()"
-    (input)="value.set($any($event.target).value)" />
+  <div class="ui-field__control-wrap">
+    <input
+      class="ui-field__control"
+      [class.ui-field__control--with-action]="type() === 'password' && showPasswordToggle()"
+      [id]="resolvedId()"
+      [type]="resolvedType()"
+      [placeholder]="placeholder() ?? ''"
+      [disabled]="disabled()"
+      [required]="required()"
+      [attr.autocomplete]="autocomplete()"
+      [attr.aria-describedby]="describedBy()"
+      [value]="value()"
+      (input)="value.set($any($event.target).value)" />
+    @if (type() === 'password' && showPasswordToggle()) {
+      <button
+        type="button"
+        class="ui-field__password-toggle"
+        [disabled]="disabled()"
+        [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
+        [attr.aria-pressed]="passwordVisible()"
+        (click)="togglePasswordVisibility()">
+        {{ passwordVisible() ? 'Hide' : 'Show' }}
+      </button>
+    }
+  </div>
 </div>

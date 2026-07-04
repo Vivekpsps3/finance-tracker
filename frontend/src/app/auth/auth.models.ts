@@ -1,0 +1,23 @@
+export type UserRole = 'admin' | 'user';
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  display_name: string;
+  role: UserRole;
+  is_active: boolean;
+  must_change_password: boolean;
+  created_at: string;
+  updated_at: string;
+  last_login_at?: string | null;
+}
+
+export interface LoginResponse {
+  user: AuthUser;
+  csrf_token: string;
+}
+
+export interface MeResponse {
+  user: AuthUser;
+  csrf_token?: string | null;
+}

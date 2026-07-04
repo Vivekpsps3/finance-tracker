@@ -34,21 +34,22 @@ def profile_to_response(row: PlanningAssumptionProfile) -> PlanningProfileRespon
     )
 
 
-def list_profiles(db: Session) -> List[PlanningProfileResponse]:
-    rows = db.query(PlanningAssumptionProfile).order_by(PlanningAssumptionProfile.id).all()
+def list_profiles(db: Session, user_id: int) -> List[PlanningProfileResponse]:
+    rows = db.query(PlanningAssumptionProfile).filter(PlanningAssumptionProfile.user_id == user_id).order_by(PlanningAssumptionProfile.id).all()
     return [profile_to_response(r) for r in rows]
 
 
-def get_profile(db: Session, profile_id: int) -> PlanningProfileResponse:
-    row = db.query(PlanningAssumptionProfile).filter(PlanningAssumptionProfile.id == profile_id).first()
+def get_profile(db: Session, user_id: int, profile_id: int) -> PlanningProfileResponse:
+    row = db.query(PlanningAssumptionProfile).filter(PlanningAssumptionProfile.id == profile_id, PlanningAssumptionProfile.user_id == user_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Planning profile not found")
     return profile_to_response(row)
 
 
-def create_profile(db: Session, body: PlanningProfileCreate) -> PlanningProfileResponse:
+def create_profile(db: Session, user_id: int, body: PlanningProfileCreate) -> PlanningProfileResponse:
     now = datetime.now(UTC)
     row = PlanningAssumptionProfile(
+        user_id=user_id,
         name=body.name,
         base_currency=body.base_currency.upper(),
         payload_json=body.payload.model_dump_json(),
@@ -61,8 +62,8 @@ def create_profile(db: Session, body: PlanningProfileCreate) -> PlanningProfileR
     return profile_to_response(row)
 
 
-def update_profile(db: Session, profile_id: int, body: PlanningProfileUpdate) -> PlanningProfileResponse:
-    row = db.query(PlanningAssumptionProfile).filter(PlanningAssumptionProfile.id == profile_id).first()
+def update_profile(db: Session, user_id: int, profile_id: int, body: PlanningProfileUpdate) -> PlanningProfileResponse:
+    row = db.query(PlanningAssumptionProfile).filter(PlanningAssumptionProfile.id == profile_id, PlanningAssumptionProfile.user_id == user_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Planning profile not found")
     if body.name is not None:
@@ -77,13 +78,13 @@ def update_profile(db: Session, profile_id: int, body: PlanningProfileUpdate) ->
     return profile_to_response(row)
 
 
-def delete_profile(db: Session, profile_id: int) -> None:
+def delete_profile(db: Session, user_id: int, profile_id: int) -> None:
     from models import PlanningScenarioRun
 
-    row = db.query(PlanningAssumptionProfile).filter(PlanningAssumptionProfile.id == profile_id).first()
+    row = db.query(PlanningAssumptionProfile).filter(PlanningAssumptionProfile.id == profile_id, PlanningAssumptionProfile.user_id == user_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Planning profile not found")
-    db.query(PlanningScenarioRun).filter(PlanningScenarioRun.profile_id == profile_id).update(
+    db.query(PlanningScenarioRun).filter(PlanningScenarioRun.user_id == user_id, PlanningScenarioRun.profile_id == profile_id).update(
         {PlanningScenarioRun.profile_id: None}
     )
     db.delete(row)

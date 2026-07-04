@@ -1,14 +1,14 @@
 # Architecture (one page)
 
-Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** persistence. Single-user; no auth in repo defaults.
+Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** persistence, and app-native user accounts.
 
 ## Three data planes (do not mix)
 
 | Plane | What it is | Writes | Reads for |
 |-------|------------|--------|-----------|
-| **Balance sheet** | `assets`, `liabilities`, `holdings` + market prices | CRUD + Fidelity CSV (holdings per brokerage account), manual net worth snapshots | **Net worth** (`GET /api/net-worth/`) and observed history |
-| **Transactions ledger** | `transactions` (income/expense, `source=import` from bank CSV) | Manual CRUD + bank import preview/commit | Dashboard period charts, calendar, planning **inputs** (averages) |
-| **Tax documents** | `tax_documents` official document vault + structured values | Upload/download/delete docs, yearly summary | Tax Center (`/taxes`) |
+| **Balance sheet** | per-user `assets`, `liabilities`, `holdings` + market prices | CRUD + Fidelity CSV (holdings per brokerage account), manual net worth snapshots | **Net worth** (`GET /api/net-worth/`) and observed history |
+| **Transactions ledger** | per-user `transactions` (income/expense, `source=import` from bank CSV) | Manual CRUD + bank import preview/commit | Dashboard period charts, calendar, planning **inputs** (averages) |
+| **Tax documents** | per-user `tax_documents` official document vault + structured values | Upload/download/delete docs, yearly summary | Tax Center (`/taxes`) |
 | **Planning (speculative)** | `planning_assumption_profiles`, `planning_scenario_runs` | Profiles + run results only | Monte Carlo UI at `/planning` |
 
 **Invariant:** Net worth is always balance-sheet based: manual assets + portfolio market value − liabilities. Transactions and simulations **never** update net worth.
@@ -25,7 +25,8 @@ transactions, or planning inputs unless a future feature explicitly maps values.
 
 ```
 Browser (:4200 dev proxy, or :8080 Docker web)
-  → /api/*  →  FastAPI app.py
+  -> login page / session cookie / CSRF token
+  -> /api/*  ->  FastAPI app.py
        → routers: health, imports, transactions, assets, liabilities,
                   market, holdings, net_worth, planning (/planning/v1)
                   taxes
@@ -39,10 +40,20 @@ Docker production-like topology:
 
 ```
 Browser/domain proxy
-  → web (Nginx static Angular + /api reverse proxy)
-  → api (FastAPI, private Compose network)
-  → SQLite finance.db
+  -> web (Nginx static Angular + /api reverse proxy)
+  -> api (FastAPI, private Compose network)
+  -> SQLite finance.db
 ```
+
+## Auth And Users
+
+- Login is app-native: `POST /api/auth/login` sets an HttpOnly session cookie and readable CSRF cookie.
+- First-run setup is app-native: if no users exist, `/login` creates the first admin account.
+- After first-run setup, `/login` also offers signup for normal user accounts. Admins can still create accounts directly.
+- All non-health finance APIs require a valid session. Mutating requests require `X-CSRF-Token`.
+- `users`, `user_sessions`, and `audit_events` live in the same SQLite database as finance data.
+- Admin UI route: `/admin/users`. Admins create, disable, reset, delete, and manage users; view all users and system metrics; and run guarded SQLite maintenance SQL. Self-delete and deleting or disabling the final active admin are blocked.
+- User-owned finance tables include `user_id`; market quote cache and provider registries stay global.
 
 There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo module only.
 
@@ -75,7 +86,7 @@ There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo 
 
 ## Frontend
 
-- Shell: `MainLayoutComponent`; lazy feature routes in `app.routes.ts`.
+- Shell: `MainLayoutComponent`; lazy feature routes in `app.routes.ts`; `authGuard` protects the app shell.
 - State: `FinanceService` (ledger + balance sheet); `PlanningService` (MC).
 - Prices: memory → optional Redis → SQLite EOD → yfinance (`market_data`).
 

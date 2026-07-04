@@ -6,6 +6,7 @@ from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
+from conftest import authenticated_client
 from sqlalchemy import delete
 
 from import_parsers.fidelity import parse_fidelity_csv
@@ -33,7 +34,7 @@ def reset_db():
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return authenticated_client(app)
 
 
 def test_parse_fidelity_skips_zero_quantity_and_spaxx():

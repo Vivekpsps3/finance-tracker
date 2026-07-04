@@ -18,11 +18,11 @@ def _month_key(d: date) -> str:
     return f"{d.year:04d}-{d.month:02d}"
 
 
-def summarize_transactions(db: Session, months: int = 24) -> Dict[str, Any]:
+def summarize_transactions(db: Session, user_id: int, months: int = 24) -> Dict[str, Any]:
     cutoff = date.today() - timedelta(days=months * 31)
     rows = (
         db.query(Transaction)
-        .filter(Transaction.date >= cutoff)
+        .filter(Transaction.user_id == user_id, Transaction.date >= cutoff)
         .all()
     )
     monthly_income: Dict[str, float] = {}
@@ -46,6 +46,7 @@ def summarize_transactions(db: Session, months: int = 24) -> Dict[str, Any]:
     cash_assets = (
         db.query(func.coalesce(func.sum(Asset.current_value), 0.0))
         .filter(
+            Asset.user_id == user_id,
             Asset.category.in_(
                 [AssetCategory.cash, AssetCategory.checking, AssetCategory.savings]
             )
@@ -62,8 +63,8 @@ def summarize_transactions(db: Session, months: int = 24) -> Dict[str, Any]:
     }
 
 
-def _liability_rows(db: Session) -> list:
-    rows = db.query(Liability).all()
+def _liability_rows(db: Session, user_id: int) -> list:
+    rows = db.query(Liability).filter(Liability.user_id == user_id).all()
     return [
         {
             "name": r.name,
@@ -74,9 +75,9 @@ def _liability_rows(db: Session) -> list:
     ]
 
 
-def build_planning_snapshot(db: Session) -> Dict[str, Any]:
-    nw = compute_net_worth(db)
-    tx_summary = summarize_transactions(db)
+def build_planning_snapshot(db: Session, user_id: int) -> Dict[str, Any]:
+    nw = compute_net_worth(db, user_id)
+    tx_summary = summarize_transactions(db, user_id)
     return {
         "as_of": nw.as_of.isoformat() if isinstance(nw.as_of, datetime) else str(nw.as_of),
         "net_worth": {
@@ -87,7 +88,7 @@ def build_planning_snapshot(db: Session) -> Dict[str, Any]:
             "total": nw.total,
         },
         "transactions": tx_summary,
-        "liabilities": _liability_rows(db),
+        "liabilities": _liability_rows(db, user_id),
     }
 
 

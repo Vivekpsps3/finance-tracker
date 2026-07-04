@@ -16,6 +16,9 @@ services:
       DISABLE_OPENAPI: ${DISABLE_OPENAPI:-1}
       ALEMBIC_STRICT: ${ALEMBIC_STRICT:-1}
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
+      SESSION_DAYS: ${SESSION_DAYS:-7}
+      SESSION_COOKIE_SAMESITE: ${SESSION_COOKIE_SAMESITE:-lax}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0}
       # Optional for non-proxy exposure only:
       # API_KEY: ${API_KEY}
     expose:

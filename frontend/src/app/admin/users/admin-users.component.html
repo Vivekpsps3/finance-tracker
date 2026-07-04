@@ -1,0 +1,136 @@
+<ui-page-header title="Admin" subtitle="All users, account controls, metrics, and maintenance SQL." />
+
+@if (error) { <p class="status status--error page-status" role="alert">{{ error }}</p> }
+@if (message) { <p class="status status--ok page-status">{{ message }}</p> }
+
+@if (metrics) {
+  <section class="metrics-grid" aria-label="System metrics">
+    <div class="metric"><span>Users</span><strong>{{ metrics.totals['users'] }}</strong></div>
+    <div class="metric"><span>Active users</span><strong>{{ metrics.totals['active_users'] }}</strong></div>
+    <div class="metric"><span>Sessions</span><strong>{{ metrics.totals['active_sessions'] }}</strong></div>
+    <div class="metric"><span>Transactions</span><strong>{{ metrics.finance_rows['transactions'] }}</strong></div>
+    <div class="metric"><span>Holdings</span><strong>{{ metrics.finance_rows['holdings'] }}</strong></div>
+    <div class="metric"><span>Tax docs</span><strong>{{ metrics.finance_rows['tax_documents'] }}</strong></div>
+  </section>
+}
+
+<section class="users-section" aria-labelledby="users-title">
+  <div class="section-heading">
+    <div>
+      <h2 id="users-title">All users</h2>
+      <p>Review accounts and manage access.</p>
+    </div>
+    <ui-button variant="secondary" size="sm" (clicked)="loadUsers()" [disabled]="usersLoading">
+      {{ usersLoading ? 'Loading' : 'Refresh' }}
+    </ui-button>
+  </div>
+
+  @if (usersError) { <p class="status status--error" role="alert">{{ usersError }}</p> }
+  @if (usersMessage) { <p class="status status--ok">{{ usersMessage }}</p> }
+
+  <ui-data-table ariaLabel="All user accounts">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @if (usersLoading) {
+        <tr><td colspan="5" class="table-state">Loading users</td></tr>
+      } @else if (usersError) {
+        <tr><td colspan="5" class="table-state table-state--error">Users could not be loaded.</td></tr>
+      } @else if (!users.length) {
+        <tr><td colspan="5" class="table-state">No users found.</td></tr>
+      } @else {
+        @for (user of users; track user.id) {
+          <tr>
+            <td>{{ user.email }}</td>
+            <td>{{ user.display_name }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.is_active ? 'Active' : 'Disabled' }}</td>
+            <td class="row-actions">
+              <ui-button
+                variant="ghost"
+                size="sm"
+                [disabled]="isSelf(user) || wouldRemoveFinalActiveAdmin(user)"
+                (clicked)="setRole(user, user.role === 'admin' ? 'user' : 'admin')"
+              >
+                {{ user.role === 'admin' ? 'Make user' : 'Make admin' }}
+              </ui-button>
+              <ui-button
+                variant="ghost"
+                size="sm"
+                [disabled]="isSelf(user) || wouldRemoveFinalActiveAdmin(user)"
+                (clicked)="setActive(user, !user.is_active)"
+              >
+                {{ user.is_active ? 'Disable' : 'Enable' }}
+              </ui-button>
+              <ui-button variant="secondary" size="sm" (clicked)="resetPassword(user)">Reset</ui-button>
+              <ui-button variant="danger" size="sm" [disabled]="!canDelete(user)" (clicked)="deleteUser(user)">Delete</ui-button>
+            </td>
+          </tr>
+        }
+      }
+    </tbody>
+  </ui-data-table>
+</section>
+
+<section class="create-user-section" aria-labelledby="create-user-title">
+  <form class="user-form" (ngSubmit)="createUser()">
+    <div class="section-heading section-heading--compact">
+      <div>
+        <h2 id="create-user-title">Create user</h2>
+        <p>Add a separate account without changing the table above.</p>
+      </div>
+    </div>
+
+    @if (createError) { <p class="status status--error" role="alert">{{ createError }}</p> }
+    @if (createMessage) { <p class="status status--ok">{{ createMessage }}</p> }
+
+    <div class="form-grid">
+      <ui-input label="Email" type="email" autocomplete="off" [required]="true" [(value)]="email" />
+      <ui-input label="Display name" autocomplete="off" [required]="true" [(value)]="displayName" />
+      <ui-input label="Temporary password" type="password" [showPasswordToggle]="true" autocomplete="new-password" [required]="true" [(value)]="password" />
+      <div class="role-field">
+        <label class="field-label" for="role">Role</label>
+        <select id="role" name="role" [(ngModel)]="role" class="native-select">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <ui-button type="submit" [disabled]="!email.trim() || !displayName.trim() || password.length < 12">Create</ui-button>
+    </div>
+  </form>
+</section>
+
+<section class="sql-panel" aria-label="SQL console">
+  <h2>SQL console</h2>
+  <textarea class="sql-input" [(ngModel)]="sql" rows="6" spellcheck="false"></textarea>
+  <div class="sql-actions">
+    <ui-button variant="danger" (clicked)="runSql()" [disabled]="sqlRunning || !sql.trim()">
+      {{ sqlRunning ? 'Running' : 'Run SQL' }}
+    </ui-button>
+  </div>
+  @if (sqlResult) {
+    <p class="status">Rows: {{ sqlResult.row_count }}{{ sqlResult.truncated ? ' (truncated)' : '' }}</p>
+    @if (sqlResult.columns.length) {
+      <div class="sql-table-wrap">
+        <table class="sql-table">
+          <thead><tr>@for (col of sqlResult.columns; track col) { <th>{{ col }}</th> }</tr></thead>
+          <tbody>
+            @for (row of sqlResult.rows; track $index) {
+              <tr>@for (col of sqlResult.columns; track col) { <td>{{ row[col] }}</td> }</tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</section>

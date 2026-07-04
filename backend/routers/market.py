@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from constants import SYMBOL_PATTERN
+from auth import get_current_user
 from database import get_db
+from models import User
 from schemas import MarketPriceResponse
 from services.market_data import market_data
 
@@ -14,6 +16,7 @@ def get_market_price(
     symbol: str,
     refresh: bool = Query(False, description="Bypass cache and fetch live"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     upper = symbol.upper().strip()
     if not SYMBOL_PATTERN.match(upper):

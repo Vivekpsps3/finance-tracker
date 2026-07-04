@@ -1,0 +1,62 @@
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--bg);
+}
+
+.login-panel {
+  width: min(100%, 420px);
+  display: grid;
+  gap: var(--space-5);
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+}
+
+h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  letter-spacing: 0;
+}
+
+.login-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.login-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+
+.password-hint {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.mode-link {
+  width: 100%;
+  margin-top: var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mode-link:hover {
+  text-decoration: underline;
+}

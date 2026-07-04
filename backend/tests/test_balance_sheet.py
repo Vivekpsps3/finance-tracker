@@ -6,6 +6,7 @@ from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
+from conftest import authenticated_client
 from sqlalchemy import delete
 
 from main import Base, app, engine, market_data
@@ -22,7 +23,7 @@ def reset_db():
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return authenticated_client(app)
 
 
 def test_asset_and_liability_affect_net_worth(client, monkeypatch):

@@ -1,12 +1,19 @@
 import os
+
+import pytest
 import json
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
-from fastapi.testclient import TestClient
+from conftest import authenticated_client
 from sqlalchemy import delete
 
 from main import Base, app, engine
+
+
+@pytest.fixture
+def client():
+    return authenticated_client(app)
 
 
 def setup_function():
@@ -16,8 +23,7 @@ def setup_function():
             conn.execute(delete(table))
 
 
-def test_upload_tax_document_and_year_summary():
-    client = TestClient(app)
+def test_upload_tax_document_and_year_summary(client):
     res = client.post(
         "/api/taxes/documents",
         data={
@@ -52,8 +58,7 @@ def test_upload_tax_document_and_year_summary():
     assert "1040" in summary["missing_recommended"]
 
 
-def test_download_tax_document_returns_original_bytes():
-    client = TestClient(app)
+def test_download_tax_document_returns_original_bytes(client):
     content = b"tax document bytes"
     created = client.post(
         "/api/taxes/documents",
@@ -67,8 +72,7 @@ def test_download_tax_document_returns_original_bytes():
     assert res.headers["content-type"].startswith("text/plain")
 
 
-def test_tax_document_rejects_large_or_unknown_type():
-    client = TestClient(app)
+def test_tax_document_rejects_large_or_unknown_type(client):
     res = client.post(
         "/api/taxes/documents",
         data={"tax_year": "2025", "document_type": "w2"},
@@ -77,8 +81,7 @@ def test_tax_document_rejects_large_or_unknown_type():
     assert res.status_code == 400
 
 
-def test_tax_summary_latest_return_level_values_win():
-    client = TestClient(app)
+def test_tax_summary_latest_return_level_values_win(client):
     client.post(
         "/api/taxes/documents",
         data={
@@ -103,8 +106,7 @@ def test_tax_summary_latest_return_level_values_win():
     assert summary["totals"]["total_tax"] == 17000
 
 
-def test_tax_document_rejects_duplicate_hash_for_same_year_and_type():
-    client = TestClient(app)
+def test_tax_document_rejects_duplicate_hash_for_same_year_and_type(client):
     content = b"same document"
     for expected in (200, 409):
         res = client.post(

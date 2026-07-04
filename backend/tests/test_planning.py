@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
+from conftest import authenticated_client
 from sqlalchemy import delete
 
 from main import Base, app, engine, market_data
@@ -35,7 +36,7 @@ def reset_db():
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return authenticated_client(app)
 
 
 def test_tools_registry_single_mc():
@@ -74,7 +75,8 @@ def test_snapshot_hash_stable(client, monkeypatch):
     from database import SessionLocal
     db = SessionLocal()
     try:
-        s1 = build_planning_snapshot(db)
+        user_id = client.get("/api/auth/me").json()["user"]["id"]
+        s1 = build_planning_snapshot(db, user_id)
         h1 = snapshot_hash(s1)
         h2 = snapshot_hash(s1)
         assert h1 == h2
