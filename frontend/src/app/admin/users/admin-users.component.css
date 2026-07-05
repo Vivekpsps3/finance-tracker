@@ -25,7 +25,6 @@
 
 .metric strong {
   font-size: var(--text-xl);
-  letter-spacing: 0;
 }
 
 .users-section,
@@ -51,7 +50,6 @@
 .sql-panel h2 {
   margin: 0;
   font-size: var(--text-lg);
-  letter-spacing: 0;
 }
 
 .section-heading p {
@@ -84,23 +82,28 @@
 }
 
 .native-select,
-.table-select {
-  min-height: 40px;
+.table-select,
+.sql-input {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-elevated);
   color: var(--text);
+}
+
+.native-select,
+.table-select {
+  min-height: 40px;
   padding: 0 var(--space-3);
+}
+
+.table-select {
+  min-width: 92px;
 }
 
 .form-actions,
 .sql-actions {
   display: flex;
   justify-content: flex-end;
-}
-
-.table-select {
-  min-width: 92px;
 }
 
 .status {
@@ -139,10 +142,6 @@
   width: 100%;
   min-height: 132px;
   resize: vertical;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-elevated);
-  color: var(--text);
   padding: var(--space-3);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: var(--text-sm);

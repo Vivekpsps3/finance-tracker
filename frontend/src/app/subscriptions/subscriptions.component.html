@@ -1,0 +1,103 @@
+<div class="page subscriptions">
+  <ui-page-header title="Subscriptions" subtitle="Recurring services that count toward dashboard expenses">
+    <ui-button variant="primary" (clicked)="openAddModal()">
+      <ui-icon name="plus" size="sm" /> Add subscription
+    </ui-button>
+  </ui-page-header>
+
+  <section class="summary-grid">
+    <ui-card>
+      <span class="metric-label">Active monthly</span>
+      <strong class="metric-value money">${{ activeMonthlyTotal | number:'1.2-2' }}</strong>
+    </ui-card>
+    <ui-card>
+      <span class="metric-label">Active annual</span>
+      <strong class="metric-value money">${{ activeAnnualTotal | number:'1.2-2' }}</strong>
+    </ui-card>
+    <ui-card>
+      <span class="metric-label">Tracked subscriptions</span>
+      <strong class="metric-value">{{ subscriptions.length }}</strong>
+    </ui-card>
+  </section>
+
+  <ui-card title="Subscriptions">
+    @if (subscriptions.length) {
+      <div class="subscription-list">
+        @for (row of subscriptions; track row.id) {
+          <article class="subscription-row">
+            <div>
+              <div class="row-title">
+                <strong>{{ row.name }}</strong>
+                <ui-badge [variant]="row.is_active ? 'success' : 'default'">
+                  {{ row.is_active ? 'Active' : 'Paused' }}
+                </ui-badge>
+              </div>
+              <p>{{ row.category }} · {{ frequencyLabel(row.frequency) }} · next {{ row.next_due_date }}</p>
+              @if (row.payment_account) {
+                <small>{{ row.payment_account }}</small>
+              }
+            </div>
+            <div class="row-actions">
+              <strong class="money">${{ row.amount | number:'1.2-2' }}</strong>
+              <ui-button variant="secondary" size="sm" (clicked)="openEditModal(row)">Edit</ui-button>
+              <ui-button variant="danger" size="sm" (clicked)="deleteSubscription(row)">Delete</ui-button>
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <ui-empty-state icon="credit-card" message="Add subscriptions to see them in dashboard expenses." />
+    }
+  </ui-card>
+
+  @if (showModal) {
+    <div class="modal-backdrop" role="presentation" (click)="closeModal()"></div>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="subscription-modal-title">
+      <h2 id="subscription-modal-title">{{ editingId ? 'Edit subscription' : 'Add subscription' }}</h2>
+      <form (ngSubmit)="saveSubscription()" class="form-grid">
+        <label>
+          <span>Name</span>
+          <input name="name" [(ngModel)]="form.name" required />
+        </label>
+        <label>
+          <span>Category</span>
+          <input name="category" [(ngModel)]="form.category" />
+        </label>
+        <label>
+          <span>Amount</span>
+          <input name="amount" type="number" step="0.01" min="0" [(ngModel)]="form.amount" required />
+        </label>
+        <ui-select
+          label="Frequency"
+          [options]="frequencyOptions"
+          [(value)]="form.frequency" />
+        <label>
+          <span>Next bill date</span>
+          <input name="next_bill_date" type="date" [(ngModel)]="form.next_bill_date" required />
+        </label>
+        <label>
+          <span>Payment account</span>
+          <input name="payment_account" [(ngModel)]="form.payment_account" placeholder="Card or account" />
+        </label>
+        <label>
+          <span>End date</span>
+          <input name="end_date" type="date" [(ngModel)]="form.end_date" />
+        </label>
+        <label class="checkbox-row">
+          <input name="is_active" type="checkbox" [(ngModel)]="form.is_active" />
+          <span>Active</span>
+        </label>
+        <label class="wide">
+          <span>Notes</span>
+          <textarea name="notes" rows="3" [(ngModel)]="form.notes"></textarea>
+        </label>
+        <div class="modal-actions">
+          <ui-button type="button" variant="secondary" (clicked)="closeModal()">Cancel</ui-button>
+          <ui-button type="submit" variant="primary" [disabled]="saving">
+            {{ saving ? 'Saving' : 'Save' }}
+          </ui-button>
+        </div>
+      </form>
+    </section>
+  }
+</div>

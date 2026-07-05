@@ -1,0 +1,203 @@
+<div class="page">
+  <ui-page-header
+    title="Investment Insights"
+    subtitle="Growth assumptions, projected compounding, and withdrawal-rate income." />
+
+  @if (loading) {
+    <ui-card>
+      <p class="muted">Loading portfolio value...</p>
+    </ui-card>
+  } @else if (portfolioValue <= 0) {
+    <ui-card>
+      <ui-empty-state message="Add holdings or import a portfolio to see investment insights.">
+        <ui-icon name="portfolio" size="lg" style="display:block; margin: 0 auto 8px; opacity:.5;" />
+      </ui-empty-state>
+    </ui-card>
+  } @else {
+    <section class="insights-hero">
+      <div>
+        <p class="section-eyebrow">Current portfolio</p>
+        <div class="stat-display money">${{ portfolioValue | number: '1.2-2' }}</div>
+        <p class="summary-caption">
+          At {{ annualGrowthRate | number: '1.1-1' }}%, this implies
+          ${{ monthlyExpectedGrowth | number: '1.2-2' }} monthly expected growth.
+        </p>
+      </div>
+      <div class="hero-metrics">
+        <div>
+          <span>4% rule income</span>
+          <strong class="money">${{ nominalAnnualIncome | number: '1.2-2' }}</strong>
+        </div>
+        <div>
+          <span>{{ projectionYears }} year projection</span>
+          <strong class="money">${{ projectedValue | number: '1.2-2' }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <ui-card title="Model assumptions">
+      <div class="preset-row" aria-label="Growth presets">
+        @for (rate of [5, 7, 10, 12]; track rate) {
+          <ui-button
+            variant="secondary"
+            size="sm"
+            [disabled]="annualGrowthRate === rate"
+            (clicked)="setGrowthPreset(rate)">
+            {{ rate }}%
+          </ui-button>
+        }
+        <ui-button variant="ghost" size="sm" (clicked)="resetAssumptions()">Reset</ui-button>
+      </div>
+      <div class="controls-grid compact-controls">
+        <label class="control-field">
+          <span>Annual growth</span>
+          <input type="number" min="-20" max="30" step="0.25" [(ngModel)]="annualGrowthRate" (ngModelChange)="onAssumptionChange()" />
+        </label>
+        <label class="control-field">
+          <span>Withdrawal rate</span>
+          <input type="number" min="0" max="12" step="0.25" [(ngModel)]="withdrawalRate" (ngModelChange)="onAssumptionChange()" />
+        </label>
+        <label class="control-field">
+          <span>Inflation</span>
+          <input type="number" min="0" max="15" step="0.25" [(ngModel)]="inflationRate" (ngModelChange)="onAssumptionChange()" />
+        </label>
+        <label class="control-field">
+          <span>Monthly contribution</span>
+          <input type="number" min="0" step="50" [(ngModel)]="monthlyContribution" (ngModelChange)="onAssumptionChange()" />
+        </label>
+        <label class="control-field">
+          <span>Years</span>
+          <input type="number" min="1" max="60" step="1" [(ngModel)]="projectionYears" (ngModelChange)="onAssumptionChange()" />
+        </label>
+      </div>
+    </ui-card>
+
+    <section class="insight-grid">
+      <div class="insight-box">
+        <span>Expected annual growth</span>
+        <strong class="money">${{ annualExpectedGrowth | number: '1.2-2' }}</strong>
+      </div>
+      <div class="insight-box">
+        <span>Monthly withdrawal income</span>
+        <strong class="money">${{ monthlyWithdrawalIncome | number: '1.2-2' }}</strong>
+      </div>
+      <div class="insight-box">
+        <span>Growth share of projection</span>
+        <strong>{{ growthShareOfFinal | number: '1.0-0' }}%</strong>
+      </div>
+      <div class="insight-box">
+        <span>Next $1M gap</span>
+        <strong class="money">${{ nextMillionGap | number: '1.0-0' }}</strong>
+      </div>
+    </section>
+
+    <div class="two-column">
+      <ui-card title="Expected Growth">
+        <ui-data-table ariaLabel="Expected growth by period">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Growth</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of growthRows; track row.label) {
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="money">${{ row.amount | number: '1.2-2' }}</td>
+              </tr>
+            }
+          </tbody>
+        </ui-data-table>
+      </ui-card>
+
+      <ui-card title="Withdrawal Income">
+        <ui-data-table ariaLabel="Withdrawal income by period">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>{{ withdrawalRate | number: '1.1-1' }}% rule income</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of ruleOfFourRows; track row.label) {
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="money">${{ row.amount | number: '1.2-2' }}</td>
+              </tr>
+            }
+          </tbody>
+        </ui-data-table>
+      </ui-card>
+    </div>
+
+    <ui-card title="Projection">
+      <div class="projection-chart-wrap">
+        <canvas #projectionChart aria-label="Projected portfolio growth chart"></canvas>
+      </div>
+
+      <div class="projection-summary">
+        <div>
+          <span class="muted">Projected value</span>
+          <strong class="money">${{ projectedValue | number: '1.2-2' }}</strong>
+        </div>
+        <div>
+          <span class="muted">Inflation adjusted</span>
+          <strong class="money">${{ projectedRealValue | number: '1.2-2' }}</strong>
+        </div>
+        <div>
+          <span class="muted">Growth above contributions</span>
+          <strong class="money">${{ projectedGrowthOnly | number: '1.2-2' }}</strong>
+        </div>
+        <div>
+          <span class="muted">Years to double</span>
+          <strong>{{ yearsToDouble === null ? '-' : (yearsToDouble | number: '1.1-1') }}</strong>
+        </div>
+        <div>
+          <span class="muted">Contributions share</span>
+          <strong>{{ contributionShareOfFinal | number: '1.0-0' }}%</strong>
+        </div>
+      </div>
+
+      <ui-data-table ariaLabel="Projection milestones">
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>Nominal</th>
+            <th>Inflation adjusted</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (point of milestoneRows; track point.year) {
+            <tr>
+              <td>{{ point.year }}</td>
+              <td class="money">${{ point.value | number: '1.2-2' }}</td>
+              <td class="money">${{ point.realValue | number: '1.2-2' }}</td>
+            </tr>
+          }
+        </tbody>
+      </ui-data-table>
+    </ui-card>
+
+    <ui-card title="Scenario comparison">
+      <ui-data-table ariaLabel="Projection milestones">
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>{{ projectionYears }} year value</th>
+            <th>{{ withdrawalRate | number: '1.1-1' }}% monthly income</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of scenarioRows; track row.rate) {
+            <tr>
+              <td>{{ row.label }}</td>
+              <td class="money">${{ row.value | number: '1.2-2' }}</td>
+              <td class="money">${{ row.monthlyIncome | number: '1.2-2' }}</td>
+            </tr>
+          }
+        </tbody>
+      </ui-data-table>
+    </ui-card>
+  }
+</div>

@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, UploadFile
@@ -18,7 +18,6 @@ from models import (
     Holding,
     ImportBatch,
     Liability,
-    NetWorthSnapshot,
     Transaction,
     TransactionType,
 )
@@ -35,7 +34,6 @@ from schemas import (
     ImportPreviewRow,
     LiabilityResponse,
     NetWorthResponse,
-    NetWorthSnapshotResponse,
     TransactionResponse,
 )
 from services.market_data import market_data
@@ -69,63 +67,6 @@ def compute_net_worth(db: Session, user_id: int) -> NetWorthResponse:
         portfolio_sources=sources,
         portfolio_breakdown=breakdown,
     )
-
-
-def create_net_worth_snapshot(
-    db: Session,
-    user_id: int,
-    snapshot_date: Optional[date] = None,
-    note: Optional[str] = None,
-) -> NetWorthSnapshotResponse:
-    """Persist the current balance-sheet net worth as an observed point.
-
-    Transactions are intentionally not read here. Net worth remains:
-    manual assets + portfolio market value - liabilities.
-    """
-    nw = compute_net_worth(db, user_id)
-    snap = NetWorthSnapshot(
-        user_id=user_id,
-        snapshot_date=snapshot_date or date.today(),
-        other_assets=nw.other_assets,
-        portfolio=nw.portfolio,
-        liabilities=nw.liabilities,
-        total_assets=nw.total_assets,
-        total=nw.total,
-        as_of=nw.as_of,
-        source="manual",
-        note=(note or "").strip() or None,
-    )
-    db.add(snap)
-    db.commit()
-    db.refresh(snap)
-    return net_worth_snapshot_to_response(snap)
-
-
-def net_worth_snapshot_to_response(snap: NetWorthSnapshot) -> NetWorthSnapshotResponse:
-    as_of = snap.as_of or datetime.now(UTC)
-    return NetWorthSnapshotResponse(
-        id=snap.id,
-        snapshot_date=snap.snapshot_date or as_of.date(),
-        other_assets=round(snap.other_assets or 0, 2),
-        portfolio=round(snap.portfolio or 0, 2),
-        liabilities=round(snap.liabilities or 0, 2),
-        total_assets=round(snap.total_assets or snap.total or 0, 2),
-        total=round(snap.total or 0, 2),
-        as_of=as_of,
-        source=snap.source or "legacy",
-        note=snap.note,
-    )
-
-
-def list_net_worth_snapshots(db: Session, user_id: int, limit: int = 120) -> List[NetWorthSnapshotResponse]:
-    rows = (
-        db.query(NetWorthSnapshot)
-        .filter(NetWorthSnapshot.user_id == user_id)
-        .order_by(NetWorthSnapshot.snapshot_date.desc(), NetWorthSnapshot.id.desc())
-        .limit(limit)
-        .all()
-    )
-    return [net_worth_snapshot_to_response(row) for row in rows]
 
 
 def asset_to_response(asset: Asset) -> AssetResponse:
@@ -384,7 +325,7 @@ async def preview_bank_import(
     try:
         parsed = cfg.parse(raw)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail=f"{cfg.name} import failed: {e}") from e
 
     existing_keys = _existing_dedupe_keys(db, user_id)
     seen_in_file: set[str] = set()

@@ -1,6 +1,6 @@
 # Adding a bank CSV import
 
-Bank imports create **expense** transactions (`source=import`). They **do not** change net worth; update liabilities on **Assets & liabilities** if you track balances there.
+Bank imports create **expense** transactions (`source=import`). They **do not** change net worth; update liabilities on **Balance sheet** if you track balances there.
 
 ## Registry
 
@@ -10,7 +10,9 @@ Register parsers in `backend/import_registry.py` (`BANK_IMPORTS`). Each entry ne
 - `parse(raw_csv: str) -> List[ParsedImportRow]`
 - `bank_slug` / `bank_name` for dedupe keys and account labels
 
-HTTP routes are generic: `POST /imports/{bank_slug}/preview` and `/commit` (see `backend/routers/imports.py`).
+HTTP routes are generic: `POST /api/imports/{bank_slug}/preview` and `/commit` (see `backend/routers/imports.py`). Optional slug aliases live in `SLUG_ALIASES`.
+
+List available banks: `GET /api/imports/banks`.
 
 ## Parsed row shape
 
@@ -19,11 +21,23 @@ HTTP routes are generic: `POST /imports/{bank_slug}/preview` and `/commit` (see 
 - `dedupe_key` (via `build_dedupe_key` in `dedupe.py`)
 - `date`, `account_mask`, `description`, `category`, `amount` (positive number for expenses)
 
-## Capital One (built-in)
+## Built-in bank importers
 
-Parser: `backend/import_parsers/capital_one.py`. Slug: `capital_one`. Credits/payments are skipped; debits become expenses.
+| Slug | Parser | Notes |
+|------|--------|--------|
+| `capital_one` | `import_parsers/capital_one.py` | Credits/payments skipped; debits become expenses. Also has legacy `/imports/capital-one/*` routes. |
+| `chase` | `import_parsers/chase.py` | Sale rows only (credit card export). |
+| `amex` | `import_parsers/amex.py` | American Express credit card export. Alias: `american-express`. |
 
-## Commit behavior
+## Brokerage (not bank ledger)
+
+Fidelity positions CSV is a **holdings** import (replace positions for accounts in the file), not expense transactions:
+
+- Registry: `BROKERAGE_IMPORTS` in `import_registry.py`
+- Routes: `POST /api/imports/fidelity/preview|commit`
+- List: `GET /api/imports/brokerages`
+
+## Commit behavior (bank)
 
 - `type = expense`
 - `source = import`
@@ -36,4 +50,4 @@ Transactions page → **Import from bank**. Proxy must include `/imports` (`fron
 
 ## Tests
 
-Add parser unit tests under `backend/tests/` and extend preview/commit tests similar to `test_capital_one_import.py` (assert net worth unchanged after import).
+Add parser unit tests under `backend/tests/` and extend preview/commit tests similar to `test_capital_one_import.py`, `test_chase_import.py`, or `test_amex_import.py` (assert net worth unchanged after import).

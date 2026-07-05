@@ -89,6 +89,20 @@
           (change)="onFileSelected($event)" />
       </label>
 
+      @if (uploadFile) {
+        <div class="extraction-panel" [class.extraction-panel--warning]="extractionStatus === 'manual_review'">
+          <div>
+            <strong>{{ isExtracting ? 'Reading document...' : 'Document extraction' }}</strong>
+            <p>
+              {{ extractionMessage || 'Readable PDFs, CSVs, and text files can autofill known tax fields. Scanned PDFs and images require manual entry until OCR dependencies are installed.' }}
+            </p>
+          </div>
+          <ui-button variant="secondary" type="button" (clicked)="extractSelectedDocument()" [disabled]="isExtracting">
+            {{ isExtracting ? 'Reading' : 'Retry extraction' }}
+          </ui-button>
+        </div>
+      }
+
       <label class="field notes-field">
         <span>Notes</span>
         <textarea name="notes" [(ngModel)]="upload.notes" rows="3"></textarea>

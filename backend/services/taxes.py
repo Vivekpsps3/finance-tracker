@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import re
 from collections import Counter
 from datetime import date
 from typing import List
@@ -102,9 +104,114 @@ def parse_summary_json(raw: str | None) -> dict[str, float]:
         if value in (None, ""):
             continue
         try:
-            out[key] = round(float(value), 2)
+            numeric = float(value)
+            if not math.isfinite(numeric):
+                raise ValueError("not finite")
+            out[key] = round(numeric, 2)
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=f"Invalid numeric value for {key}") from exc
+    return out
+
+
+async def extract_tax_document_preview(file: UploadFile) -> dict:
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail="Upload a PDF, CSV, text, JPG, or PNG file")
+    content = await _read_document(file)
+    validate_file_signature(content_type, content)
+    text = _extract_text(content_type, content)
+    if not text.strip():
+        if content_type in {"image/jpeg", "image/png"} and not _ocr_engine_available():
+            message = "OCR engine is not installed on this host. Install tesseract-ocr or use the Docker backend image."
+        elif content_type in {"image/jpeg", "image/png"}:
+            message = "OCR did not find readable text. Enter the summary values manually."
+        elif content_type == "application/pdf":
+            message = "No embedded PDF text found. Scanned PDFs require OCR/manual review."
+        else:
+            message = "No readable text found. Manual review is required for this document."
+        return {
+            "status": "manual_review",
+            "summary": {},
+            "confidence": 0,
+            "message": message,
+        }
+    summary = _extract_summary_values(text)
+    return {
+        "status": "extracted" if summary else "manual_review",
+        "summary": summary,
+        "confidence": 0.72 if summary else 0,
+        "message": "Review extracted values before saving." if summary else "No known tax fields were detected.",
+    }
+
+
+def _extract_text(content_type: str, content: bytes) -> str:
+    if content_type in {"text/csv", "text/plain"}:
+        return content.decode("utf-8-sig", errors="ignore")
+    if content_type == "application/pdf":
+        try:
+            from pypdf import PdfReader
+            from io import BytesIO
+
+            reader = PdfReader(BytesIO(content))
+            return "\n".join(page.extract_text() or "" for page in reader.pages)
+        except Exception:
+            return ""
+    if content_type in {"image/jpeg", "image/png"}:
+        return _extract_image_text(content)
+    return ""
+
+
+def _extract_image_text(content: bytes) -> str:
+    try:
+        from io import BytesIO
+
+        import pytesseract
+        from PIL import Image
+
+        with Image.open(BytesIO(content)) as image:
+            return pytesseract.image_to_string(image)
+    except Exception:
+        return ""
+
+
+def _ocr_engine_available() -> bool:
+    try:
+        import pytesseract
+
+        pytesseract.get_tesseract_version()
+        return True
+    except Exception:
+        return False
+
+
+def _extract_summary_values(text: str) -> dict[str, float]:
+    patterns = {
+        "wages": r"(?:wages|box\s*1)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "federal_income_tax_withheld": r"(?:federal income tax withheld|box\s*2)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "social_security_wages": r"(?:social security wages|box\s*3)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "social_security_tax_withheld": r"(?:social security tax withheld|box\s*4)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "medicare_wages": r"(?:medicare wages|box\s*5)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "medicare_tax_withheld": r"(?:medicare tax withheld|box\s*6)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "interest_income": r"(?:interest income|interest)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "ordinary_dividends": r"(?:ordinary dividends)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "qualified_dividends": r"(?:qualified dividends)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "agi": r"(?:adjusted gross income|agi)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "taxable_income": r"(?:taxable income)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "total_tax": r"(?:total tax)[^\d$-]*\$?([0-9,]+(?:\.[0-9]{2})?)",
+        "refund_or_amount_owed": r"(?:refund|amount owed)[^\d$-]*\$?(-?[0-9,]+(?:\.[0-9]{2})?)",
+    }
+    out: dict[str, float] = {}
+    lowered = text.lower()
+    for key, pattern in patterns.items():
+        match = re.search(pattern, lowered, flags=re.IGNORECASE)
+        if not match:
+            continue
+        try:
+            value = float(match.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        if math.isfinite(value):
+            out[key] = round(value, 2)
     return out
 
 

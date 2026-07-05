@@ -56,10 +56,23 @@ def annual_spending_from_transactions(tx: dict) -> tuple[float, str]:
     return DEFAULT_ANNUAL_SPENDING_FALLBACK, "default_fallback_40000"
 
 
+def annual_spending_from_snapshot(snapshot: dict) -> tuple[float, str]:
+    """Default annual spend for planning: observed transaction run-rate plus planned recurring spend."""
+    tx = snapshot.get("transactions", {})
+    recurring = snapshot.get("recurring_spending", {})
+    tx_spend, tx_source = annual_spending_from_transactions(tx)
+    planned = float(recurring.get("annual_total", 0.0) or 0.0)
+    if tx_source.startswith("default_fallback") and planned > 0:
+        return planned, "recurring.fixed_expenses_and_subscriptions"
+    if planned > 0:
+        return tx_spend + planned, f"{tx_source}+recurring.fixed_expenses_and_subscriptions"
+    return tx_spend, tx_source
+
+
 def _annual_spending(profile: ProfilePayload, snapshot: dict) -> tuple[float, str]:
     if profile.annual_spending is not None:
         return max(0.0, float(profile.annual_spending)), "profile.annual_spending"
-    return annual_spending_from_transactions(snapshot.get("transactions", {}))
+    return annual_spending_from_snapshot(snapshot)
 
 
 def _annual_income(profile: ProfilePayload, snapshot: dict) -> tuple[float, str]:

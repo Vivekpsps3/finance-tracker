@@ -22,7 +22,7 @@ domain / LAN / VPN
 | 4 | Keep **`allow_credentials=True`** and explicit origins because browser auth uses cookies. |
 | 5 | Set **`SESSION_COOKIE_SECURE=1`** for HTTPS deployments. Use `0` only for local HTTP development. |
 | 6 | Set **`DISABLE_OPENAPI=1`** to hide `/docs` and `/redoc` on exposed hosts. |
-| 7 | Optional **`RATE_LIMIT_PER_MIN=60`** to throttle `POST /api/planning/v1/runs` and import preview/commit. |
+| 7 | Optional **`RATE_LIMIT_PER_MIN=60`** to throttle heavy POSTs (planning runs, imports, and other rate-limited routes). |
 | 8 | **`ALEMBIC_STRICT=1`** (default): fail startup if migrations cannot upgrade. |
 
 ## Data & backups

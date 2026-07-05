@@ -1,6 +1,12 @@
 # AI Handoff: 2026-06-27
 
-Use this as the fast continuation point for the next agent.
+> **Historical / superseded.** Session notes from 2026-06-27. Do **not** treat this
+> file as current architecture. Prefer [ARCHITECTURE.md](./ARCHITECTURE.md),
+> [DATA_MODEL.md](./DATA_MODEL.md), [FRONTEND.md](./FRONTEND.md), and
+> [../AGENTS.md](../AGENTS.md). Some items below (for example net-worth snapshot
+> HTTP routes and dashboard snapshot UX) may no longer match the code.
+
+Use this only as historical context for what was attempted in that pass.
 
 ## User Intent
 

@@ -15,7 +15,7 @@ from price_cache import EOD_MAX_AGE_HOURS, REDIS_URL
 from api_auth import ApiKeyMiddleware
 from rate_limit import RateLimitMiddleware
 from request_logging import RequestLoggingMiddleware
-from routers import assets, auth_routes, health, holdings, imports, liabilities, market, net_worth, planning, taxes, transactions
+from routers import assets, auth_routes, cashflow, fixed_expenses, health, holdings, imports, income, liabilities, market, net_worth, planning, subscriptions, taxes, transactions
 
 setup_logging()
 logger = get_logger()
@@ -23,10 +23,9 @@ logger = get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from database import init_database
+    from database import SQLALCHEMY_DATABASE_URL, init_database
 
     init_database()
-    db_url = os.getenv("DATABASE_URL", "sqlite:///./finance.db")
     cors = [
         o.strip()
         for o in os.getenv(
@@ -36,7 +35,7 @@ async def lifespan(app: FastAPI):
     ]
     logger.info(
         "startup version=2.0.0 database=%s cors_origins=%s price_cache_ttl_s=%s eod_cache_hours=%s redis_configured=%s",
-        redact_database_url(db_url),
+        redact_database_url(SQLALCHEMY_DATABASE_URL),
         cors,
         int(os.getenv("PRICE_CACHE_TTL", "120")),
         EOD_MAX_AGE_HOURS,
@@ -100,6 +99,10 @@ def create_app() -> FastAPI:
     application.include_router(auth_routes.router, prefix=api_prefix)
     application.include_router(imports.router, prefix=api_prefix)
     application.include_router(transactions.router, prefix=api_prefix)
+    application.include_router(cashflow.router, prefix=api_prefix)
+    application.include_router(income.router, prefix=api_prefix)
+    application.include_router(fixed_expenses.router, prefix=api_prefix)
+    application.include_router(subscriptions.router, prefix=api_prefix)
     application.include_router(assets.router, prefix=api_prefix)
     application.include_router(liabilities.router, prefix=api_prefix)
     application.include_router(market.router, prefix=api_prefix)

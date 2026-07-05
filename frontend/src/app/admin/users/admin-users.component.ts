@@ -41,7 +41,7 @@ export class AdminUsersComponent implements OnInit {
   error = '';
   message = '';
   metrics: AdminMetrics | null = null;
-  sql = 'SELECT name, email, role, is_active FROM users ORDER BY email';
+  sql = 'SELECT email, role, is_active FROM users ORDER BY email';
   sqlResult: SqlResult | null = null;
   sqlRunning = false;
   email = '';
@@ -98,7 +98,7 @@ export class AdminUsersComponent implements OnInit {
       next: result => {
         this.sqlResult = result;
         this.sqlRunning = false;
-        this.message = 'SQL executed';
+        this.message = 'Read-only query executed';
         this.loadMetrics();
       },
       error: err => {
@@ -172,6 +172,26 @@ export class AdminUsersComponent implements OnInit {
     }).subscribe({
       next: () => this.usersMessage = 'Password reset',
       error: err => this.usersError = err?.error?.detail || 'Could not reset password',
+    });
+  }
+
+  resetUserContents(user: AuthUser): void {
+    const expected = `RESET ${user.email}`;
+    const typed = window.prompt(`This keeps ${user.email} but deletes their finance, tax, import, planning, income, fixed expense, and subscription data.\n\nType ${expected} to continue.`);
+    if (typed !== expected) {
+      this.usersError = 'Reset cancelled';
+      return;
+    }
+    this.usersError = '';
+    this.usersMessage = '';
+    this.http.post<{ ok: boolean }>(apiUrl(`/admin/users/${user.id}/reset-contents`), {
+      confirm: expected,
+    }).subscribe({
+      next: () => {
+        this.usersMessage = 'User contents reset';
+        this.loadMetrics();
+      },
+      error: err => this.usersError = err?.error?.detail || 'Could not reset user contents',
     });
   }
 

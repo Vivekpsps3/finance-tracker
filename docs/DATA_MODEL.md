@@ -1,7 +1,7 @@
 # Data model
 
-Code truth: `backend/models.py`, `backend/services/finance.py`.
-
+Code truth: `backend/models.py`, `backend/services/finance.py`, `backend/services/cashflow.py`,
+`backend/services/taxes.py`, `backend/services/planning/`.
 
 ## Users and ownership
 
@@ -13,10 +13,7 @@ App-native auth uses three security tables:
 | `user_sessions` | Hashed session tokens, CSRF token hashes, expiry/revocation metadata |
 | `audit_events` | Login, logout, user create/update, password reset, and related account events |
 
-The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions,
-bank accounts, import batches, assets, liabilities, holdings, brokerage
-accounts, net worth snapshots, tax documents, planning profiles, and planning
-runs. Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics and the guarded SQL console read from the same SQLite database.
+The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions, bank accounts, import batches, assets, liabilities, holdings, brokerage accounts, job incomes, fixed expenses, subscriptions, net worth snapshots (table present), tax documents, planning profiles, and planning runs (table present). Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics and the guarded SQL console read from the same SQLite database.
 
 Deleting an account is destructive: the admin API removes that user, their sessions, and all rows in user-owned finance tables. It does not delete global provider/cache tables. The API refuses self-delete and refuses deleting an account only when that account is the final active admin. Inactive admins can be deleted when at least one other active admin remains.
 
@@ -32,33 +29,31 @@ net_worth     = total_assets − liabilities
 
 Always **current** via `GET /api/net-worth/` (computed from assets + portfolio market value − liabilities).
 
-**Not** derived from transactions or imports. Observed history is stored as
-snapshots, but snapshots still use the current balance-sheet formula.
+**Not** derived from transactions, imports, job income, fixed expenses, subscriptions, or tax docs.
 
-### Net worth snapshots
+### Net worth snapshots (schema present; HTTP not wired)
 
-`net_worth_snapshots` stores observed balance-sheet valuations created from the
-same current formula:
+`net_worth_snapshots` stores the intended shape of observed balance-sheet valuations:
 
 ```
 snapshot.total = assets + portfolio - liabilities
 ```
 
-Snapshots are available at:
+Columns include `other_assets`, `portfolio`, `liabilities`, `total_assets`, `total`,
+`snapshot_date`, `as_of`, `source`, `note`, and `user_id`.
 
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /api/net-worth/snapshots` | Recent observed net worth history |
-| `POST /api/net-worth/snapshots` | Record the current balance-sheet valuation |
+**Current API surface:** only live net worth is exposed (`GET /api/net-worth/`). There are
+**no** active `GET/POST /api/net-worth/snapshots` routes in `routers/net_worth.py`, and the
+dashboard does not record snapshot history. The table/model remain for a future observed-history
+feature. If re-enabled, snapshots must stay balance-sheet based—not a transaction rollup.
 
-Snapshots are **not** a transaction rollup. Expenses, income, card payments,
-rent, utilities, transfers, and bank imports remain transaction/cashflow data.
-They only affect net worth after the corresponding current asset/liability value
-is updated.
+Expenses, income, card payments, rent, utilities, transfers, and bank imports remain
+transaction/cashflow data. They only affect net worth after the corresponding current
+asset/liability value is updated.
 
-Future back-calculated net worth should be added as a separate projection or
-derived history layer. Example: reconstructing historical investment values from
-holding purchase dates and price history must not rewrite observed snapshots.
+Future back-calculated net worth should be added as a separate projection or derived history
+layer. Example: reconstructing historical investment values from holding purchase dates and
+price history must not rewrite observed snapshots.
 
 ### Avoid double-counting cash
 
@@ -85,18 +80,34 @@ Each row has `name`, `category`, value (`current_value` or `balance_owed`), `as_
 
 `holdings` — equities/ETFs and brokerage cash sweeps with live/cached prices via `market_data`. Counted inside **portfolio** only; they are **not** subtracted from or merged with manual `assets` (see [Avoid double-counting cash](#avoid-double-counting-cash)).
 
+Optional `brokerage_accounts` / `brokerages` group imported positions; nickname can be set via import API.
+
 ## Transactions ledger
 
-`transactions` - per-user `income` and `expense` (manual or `source=import` from bank CSV). Powers calendar, dashboard period views, and monthly expense/income totals on the Transactions page. **Does not** update net worth.
+`transactions` — per-user `income` and `expense` (manual or `source=import` from bank CSV). Powers calendar, dashboard period views, and monthly expense/income totals on the Transactions page. **Does not** update net worth.
 
-The user mostly transacts by card. Rent and utilities should become first-class
-manual/recurring cashflow items later, but still should not directly mutate net
-worth.
+The user mostly transacts by card. Rent and utilities can be modeled as fixed expenses (below) rather than only as one-off transactions; neither path directly mutates net worth.
 
-Imports: see [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md).
+Imports: see [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md). Built-in bank slugs today: `capital_one`, `chase`, `amex`. Brokerage: Fidelity positions CSV.
 
-SimpleFIN is the likely future aggregation path. Plaid placeholders may exist in
-env examples, but Plaid is not the intended integration for this user.
+SimpleFIN is the likely future aggregation path. Plaid placeholders may exist in env examples, but Plaid is not the intended integration for this user.
+
+## Recurring cashflow (not net worth)
+
+Separate from the transaction ledger and balance sheet. Code: `models.py`, `services/cashflow.py`, routers `income`, `fixed_expenses`, `subscriptions`, `cashflow`.
+
+| Table | Purpose |
+|-------|---------|
+| `job_incomes` | Employer/pay configuration (frequency, base pay, bonus/equity, taxes/deductions) |
+| `fixed_expenses` | Named recurring bills (rent, utilities, etc.) with frequency and date range |
+| `subscriptions` | Recurring subscription amounts with `next_bill_date` |
+
+`GET /api/cashflow/summary?start_date=&end_date=` combines period **transaction** totals with
+pro-rated/planned job income and scheduled fixed-expense/subscription occurrences for that range.
+This is a cashflow view only: it does **not** write assets, liabilities, holdings, or net worth.
+
+Planning reads recurring annual fixed expenses and subscriptions into its input snapshot for
+spending estimates when useful.
 
 ## Tax document vault
 
@@ -130,6 +141,15 @@ Aggregated values include wages, federal/state withholding, Social Security and
 Medicare wages/tax, interest, dividends, capital gain distributions, retirement
 contributions, AGI, taxable income, total tax, and refund/amount owed.
 
+Optional extract preview:
+
+```
+POST /api/taxes/documents/extract
+```
+
+May fill candidate `summary_json` fields from PDF text or OCR when available; saving a
+document still requires an explicit upload with reviewed values.
+
 Important boundary: tax documents do not update net worth, transactions, or
 planning. They are a review/documentation plane. Future extraction/OCR should
 populate `summary_json` from files but preserve the same API contract.
@@ -141,8 +161,9 @@ Separate from net worth and the transaction ledger. Code: `backend/models.py`, `
 | Table | Purpose |
 |-------|---------|
 | `planning_assumption_profiles` | Named assumption sets (`payload_json`: returns, spending, tax ids, retirement age, etc.) |
-| `planning_scenario_runs` | One execution of a planning `tool_id`: seed, paths, `input_snapshot_hash`, `input_as_of` (snapshot time at run), JSON results |
+| `planning_scenario_runs` | Schema reserved for persisted runs; **current** `POST /api/planning/v1/runs` returns results with `id=None` and does **not** insert rows |
 
-- **Does not** update `assets`, `liabilities`, `holdings`, or `transactions`.
+- **Does not** update `assets`, `liabilities`, `holdings`, `transactions`, or recurring cashflow tables.
 - **Does not** affect `GET /api/net-worth/`.
 - API: `/api/planning/v1/*` — all responses include speculative disclaimers.
+- Only tool wired: `mc_net_worth_paths`.

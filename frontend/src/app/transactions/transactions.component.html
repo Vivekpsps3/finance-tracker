@@ -47,6 +47,47 @@
       <ui-button variant="secondary" size="sm" (clicked)="exportToCsv()">Export CSV</ui-button>
     </div>
 
+    <details class="category-tools">
+      <summary>Category tools</summary>
+      <div class="category-merge-grid">
+        <label class="form-group">
+          <span>Rename</span>
+          <input
+            type="text"
+            list="category-options"
+            [(ngModel)]="categoryMergeFrom"
+            placeholder="Current category"
+            aria-label="Current category" />
+        </label>
+        <label class="form-group">
+          <span>To</span>
+          <input
+            type="text"
+            list="category-options"
+            [(ngModel)]="categoryMergeTo"
+            placeholder="Target category"
+            aria-label="Target category" />
+        </label>
+        <div class="category-merge-action">
+          <ui-button
+            variant="secondary"
+            size="sm"
+            (clicked)="mergeCategory()"
+            [disabled]="!canMergeCategory">
+            {{ categoryMergeSaving ? 'Merging' : 'Merge categories' }}
+          </ui-button>
+          @if (loadedCategoryMergeCount > 0) {
+            <span class="category-merge-count">{{ loadedCategoryMergeCount }} loaded match(es)</span>
+          }
+        </div>
+      </div>
+      <datalist id="category-options">
+        @for (category of categoryOptions; track category) {
+          <option [value]="category"></option>
+        }
+      </datalist>
+    </details>
+
     <div *ngIf="loading || listLoading" class="loading-overlay" role="status">
       <span class="spinner-inline" aria-hidden="true"></span> Loading transactions…
     </div>

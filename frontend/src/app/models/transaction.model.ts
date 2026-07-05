@@ -40,6 +40,157 @@ export interface ImportCommitResult {
   batch_id: number;
 }
 
+export interface CategoryRenameResult {
+  from_category: string;
+  to_category: string;
+  updated: number;
+}
+
+export type IncomePayFrequency =
+  | 'annual'
+  | 'monthly'
+  | 'semimonthly'
+  | 'biweekly'
+  | 'weekly'
+  | 'hourly';
+
+export interface JobIncome {
+  id: number;
+  employer: string;
+  role_title?: string | null;
+  pay_frequency: IncomePayFrequency;
+  base_pay: number;
+  hours_per_week?: number | null;
+  annual_bonus: number;
+  annual_equity: number;
+  annual_other: number;
+  annual_taxes: number;
+  annual_deductions: number;
+  taxes_per_period: number;
+  deductions_per_period: number;
+  effective_date: string;
+  is_active: boolean;
+  notes?: string | null;
+  pay_periods_per_year: number;
+  annual_base_pay: number;
+  annual_gross: number;
+  monthly_gross: number;
+  period_gross: number;
+  period_net: number;
+  annual_net: number;
+  monthly_net: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobIncomeCreate {
+  employer: string;
+  role_title?: string;
+  pay_frequency: IncomePayFrequency;
+  base_pay: number;
+  hours_per_week?: number | null;
+  annual_bonus: number;
+  annual_equity: number;
+  annual_other: number;
+  annual_taxes: number;
+  annual_deductions: number;
+  taxes_per_period: number;
+  deductions_per_period: number;
+  effective_date: string;
+  is_active: boolean;
+  notes?: string;
+}
+
+export type FixedExpenseFrequency = 'monthly' | 'annual' | 'quarterly' | 'biweekly' | 'weekly';
+
+export interface FixedExpense {
+  id: number;
+  name: string;
+  category: string;
+  amount: number;
+  frequency: FixedExpenseFrequency;
+  start_date: string;
+  end_date?: string | null;
+  due_day?: number | null;
+  autopay: boolean;
+  payment_account?: string | null;
+  is_active: boolean;
+  notes?: string | null;
+  next_due_date: string;
+  monthly_amount: number;
+  annual_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FixedExpenseCreate {
+  name: string;
+  category: string;
+  amount: number;
+  frequency: FixedExpenseFrequency;
+  start_date: string;
+  end_date?: string | null;
+  due_day?: number | null;
+  autopay: boolean;
+  payment_account?: string | null;
+  is_active: boolean;
+  notes?: string;
+}
+
+export interface Subscription {
+  id: number;
+  name: string;
+  category: string;
+  amount: number;
+  frequency: FixedExpenseFrequency;
+  next_bill_date: string;
+  end_date?: string | null;
+  payment_account?: string | null;
+  is_active: boolean;
+  notes?: string | null;
+  next_due_date: string;
+  monthly_amount: number;
+  annual_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionCreate {
+  name: string;
+  category: string;
+  amount: number;
+  frequency: FixedExpenseFrequency;
+  next_bill_date: string;
+  end_date?: string | null;
+  payment_account?: string | null;
+  is_active: boolean;
+  notes?: string;
+}
+
+export interface CashflowOccurrence {
+  date: string;
+  name: string;
+  category: string;
+  amount: number;
+}
+
+export interface CashflowSummary {
+  start_date: string;
+  end_date: string;
+  transaction_income: number;
+  transaction_expenses: number;
+  planned_income: number;
+  fixed_expenses: number;
+  subscriptions: number;
+  total_income: number;
+  total_expenses: number;
+  net_cashflow: number;
+  savings_rate: number | null;
+  average_daily_spend: number;
+  fixed_occurrences: CashflowOccurrence[];
+  subscription_occurrences: CashflowOccurrence[];
+}
+
 export interface Holding {
   id: number;
   symbol: string;
@@ -117,19 +268,6 @@ export interface NetWorth {
   as_of?: string;
   portfolio_sources?: Record<string, string>;
   portfolio_breakdown?: Record<string, number>;
-}
-
-export interface NetWorthSnapshot {
-  id: number;
-  snapshot_date: string;
-  other_assets: number;
-  portfolio: number;
-  liabilities: number;
-  total_assets: number;
-  total: number;
-  as_of: string;
-  source: string;
-  note?: string | null;
 }
 
 export interface FidelityImportOption {
@@ -216,6 +354,13 @@ export interface TaxDocument {
   summary: TaxSummaryValues;
   notes?: string | null;
   uploaded_at: string;
+}
+
+export interface TaxDocumentExtraction {
+  status: 'extracted' | 'manual_review';
+  summary: TaxSummaryValues;
+  confidence: number;
+  message: string;
 }
 
 export interface TaxYearSummary {

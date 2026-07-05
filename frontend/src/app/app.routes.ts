@@ -26,10 +26,36 @@ export const routes: Routes = [
           import('./transactions/transactions.component').then(m => m.TransactionsComponent),
       },
       {
+        path: 'income',
+        title: 'Income · Finance',
+        loadComponent: () =>
+          import('./income/income.component').then(m => m.IncomeComponent),
+      },
+      {
+        path: 'fixed-expenses',
+        title: 'Fixed expenses · Finance',
+        loadComponent: () =>
+          import('./fixed-expenses/fixed-expenses.component').then(m => m.FixedExpensesComponent),
+      },
+      {
+        path: 'subscriptions',
+        title: 'Subscriptions · Finance',
+        loadComponent: () =>
+          import('./subscriptions/subscriptions.component').then(m => m.SubscriptionsComponent),
+      },
+      {
         path: 'portfolio',
         title: 'Portfolio · Finance',
         loadComponent: () =>
           import('./portfolio/portfolio.component').then(m => m.PortfolioComponent),
+      },
+      {
+        path: 'investment-insights',
+        title: 'Investment Insights · Finance',
+        loadComponent: () =>
+          import('./investment-insights/investment-insights.component').then(
+            m => m.InvestmentInsightsComponent
+          ),
       },
       {
         path: 'balance-sheet',

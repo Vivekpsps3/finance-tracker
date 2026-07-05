@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from database import get_db
 from models import Transaction, User
-from schemas import TransactionCreate, TransactionResponse, TransactionUpdate
+from schemas import (
+    TransactionCategoryRenameRequest,
+    TransactionCategoryRenameResponse,
+    TransactionCreate,
+    TransactionResponse,
+    TransactionUpdate,
+)
 from services.finance import transactions_to_responses
 
 router = APIRouter(tags=["transactions"])
@@ -47,6 +53,25 @@ def get_transactions(
     q = q.order_by(sort_col.asc() if sort_dir == "asc" else desc(sort_col))
     txs = q.offset(skip).limit(limit).all()
     return transactions_to_responses(db, current_user.id, txs)
+
+
+@router.put("/transactions/categories/rename", response_model=TransactionCategoryRenameResponse)
+def rename_transaction_category(
+    body: TransactionCategoryRenameRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from_category = body.from_category.strip()
+    to_category = body.to_category.strip()
+    if from_category == to_category:
+        return {"from_category": from_category, "to_category": to_category, "updated": 0}
+    updated = (
+        db.query(Transaction)
+        .filter(Transaction.user_id == current_user.id, Transaction.category == from_category)
+        .update({Transaction.category: to_category}, synchronize_session=False)
+    )
+    db.commit()
+    return {"from_category": from_category, "to_category": to_category, "updated": updated}
 
 
 @router.put("/transactions/{tx_id}", response_model=TransactionResponse)

@@ -1,0 +1,105 @@
+.income-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-6);
+  align-items: flex-end;
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-card);
+}
+
+.income-summary .stat-display {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.summary-caption {
+  margin: var(--space-2) 0 0;
+}
+
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+
+.income-summary-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.summary-pill strong {
+  font-size: var(--text-sm);
+}
+
+.net-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.net-preview div {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  padding: var(--space-3);
+}
+
+.net-preview span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-1);
+}
+
+.block {
+  display: block;
+}
+
+.income-panel {
+  max-width: 44rem;
+  width: 100%;
+}
+
+.checkbox-field {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  align-self: end;
+  min-height: 44px;
+  color: var(--text-secondary);
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
+@media (max-width: 760px) {
+  .income-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .summary-pill {
+    align-self: flex-start;
+  }
+
+  .income-summary-metrics,
+  .net-preview {
+    justify-content: flex-start;
+  }
+
+  .net-preview {
+    grid-template-columns: 1fr;
+  }
+}

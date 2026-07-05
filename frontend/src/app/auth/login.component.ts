@@ -32,7 +32,7 @@ export class LoginComponent {
   }
 
   submit(): void {
-    if (!this.email.trim() || !this.password || (this.setupMode && !this.displayName.trim())) return;
+    if (!this.canSubmit) return;
     this.loading = true;
     this.error = '';
     const request = this.setupMode
@@ -43,7 +43,7 @@ export class LoginComponent {
     request.subscribe({
       next: () => this.router.navigate(['/']),
       error: err => {
-        this.error = err?.error?.detail || (this.setupMode ? 'Setup failed' : this.signupMode ? 'Signup failed' : 'Login failed');
+        this.error = this.errorMessage(err);
         this.loading = false;
       },
     });
@@ -59,8 +59,29 @@ export class LoginComponent {
     return this.setupMode || this.signupMode;
   }
 
+  get canSubmit(): boolean {
+    if (this.loading || !this.email.trim() || !this.password) return false;
+    if (this.needsDisplayName && !this.displayName.trim()) return false;
+    if (this.needsDisplayName && this.password.length < 12) return false;
+    return true;
+  }
+
   get passwordHint(): string {
     return this.needsDisplayName ? 'Use at least 12 characters.' : '';
   }
-}
 
+  private errorMessage(err: any): string {
+    const detail = err?.error?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail) && detail.length) {
+      return detail
+        .map(item => {
+          const field = Array.isArray(item?.loc) ? item.loc[item.loc.length - 1] : null;
+          const message = item?.msg || 'Invalid value';
+          return field ? `${field}: ${message}` : message;
+        })
+        .join('; ');
+    }
+    return this.setupMode ? 'Setup failed' : this.signupMode ? 'Signup failed' : 'Login failed';
+  }
+}

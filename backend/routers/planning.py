@@ -37,10 +37,11 @@ def get_inputs(db: Session = Depends(get_db), current_user: User = Depends(get_c
     snapshot = build_planning_snapshot(db, current_user.id)
     tx = snapshot.get("transactions", {})
     inc_m = float(tx.get("avg_monthly_income", 0) or 0)
-    from services.analytics.monte_carlo import annual_spending_from_transactions
+    from services.analytics.monte_carlo import annual_spending_from_snapshot
 
     exp_m = float(tx.get("avg_monthly_expense", 0) or 0)
-    spend_y, spend_source = annual_spending_from_transactions(tx)
+    recurring = snapshot.get("recurring_spending", {})
+    spend_y, spend_source = annual_spending_from_snapshot(snapshot)
     sav_y = max(0.0, inc_m * 12 - spend_y)
     nw = snapshot["net_worth"]
     as_of_raw = snapshot.get("as_of")
@@ -61,6 +62,9 @@ def get_inputs(db: Session = Depends(get_db), current_user: User = Depends(get_c
         implied_annual_savings=round(sav_y, 2),
         transaction_count=int(tx.get("transaction_count", 0)),
         annual_spending_source=spend_source,
+        recurring_annual_spending=round(float(recurring.get("annual_total", 0) or 0), 2),
+        annual_fixed_expenses=round(float(recurring.get("annual_fixed_expenses", 0) or 0), 2),
+        annual_subscriptions=round(float(recurring.get("annual_subscriptions", 0) or 0), 2),
     )
 
 
@@ -139,5 +143,4 @@ def create_run(body: PlanningRunCreate, db: Session = Depends(get_db), current_u
         started_at=started,
         finished_at=finished,
     )
-
 

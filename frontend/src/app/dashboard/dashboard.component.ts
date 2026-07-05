@@ -10,7 +10,15 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Subject, combineLatest, finalize, takeUntil, tap } from 'rxjs';
 import { FinanceService } from '../services/finance.service';
-import { DateFilter, NetWorth, NetWorthSnapshot, Transaction } from '../models/transaction.model';
+import {
+  CashflowSummary,
+  DateFilter,
+  FixedExpense,
+  JobIncome,
+  NetWorth,
+  Subscription,
+  Transaction,
+} from '../models/transaction.model';
 import { ChartsComponent } from '../charts/charts.component';
 import {
   UiBadgeComponent,
@@ -24,7 +32,7 @@ import {
   UiSkeletonComponent,
   UiIconComponent,
 } from '../shared/ui';
-import { filterByDate, getDefaultDateFilter } from '../utils/date.util';
+import { filterByDate, getDateRange, getDefaultDateFilter } from '../utils/date.util';
 
 @Component({
   selector: 'app-dashboard',
@@ -50,13 +58,19 @@ import { filterByDate, getDefaultDateFilter } from '../utils/date.util';
 export class DashboardComponent implements OnInit, OnDestroy {
   netWorth: NetWorth | null = null;
   transactions: Transaction[] = [];
-  netWorthSnapshots: NetWorthSnapshot[] = [];
+  jobIncomes: JobIncome[] = [];
+  fixedExpenses: FixedExpense[] = [];
+  subscriptions: Subscription[] = [];
+  cashflowSummary: CashflowSummary | null = null;
   isLoading = true;
   chartsReady = false;
-  isRecordingSnapshot = false;
   error: string | null = null;
   periodIncomeTotal = 0;
   periodExpenseTotal = 0;
+  periodTransactionIncomeTotal = 0;
+  periodTransactionExpenseTotal = 0;
+  periodJobNetIncomeTotal = 0;
+  periodFixedExpenseTotal = 0;
   periodNetCashflow = 0;
   periodSavingsRate: number | null = null;
   averageDailySpend = 0;
@@ -66,6 +80,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   filter: DateFilter = getDefaultDateFilter();
   filteredTransactions: Transaction[] = [];
+  dashboardCashflowTransactions: Transaction[] = [];
   filterSummary = '';
 
   readonly periodOptions: UiSelectOption[] = [
@@ -85,14 +100,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     combineLatest([
       this.financeService.netWorth$,
-      this.financeService.transactions$,
-      this.financeService.netWorthSnapshots$,
+      this.financeService.dashboardTransactions$,
+      this.financeService.cashflowSummary$,
+      this.financeService.jobIncomes$,
+      this.financeService.fixedExpenses$,
+      this.financeService.subscriptions$,
     ])
       .pipe(takeUntil(this.destroy$))
-      .subscribe(([nw, txs, snapshots]) => {
+      .subscribe(([nw, txs, summary, jobIncomes, fixedExpenses, subscriptions]) => {
         this.netWorth = nw;
         this.transactions = txs;
-        this.netWorthSnapshots = snapshots;
+        this.cashflowSummary = summary;
+        this.jobIncomes = jobIncomes;
+        this.fixedExpenses = fixedExpenses;
+        this.subscriptions = subscriptions;
         this.applyDateFilter();
         this.cdr.markForCheck();
       });
@@ -126,24 +147,49 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private computeInsights() {
-    this.periodIncomeTotal = this.filteredTransactions
+    this.periodTransactionIncomeTotal = this.filteredTransactions
       .filter(t => t.type === 'income')
       .reduce((s, t) => s + t.amount, 0);
-    this.periodExpenseTotal = this.filteredTransactions
+    this.periodTransactionExpenseTotal = this.filteredTransactions
       .filter(t => t.type === 'expense')
       .reduce((s, t) => s + t.amount, 0);
-    this.periodNetCashflow = this.periodIncomeTotal - this.periodExpenseTotal;
-    this.periodSavingsRate = this.periodIncomeTotal > 0
-      ? (this.periodNetCashflow / this.periodIncomeTotal) * 100
-      : null;
-
-    const days = this.daysInFilter();
-    this.averageDailySpend = days > 0 ? this.periodExpenseTotal / days : 0;
+    if (this.cashflowSummary) {
+      this.periodTransactionIncomeTotal = this.cashflowSummary.transaction_income;
+      this.periodTransactionExpenseTotal = this.cashflowSummary.transaction_expenses;
+      this.periodJobNetIncomeTotal = this.cashflowSummary.planned_income;
+      this.periodFixedExpenseTotal = this.cashflowSummary.fixed_expenses + this.cashflowSummary.subscriptions;
+      this.periodIncomeTotal = this.cashflowSummary.total_income;
+      this.periodExpenseTotal = this.cashflowSummary.total_expenses;
+      this.periodNetCashflow = this.cashflowSummary.net_cashflow;
+      this.periodSavingsRate = this.cashflowSummary.savings_rate;
+      this.averageDailySpend = this.cashflowSummary.average_daily_spend;
+    } else {
+      this.periodJobNetIncomeTotal = 0;
+      this.periodFixedExpenseTotal = 0;
+      this.periodIncomeTotal = this.periodTransactionIncomeTotal;
+      this.periodExpenseTotal = this.periodTransactionExpenseTotal;
+      this.periodNetCashflow = this.periodIncomeTotal - this.periodExpenseTotal;
+      this.periodSavingsRate = this.periodIncomeTotal > 0
+        ? (this.periodNetCashflow / this.periodIncomeTotal) * 100
+        : null;
+      const days = this.daysInFilter();
+      this.averageDailySpend = days > 0 ? this.periodExpenseTotal / days : 0;
+    }
 
     const categoryTotals = new Map<string, number>();
     for (const tx of this.filteredTransactions) {
       if (tx.type !== 'expense') continue;
       categoryTotals.set(tx.category, (categoryTotals.get(tx.category) || 0) + tx.amount);
+    }
+    if (this.cashflowSummary) {
+      for (const event of this.cashflowSummary.fixed_occurrences) {
+        const category = `Fixed: ${event.category}`;
+        categoryTotals.set(category, (categoryTotals.get(category) || 0) + event.amount);
+      }
+      for (const event of this.cashflowSummary.subscription_occurrences) {
+        const category = `Subscription: ${event.category}`;
+        categoryTotals.set(category, (categoryTotals.get(category) || 0) + event.amount);
+      }
     }
     const top = [...categoryTotals.entries()].sort((a, b) => b[1] - a[1])[0];
     this.largestCategory = top?.[0] || '';
@@ -185,34 +231,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
   }
 
-  recordSnapshot() {
-    this.isRecordingSnapshot = true;
-    this.cdr.markForCheck();
-    this.financeService
-      .recordNetWorthSnapshot('Manual dashboard snapshot')
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => {
-          this.isRecordingSnapshot = false;
-          this.cdr.markForCheck();
-        })
-      )
-      .subscribe({
-        error: (err: Error) => {
-          const detail = err?.message ? ` ${err.message}` : '';
-          this.error = `Could not record net worth snapshot.${detail}`;
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  latestSnapshotDelta(): number | null {
-    if (!this.netWorth || this.netWorthSnapshots.length < 2) {
-      return null;
-    }
-    return this.netWorth.total - this.netWorthSnapshots[1].total;
-  }
-
   abs(value: number): number {
     return Math.abs(value);
   }
@@ -248,12 +266,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.filter.year = new Date().getFullYear();
     }
     this.applyDateFilter();
+    this.loadCashflowForFilter();
     this.cdr.markForCheck();
   }
 
   resetFilter() {
     this.filter = getDefaultDateFilter();
     this.applyDateFilter();
+    this.loadCashflowForFilter();
     this.cdr.markForCheck();
   }
 
@@ -266,6 +286,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.filteredTransactions = filterByDate(this.transactions, this.filter);
     this.updateFilterSummary();
     this.computeInsights();
+    this.dashboardCashflowTransactions = this.buildDashboardCashflowTransactions();
+  }
+
+  private loadCashflowForFilter() {
+    const { start, end } = getDateRange(this.filter);
+    if (!start || !end) {
+      return;
+    }
+    this.financeService
+      .getCashflowSummary(start, end)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({ error: () => this.cdr.markForCheck() });
   }
 
   private updateFilterSummary() {
@@ -314,6 +346,84 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     const dates = this.filteredTransactions.map(t => new Date(`${t.date}T00:00:00`).getTime());
     return this.inclusiveDays(new Date(Math.min(...dates)), new Date(Math.max(...dates)));
+  }
+
+  private buildDashboardCashflowTransactions(): Transaction[] {
+    const synthetic: Transaction[] = [];
+    if (!this.cashflowSummary) {
+      return this.filteredTransactions;
+    }
+
+    const months = this.monthsInCurrentFilter();
+    const incomePerMonth = months.length ? this.cashflowSummary.planned_income / months.length : 0;
+    const fixedPerMonth = months.length ? this.cashflowSummary.fixed_expenses / months.length : 0;
+    const subscriptionPerMonth = months.length ? this.cashflowSummary.subscriptions / months.length : 0;
+    months.forEach((month, index) => {
+      if (incomePerMonth > 0) {
+        synthetic.push({
+          id: -1_000_000 - index,
+          date: `${month}-15`,
+          type: 'income',
+          category: 'Job net income',
+          amount: Math.round(incomePerMonth * 100) / 100,
+          description: 'Active job income net of taxes and deductions',
+          source: 'manual',
+          account_display: null,
+        });
+      }
+      if (fixedPerMonth > 0) {
+        synthetic.push({
+          id: -2_000_000 - index,
+          date: `${month}-15`,
+          type: 'expense',
+          category: 'Fixed expenses',
+          amount: Math.round(fixedPerMonth * 100) / 100,
+          description: 'Active rent and fixed expenses',
+          source: 'manual',
+          account_display: null,
+        });
+      }
+      if (subscriptionPerMonth > 0) {
+        synthetic.push({
+          id: -3_000_000 - index,
+          date: `${month}-15`,
+          type: 'expense',
+          category: 'Subscriptions',
+          amount: Math.round(subscriptionPerMonth * 100) / 100,
+          description: 'Active recurring subscriptions',
+          source: 'manual',
+          account_display: null,
+        });
+      }
+    });
+
+    return [...this.filteredTransactions, ...synthetic];
+  }
+
+  private monthsInCurrentFilter(): string[] {
+    const { start, end } = getDateRange(this.filter);
+    if (!start || !end) {
+      const now = new Date();
+      const months: string[] = [];
+      for (let i = 11; i >= 0; i -= 1) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      }
+      return months;
+    }
+    const startDate = new Date(`${start}T00:00:00`);
+    const endDate = new Date(`${end}T00:00:00`);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return [];
+    }
+    const months: string[] = [];
+    const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const last = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    while (cursor <= last) {
+      months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return months;
   }
 
   private inclusiveDays(start: Date, end: Date): number {

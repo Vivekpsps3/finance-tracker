@@ -56,6 +56,7 @@ import {
 })
 export class PlanningComponent implements OnInit, OnDestroy {
   readonly disclaimer = PLANNING_DISCLAIMER;
+  activeTab: 'overview' | 'monte-carlo' | 'fire' | 'goals' | 'debt' = 'overview';
 
   loading = true;
   running = false;
@@ -79,6 +80,30 @@ export class PlanningComponent implements OnInit, OnDestroy {
   nPaths = 500;
   seed = 1;
 
+  fire = {
+    withdrawalRate: 0.04,
+    extraAnnualExpenses: 0,
+    expectedReturn: 0.07,
+    savingsGrowth: 0.03,
+    includeRecurringExpenses: true,
+  };
+
+  goal = {
+    name: 'Savings goal',
+    targetAmount: 100000,
+    currentSaved: 0,
+    years: 5,
+    expectedReturn: 0.07,
+  };
+
+  debt = {
+    name: 'Debt',
+    balance: 10000,
+    apr: 0.08,
+    minimumPayment: 250,
+    extraPayment: 250,
+  };
+
   lastRun: PlanningRun | null = null;
   chartData: McChartData | null = null;
 
@@ -88,6 +113,14 @@ export class PlanningComponent implements OnInit, OnDestroy {
   savingProfile = false;
 
   private destroy$ = new Subject<void>();
+
+  readonly planningTabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'monte-carlo', label: 'Monte Carlo' },
+    { id: 'fire', label: 'FIRE / 4% Rule' },
+    { id: 'goals', label: 'Goal Funding' },
+    { id: 'debt', label: 'Debt Payoff' },
+  ] as const;
 
   constructor(
     private planning: PlanningService,
@@ -123,6 +156,8 @@ export class PlanningComponent implements OnInit, OnDestroy {
           this.assumptions.portfolio_allocation = this.inferredAllocation();
           this.assumptions.checkpoints = this.defaultCheckpoints(inp);
           this.startingNetWorth = inp.net_worth_total;
+          this.goal.currentSaved = Math.max(0, inp.net_worth_total);
+          this.debt.balance = Math.max(0, inp.net_worth_liabilities);
         },
         error: err => {
           this.error = err?.message ?? 'Could not load planning inputs.';
@@ -135,6 +170,112 @@ export class PlanningComponent implements OnInit, OnDestroy {
     if (!this.useTxSpending) return false;
     const src = this.inputs?.annual_spending_source ?? '';
     return src === 'default_fallback_40000' || src.includes('default_fallback');
+  }
+
+  setTab(tab: 'overview' | 'monte-carlo' | 'fire' | 'goals' | 'debt'): void {
+    this.activeTab = tab;
+    this.cdr.markForCheck();
+  }
+
+  fireNumber(): number {
+    const withdrawalRate = Math.max(0.001, Number(this.fire.withdrawalRate || 0.04));
+    return this.fireAnnualSpending() / withdrawalRate;
+  }
+
+  fireGap(): number {
+    return Math.max(this.fireNumber() - Number(this.inputs?.net_worth_portfolio || 0), 0);
+  }
+
+  yearsToFire(): number | null {
+    const annualSavings = Math.max(this.effectiveNetCashflow(), 0);
+    if (annualSavings <= 0) return null;
+    return Math.ceil(this.fireGap() / annualSavings);
+  }
+
+  fireAnnualSpending(): number {
+    const base = this.fire.includeRecurringExpenses
+      ? this.effectiveAnnualSpending()
+      : Math.max(0, this.effectiveAnnualSpending() - Number(this.inputs?.recurring_annual_spending || 0));
+    return Math.max(0, base + Number(this.fire.extraAnnualExpenses || 0));
+  }
+
+  fireProjectedPortfolioAtTarget(): number | null {
+    const years = this.yearsToFire();
+    if (years == null) return null;
+    const current = Math.max(0, Number(this.inputs?.net_worth_portfolio || 0));
+    const savings = Math.max(0, this.effectiveNetCashflow());
+    const r = Math.max(-0.99, Number(this.fire.expectedReturn || 0));
+    if (r === 0) return current + savings * years;
+    return current * Math.pow(1 + r, years) + savings * ((Math.pow(1 + r, years) - 1) / r);
+  }
+
+  monthlyGoalContribution(): number {
+    const target = Math.max(0, Number(this.goal.targetAmount || 0));
+    const current = Math.max(0, Number(this.goal.currentSaved || 0));
+    const years = Math.max(0.1, Number(this.goal.years || 0));
+    const months = Math.max(1, Math.round(years * 12));
+    const monthlyReturn = Math.max(-0.99, Number(this.goal.expectedReturn || 0)) / 12;
+    const futureCurrent = current * Math.pow(1 + monthlyReturn, months);
+    const gap = Math.max(0, target - futureCurrent);
+    if (gap <= 0) return 0;
+    if (monthlyReturn === 0) return Math.round(gap / months);
+    return Math.round((gap * monthlyReturn) / (Math.pow(1 + monthlyReturn, months) - 1));
+  }
+
+  goalProjectedValue(): number {
+    const contribution = this.monthlyGoalContribution();
+    const current = Math.max(0, Number(this.goal.currentSaved || 0));
+    const months = Math.max(1, Math.round(Math.max(0.1, Number(this.goal.years || 0)) * 12));
+    const monthlyReturn = Math.max(-0.99, Number(this.goal.expectedReturn || 0)) / 12;
+    if (monthlyReturn === 0) return current + contribution * months;
+    return (
+      current * Math.pow(1 + monthlyReturn, months) +
+      contribution * ((Math.pow(1 + monthlyReturn, months) - 1) / monthlyReturn)
+    );
+  }
+
+  debtMonthlyPayment(): number {
+    return Number(this.debt.minimumPayment || 0) + Number(this.debt.extraPayment || 0);
+  }
+
+  debtPayoffMonths(): number | null {
+    const balance = Number(this.debt.balance || 0);
+    const payment = this.debtMonthlyPayment();
+    const apr = Number(this.debt.apr || 0);
+    if (payment <= 0 || balance <= 0) return null;
+    const rate = apr / 12;
+    let remaining = balance;
+    let months = 0;
+    while (remaining > 0 && months < 600) {
+      remaining = remaining * (1 + rate) - payment;
+      months += 1;
+    }
+    return months >= 600 ? null : months;
+  }
+
+  debtTotalInterest(): number | null {
+    const balance = Number(this.debt.balance || 0);
+    const payment = this.debtMonthlyPayment();
+    const apr = Number(this.debt.apr || 0);
+    const months = this.debtPayoffMonths();
+    if (months == null || balance <= 0 || payment <= 0) return null;
+    let remaining = balance;
+    let interest = 0;
+    const rate = apr / 12;
+    for (let i = 0; i < months && remaining > 0; i += 1) {
+      const charge = remaining * rate;
+      interest += charge;
+      remaining = Math.max(0, remaining + charge - payment);
+    }
+    return interest;
+  }
+
+  debtPayoffDate(): string {
+    const months = this.debtPayoffMonths();
+    if (months == null) return '-';
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
+    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
   }
 
   private applyRunResult(run: PlanningRun): void {

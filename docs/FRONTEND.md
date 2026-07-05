@@ -6,23 +6,29 @@ Angular 19 standalone app under `frontend/src/app/`.
 
 - **Tailwind CSS 3** + `src/theme/tokens.css` (dark only v1)
 - **Shared UI** — `shared/ui/*`, selector prefix `ui-`
-- **State** — `FinanceService` (RxJS `BehaviorSubject`s); dashboard uses `loadDashboard()` for coordinated fetch
-- **Charts** — Chart.js via dynamic `import('chart.js/auto')` in `ChartsComponent`
+- **State** — `FinanceService` (RxJS `BehaviorSubject`s for ledger, balance sheet, recurring cashflow); `PlanningService`; `AuthService`
+- **Charts** — Chart.js via dynamic `import('chart.js/auto')` (dashboard/charts components and planning fan chart)
 
 ## Routes
 
 | Path | Component |
 |------|-----------|
-| `/` | Dashboard (lazy; current net worth, manual snapshots, period trends) |
-| `/transactions` | Transactions (income, expenses, import) |
-| `/balance-sheet` | Balance sheet |
+| `/login` | Auth (bootstrap first admin, signup, login) — outside shell |
+| `/` | Dashboard (lazy; current net worth, period trends) |
+| `/transactions` | Transactions (income, expenses, bank CSV import) |
+| `/income` | Job income configurations |
+| `/fixed-expenses` | Recurring fixed expenses (rent/utilities-style) |
+| `/subscriptions` | Subscriptions |
+| `/balance-sheet` | Manual assets & liabilities |
 | `/portfolio` | Portfolio (manual + Fidelity CSV import with account grouping) |
+| `/investment-insights` | Client-side portfolio growth / withdrawal-rate insights (uses holdings values; not a separate backend analytics API) |
 | `/calendar` | Calendar |
 | `/taxes` | Tax Center (official document vault + yearly summary) |
 | `/planning` | Monte Carlo net worth simulator (fan chart; save **named input presets** only—runs not stored) |
+| `/admin/users` | Admin user management (admin role only) |
 | `/charts` | Redirects to `/` (legacy path) |
 
-Shell: `MainLayoutComponent` (top nav, `#main-content` max-width 1180px). Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
+Shell: `MainLayoutComponent` (grouped top nav + subnav, `#main-content`). Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
 
 ## Design tokens
 
@@ -58,6 +64,7 @@ Import from `shared/ui` or `shared/ui/index.ts`.
 | `ui-empty-state` | `title`, `message` |
 | `ui-page-header` | `title`, `subtitle`, `[uiPageActions]` |
 | `ui-data-table` | Scroll wrapper; project table markup inside |
+| `ui-icon` | Named icons used in nav and empty states |
 
 Use **OnPush** on new components; feature pages should use OnPush + `markForCheck` when updating from subscriptions.
 
@@ -65,23 +72,20 @@ Use **OnPush** on new components; feature pages should use OnPush + `markForChec
 
 - **Period filter** applies to insights and charts only.
 - **Net worth hero** is always **current** balance-sheet total (labeled in UI).
-- **Record snapshot** stores the current balance-sheet valuation through
-  `POST /api/net-worth/snapshots`.
-- Snapshot history is observed net worth history. It is not computed from
-  transactions.
-- Embedded charts: `[embedded]="true"`, `[dataReady]`, `[overrideTransactions]`.
+- Observed net worth **history** is not currently exposed in the UI (see [DATA_MODEL.md](./DATA_MODEL.md) on `net_worth_snapshots`).
+- Embedded charts use shared chart utilities where present.
 
 When adding history charts later, keep two concepts separate:
 
 | Concept | Source |
 |---------|--------|
-| Observed net worth | `net_worth_snapshots` |
-| Spending/income trends | `transactions` |
+| Observed net worth | balance-sheet formula / future `net_worth_snapshots` API |
+| Spending/income trends | `transactions` (+ optional cashflow summary) |
 
 ## Tax Center behavior
 
 - Route: `/taxes`.
-- Shows yearly totals from structured values entered during upload.
+- Shows yearly totals from structured values entered during upload (and optional extract preview).
 - Upload accepts PDF, CSV, text, JPG, and PNG tax documents.
 - Important values are visible on the page and on each document row.
 - Document downloads use `/api/taxes/documents/{id}/download`.
@@ -91,6 +95,12 @@ When adding history charts later, keep two concepts separate:
   UI components do not yet cover those controls ergonomically. Keep the local
   `.field` pattern contained to the page until reusable file/textarea controls
   exist.
+
+## Recurring cashflow pages
+
+- `/income`, `/fixed-expenses`, `/subscriptions` manage recurring rows via `FinanceService`.
+- These do **not** change net worth. They feed cashflow summary and can influence planning spending inputs.
+- Prefer the dedicated pages over inventing parallel recurring models on the transactions table.
 
 ## Build
 

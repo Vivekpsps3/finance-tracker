@@ -1,4 +1,4 @@
-<ui-page-header title="Admin" subtitle="All users, account controls, metrics, and maintenance SQL." />
+<ui-page-header title="Admin" subtitle="Users, content resets, sessions, metrics, and read-only inspection." />
 
 @if (error) { <p class="status status--error page-status" role="alert">{{ error }}</p> }
 @if (message) { <p class="status status--ok page-status">{{ message }}</p> }
@@ -70,6 +70,7 @@
                 {{ user.is_active ? 'Disable' : 'Enable' }}
               </ui-button>
               <ui-button variant="secondary" size="sm" (clicked)="resetPassword(user)">Reset</ui-button>
+              <ui-button variant="secondary" size="sm" (clicked)="resetUserContents(user)">Reset contents</ui-button>
               <ui-button variant="danger" size="sm" [disabled]="!canDelete(user)" (clicked)="deleteUser(user)">Delete</ui-button>
             </td>
           </tr>
@@ -110,12 +111,13 @@
   </form>
 </section>
 
-<section class="sql-panel" aria-label="SQL console">
-  <h2>SQL console</h2>
+<section class="sql-panel" aria-label="Read-only SQL inspection">
+  <h2>Read-only inspection</h2>
+  <p class="muted">Only a single SELECT statement is allowed. Use reset contents for cleanup.</p>
   <textarea class="sql-input" [(ngModel)]="sql" rows="6" spellcheck="false"></textarea>
   <div class="sql-actions">
-    <ui-button variant="danger" (clicked)="runSql()" [disabled]="sqlRunning || !sql.trim()">
-      {{ sqlRunning ? 'Running' : 'Run SQL' }}
+    <ui-button variant="secondary" (clicked)="runSql()" [disabled]="sqlRunning || !sql.trim()">
+      {{ sqlRunning ? 'Running' : 'Run query' }}
     </ui-button>
   </div>
   @if (sqlResult) {

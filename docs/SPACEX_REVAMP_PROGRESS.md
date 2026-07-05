@@ -1,5 +1,9 @@
 # SpaceX Themed Revamp Progress
 
+> **Historical / superseded.** Incomplete theming checklist from a prior pass.
+> Not current product or architecture truth. Prefer [DESIGN_GUIDE.md](./DESIGN_GUIDE.md)
+> and [FRONTEND.md](./FRONTEND.md) for UI conventions.
+
 ## Goal
 
 Revamp the finance tracker with a subtle but clearly SpaceX-inspired interface: dark orbital surfaces, white typography, restrained red accents, launch/mission language, and technical panel styling without turning the app into a novelty theme.

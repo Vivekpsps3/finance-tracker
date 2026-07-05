@@ -83,6 +83,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   monthExpenseTotal = 0;
   monthIncomeTotal = 0;
+  categoryMergeFrom = '';
+  categoryMergeTo = '';
+  categoryMergeSaving = false;
 
   readonly pageSize = 200;
   loadingMore = false;
@@ -185,6 +188,24 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
   }
 
+  get categoryOptions(): string[] {
+    return Array.from(
+      new Set(this.transactions.map(t => t.category).filter(category => !!category?.trim()))
+    ).sort((a, b) => a.localeCompare(b));
+  }
+
+  get loadedCategoryMergeCount(): number {
+    const from = this.categoryMergeFrom.trim();
+    if (!from) return 0;
+    return this.transactions.filter(t => t.category === from).length;
+  }
+
+  get canMergeCategory(): boolean {
+    const from = this.categoryMergeFrom.trim();
+    const to = this.categoryMergeTo.trim();
+    return !!from && !!to && from !== to && !this.categoryMergeSaving;
+  }
+
   onSummaryMonthChange() {
     this.computeMonthTotals();
     this.cdr.markForCheck();
@@ -211,9 +232,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     this.financeService.getImportBanks().pipe(takeUntil(this.destroy$)).subscribe({
       next: banks => {
         this.importBanks = banks;
-        if (!this.selectedImportBankSlug && banks.length) {
-          this.selectedImportBankSlug = banks[0].slug;
-        }
+        this.selectedImportBankSlug = banks[0]?.slug ?? '';
         this.cdr.markForCheck();
       },
     });
@@ -369,6 +388,46 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   onSearchChange() {
     this.reloadTransactionList();
+  }
+
+  async mergeCategory(): Promise<void> {
+    const from = this.categoryMergeFrom.trim();
+    const to = this.categoryMergeTo.trim();
+    if (!from || !to) {
+      this.toastService.error('Choose a source and target category.');
+      return;
+    }
+    if (from === to) {
+      this.toastService.error('Choose two different categories.');
+      return;
+    }
+
+    const ok = await this.confirmService.ask(
+      'Merge category?',
+      `Rename every "${from}" transaction to "${to}"?`,
+      'Merge',
+      'Cancel'
+    );
+    if (!ok) return;
+
+    this.categoryMergeSaving = true;
+    this.financeService
+      .renameCategory(from, to)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: result => {
+          this.categoryMergeSaving = false;
+          this.categoryMergeFrom = '';
+          this.categoryMergeTo = '';
+          this.applyFilterAndSort();
+          this.toastService.success(`Updated ${result.updated} transaction(s)`);
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.categoryMergeSaving = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   toggleSort(column: 'date' | 'category' | 'amount') {

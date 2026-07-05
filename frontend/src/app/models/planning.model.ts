@@ -82,6 +82,9 @@ export interface PlanningInputsPreview {
   implied_annual_spending: number;
   implied_annual_savings: number;
   transaction_count: number;
+  recurring_annual_spending?: number;
+  annual_fixed_expenses?: number;
+  annual_subscriptions?: number;
   annual_spending_source?: string;
 }
 

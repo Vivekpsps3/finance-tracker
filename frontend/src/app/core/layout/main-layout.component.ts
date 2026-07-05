@@ -53,6 +53,9 @@ export class MainLayoutComponent implements OnInit {
       icon: 'transactions',
       items: [
         { path: '/transactions', label: 'Transactions', shortLabel: 'Activity', icon: 'transactions', exact: false },
+        { path: '/income', label: 'Income', shortLabel: 'Income', icon: 'building', exact: false },
+        { path: '/fixed-expenses', label: 'Fixed expenses', shortLabel: 'Fixed', icon: 'credit-card', exact: false },
+        { path: '/subscriptions', label: 'Subscriptions', shortLabel: 'Subs', icon: 'wallet', exact: false },
         { path: '/balance-sheet', label: 'Balance sheet', shortLabel: 'Balances', icon: 'scale', exact: false },
         { path: '/calendar', label: 'Calendar', shortLabel: 'Calendar', icon: 'calendar', exact: false },
       ],
@@ -61,13 +64,16 @@ export class MainLayoutComponent implements OnInit {
       label: 'Investing',
       shortLabel: 'Invest',
       icon: 'portfolio',
-      items: [{ path: '/portfolio', label: 'Portfolio', shortLabel: 'Portfolio', icon: 'portfolio', exact: false }],
+      items: [
+        { path: '/portfolio', label: 'Portfolio', shortLabel: 'Portfolio', icon: 'portfolio', exact: false },
+        { path: '/investment-insights', label: 'Investment Insights', shortLabel: 'Insights', icon: 'trending', exact: false },
+      ],
     },
     {
       label: 'Planning',
       shortLabel: 'Plan',
-      icon: 'spark',
-      items: [{ path: '/planning', label: 'Monte Carlo', shortLabel: 'Monte Carlo', icon: 'spark', exact: false }],
+      icon: 'trending',
+      items: [{ path: '/planning', label: 'Planning Tools', shortLabel: 'Tools', icon: 'trending', exact: false }],
     },
     {
       label: 'Taxes',
@@ -78,9 +84,9 @@ export class MainLayoutComponent implements OnInit {
     {
       label: 'Admin',
       shortLabel: 'Admin',
-      icon: 'spark',
+      icon: 'building',
       adminOnly: true,
-      items: [{ path: '/admin/users', label: 'Users', shortLabel: 'Users', icon: 'spark', exact: false }],
+      items: [{ path: '/admin/users', label: 'Users', shortLabel: 'Users', icon: 'building', exact: false }],
     },
   ];
 

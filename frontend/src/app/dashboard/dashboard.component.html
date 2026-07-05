@@ -1,5 +1,5 @@
 <div class="page dashboard">
-  <ui-page-header title="Dashboard" subtitle="Current wealth and period trends" />
+  <ui-page-header title="Dashboard" subtitle="Current position, cashflow, and trends" />
 
   @if (!isLoading && !error && netWorth) {
     <section class="net-worth-card animate-in" aria-labelledby="nw-heading">
@@ -10,13 +10,6 @@
         </div>
         <div class="net-worth-actions">
           <ui-badge [variant]="freshnessBadgeVariant()">{{ portfolioFreshness() }}</ui-badge>
-          <ui-button
-            variant="secondary"
-            size="sm"
-            [disabled]="isRecordingSnapshot"
-            (clicked)="recordSnapshot()">
-            {{ isRecordingSnapshot ? 'Recording' : 'Record snapshot' }}
-          </ui-button>
         </div>
       </div>
       <div class="net-worth-value money stat-display" aria-live="polite">
@@ -45,34 +38,6 @@
           <a routerLink="/portfolio">Refresh portfolio prices</a> for live quotes.
         </p>
       }
-      @if (netWorthSnapshots.length) {
-        <div class="snapshot-strip">
-          <div>
-            <span class="snapshot-label">Last snapshot</span>
-            <span class="snapshot-value money">
-              ${{ netWorthSnapshots[0].total | number:'1.2-2' }}
-            </span>
-          </div>
-          <div>
-            <span class="snapshot-label">Change since prior snapshot</span>
-            @if (latestSnapshotDelta() !== null) {
-              <span
-                class="snapshot-value money"
-                [class.negative]="(latestSnapshotDelta() ?? 0) < 0">
-                {{ (latestSnapshotDelta() ?? 0) >= 0 ? '+' : '−' }}${{
-                  abs(latestSnapshotDelta() ?? 0) | number:'1.2-2'
-                }}
-              </span>
-            } @else {
-              <span class="snapshot-value">—</span>
-            }
-          </div>
-          <div>
-            <span class="snapshot-label">Snapshot date</span>
-            <span class="snapshot-value">{{ netWorthSnapshots[0].snapshot_date }}</span>
-          </div>
-        </div>
-      }
       <p class="net-worth-note">
         <a routerLink="/balance-sheet">Edit balance sheet</a>
         · Transactions do not change this total.
@@ -91,82 +56,22 @@
     </ui-card>
   }
 
-  <ui-card class="filter-card">
-    <p class="section-eyebrow">Period</p>
-    <p class="filter-hint">Applies to insights and charts only.</p>
-    <div class="filter-row">
-      <ui-select
-        label="Range"
-        [options]="periodOptions"
-        [(value)]="filter.mode"
-        (valueChange)="onFilterChange()" />
-
-      @switch (filter.mode) {
-        @case ('month') {
-          <label class="filter-native">
-            <span class="filter-native__label">Month</span>
-            <input
-              type="month"
-              [(ngModel)]="filter.month"
-              (ngModelChange)="onFilterChange()"
-              aria-label="Select month" />
-          </label>
-        }
-        @case ('year') {
-          <label class="filter-native">
-            <span class="filter-native__label">Year</span>
-            <input
-              type="number"
-              [(ngModel)]="filter.year"
-              (ngModelChange)="onFilterChange()"
-              min="1990"
-              max="2035"
-              placeholder="Year"
-              aria-label="Select year" />
-          </label>
-        }
-        @case ('custom') {
-          <label class="filter-native">
-            <span class="filter-native__label">From</span>
-            <input
-              type="date"
-              [(ngModel)]="filter.start"
-              (ngModelChange)="onFilterChange()"
-              aria-label="Start date" />
-          </label>
-          <span class="range-sep">to</span>
-          <label class="filter-native">
-            <span class="filter-native__label">To</span>
-            <input
-              type="date"
-              [(ngModel)]="filter.end"
-              (ngModelChange)="onFilterChange()"
-              aria-label="End date" />
-          </label>
-        }
-      }
-
-      @if (filter.mode !== 'all') {
-        <ui-button variant="ghost" size="sm" (clicked)="resetFilter()">Reset</ui-button>
-      }
-    </div>
-    @if (filterSummary) {
-      <div class="filter-summary">
-        {{ filterSummary }} · {{ filteredTransactions.length }} transactions
-      </div>
-    }
-  </ui-card>
-
   <ui-card title="Insights">
-    @if (filteredTransactions.length || (netWorth && netWorth.total_assets > 0)) {
+    @if (filteredTransactions.length || periodJobNetIncomeTotal || periodFixedExpenseTotal || (netWorth && netWorth.total_assets > 0)) {
       <div class="insight-tiles">
         <div class="insight-tile">
-          <span class="insight-tile__label">Income in period</span>
+          <span class="insight-tile__label">Total income</span>
           <span class="insight-tile__value money">${{ periodIncomeTotal | number:'1.2-2' }}</span>
+          @if (periodJobNetIncomeTotal) {
+            <small>${{ periodJobNetIncomeTotal | number:'1.2-2' }} planned job net</small>
+          }
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label">Spending in period</span>
+          <span class="insight-tile__label">Total expenses</span>
           <span class="insight-tile__value money negative">${{ periodExpenseTotal | number:'1.2-2' }}</span>
+          @if (periodFixedExpenseTotal) {
+            <small>${{ periodFixedExpenseTotal | number:'1.2-2' }} fixed + subscriptions</small>
+          }
         </div>
         <div class="insight-tile">
           <span class="insight-tile__label">Net cashflow</span>
@@ -208,10 +113,95 @@
   </ui-card>
 
   <section class="trends-section">
-    <p class="section-eyebrow">Trends</p>
+    <div class="trends-heading">
+      <div>
+        <p class="section-eyebrow">Cashflow period</p>
+        @if (filterSummary) {
+          <div class="filter-summary">
+            {{ filterSummary }} · {{ filteredTransactions.length }} imported transactions
+          </div>
+        }
+      </div>
+      <div class="filter-row">
+        <ui-select
+          label="Range"
+          [options]="periodOptions"
+          [(value)]="filter.mode"
+          (valueChange)="onFilterChange()" />
+
+        @switch (filter.mode) {
+          @case ('month') {
+            <label class="filter-native">
+              <span class="filter-native__label">Month</span>
+              <input
+                type="month"
+                [(ngModel)]="filter.month"
+                (ngModelChange)="onFilterChange()"
+                aria-label="Select month" />
+            </label>
+          }
+          @case ('year') {
+            <label class="filter-native">
+              <span class="filter-native__label">Year</span>
+              <input
+                type="number"
+                [(ngModel)]="filter.year"
+                (ngModelChange)="onFilterChange()"
+                min="1990"
+                max="2035"
+                placeholder="Year"
+                aria-label="Select year" />
+            </label>
+          }
+          @case ('custom') {
+            <label class="filter-native">
+              <span class="filter-native__label">From</span>
+              <input
+                type="date"
+                [(ngModel)]="filter.start"
+                (ngModelChange)="onFilterChange()"
+                aria-label="Start date" />
+            </label>
+            <span class="range-sep">to</span>
+            <label class="filter-native">
+              <span class="filter-native__label">To</span>
+              <input
+                type="date"
+                [(ngModel)]="filter.end"
+                (ngModelChange)="onFilterChange()"
+                aria-label="End date" />
+            </label>
+          }
+        }
+
+        @if (filter.mode !== 'all') {
+          <ui-button variant="ghost" size="sm" (clicked)="resetFilter()">Reset</ui-button>
+        }
+      </div>
+    </div>
+    @if (cashflowSummary) {
+      <div class="cashflow-strip">
+        <div>
+          <span>Imported income</span>
+          <strong class="money">${{ cashflowSummary.transaction_income | number:'1.2-2' }}</strong>
+        </div>
+        <div>
+          <span>Planned job net</span>
+          <strong class="money">${{ cashflowSummary.planned_income | number:'1.2-2' }}</strong>
+        </div>
+        <div>
+          <span>Fixed expenses</span>
+          <strong class="money negative">${{ cashflowSummary.fixed_expenses | number:'1.2-2' }}</strong>
+        </div>
+        <div>
+          <span>Subscriptions</span>
+          <strong class="money negative">${{ cashflowSummary.subscriptions | number:'1.2-2' }}</strong>
+        </div>
+      </div>
+    }
     <app-charts
       [embedded]="true"
       [dataReady]="chartsReady"
-      [overrideTransactions]="filteredTransactions"></app-charts>
+      [overrideTransactions]="dashboardCashflowTransactions"></app-charts>
   </section>
 </div>

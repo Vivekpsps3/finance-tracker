@@ -19,7 +19,7 @@
         @if (error) {
           <p class="login-error" role="alert">{{ error }}</p>
         }
-        <ui-button type="submit" [disabled]="loading || !email.trim() || !password">
+        <ui-button type="submit" [disabled]="!canSubmit">
           {{ loading ? (needsDisplayName ? 'Creating account' : 'Signing in') : (setupMode ? 'Create admin account' : signupMode ? 'Create account' : 'Sign in') }}
         </ui-button>
       </form>

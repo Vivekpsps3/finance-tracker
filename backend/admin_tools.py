@@ -11,11 +11,14 @@ from models import (
     AuditEvent,
     BankAccount,
     BrokerageAccount,
+    FixedExpense,
     Holding,
     ImportBatch,
+    JobIncome,
     Liability,
-    NetWorthSnapshot,
     PlanningAssumptionProfile,
+    PlanningScenarioRun,
+    Subscription,
     TaxDocument,
     Transaction,
     User,
@@ -30,20 +33,13 @@ USER_OWNED_MODELS = [
     Liability,
     Holding,
     BrokerageAccount,
-    NetWorthSnapshot,
+    JobIncome,
+    FixedExpense,
+    Subscription,
     TaxDocument,
     PlanningAssumptionProfile,
+    PlanningScenarioRun,
 ]
-
-BLOCKED_SQL_TOKENS = {
-    "attach",
-    "detach",
-    "pragma",
-    "vacuum",
-    "reindex",
-    "load_extension",
-}
-
 
 def admin_metrics(db: Session) -> dict[str, Any]:
     users = db.query(User).all()
@@ -88,14 +84,28 @@ def execute_admin_sql(db: Session, sql: str) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="Invalid SQL")
     lowered = statement.lower()
     first = lowered.split(None, 1)[0] if lowered.split(None, 1) else ""
-    if first in BLOCKED_SQL_TOKENS or any(token in lowered for token in ("load_extension", "sqlite_master")):
+    if first != "select" or ";" in statement.rstrip(";"):
+        raise HTTPException(status_code=400, detail="Only a single read-only SELECT statement is allowed")
+    if any(token in lowered for token in ("load_extension", "sqlite_master", "pragma")):
         raise HTTPException(status_code=400, detail="That SQL statement is not allowed")
     result = db.execute(text(statement))
     if result.returns_rows:
         rows = result.mappings().fetchmany(200)
         return {"columns": list(result.keys()), "rows": [dict(row) for row in rows], "row_count": len(rows), "truncated": len(rows) == 200}
-    db.commit()
-    return {"columns": [], "rows": [], "row_count": result.rowcount if result.rowcount is not None else 0, "truncated": False}
+    return {"columns": [], "rows": [], "row_count": 0, "truncated": False}
+
+
+def reset_user_contents(db: Session, user: User, *, actor_user_id: int) -> None:
+    for model in USER_OWNED_MODELS:
+        db.query(model).filter(model.user_id == user.id).delete(synchronize_session=False)
+    db.query(UserSession).filter(UserSession.user_id == user.id).delete(synchronize_session=False)
+    audit = AuditEvent(
+        actor_user_id=actor_user_id,
+        target_user_id=user.id,
+        event_type="user_contents_reset",
+        detail=f"reset_user_email={user.email}",
+    )
+    db.add(audit)
 
 
 def delete_user_account(db: Session, user: User, *, actor_user_id: int) -> None:

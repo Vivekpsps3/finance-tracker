@@ -10,9 +10,11 @@ Personal, self-hosted finance tracker. The user wants first-class support for:
 - current net worth
 - spending and transaction review
 - investments and portfolio imports
+- recurring cashflow (job income, fixed expenses, subscriptions)
 - planning/retirement analysis
 - official tax document storage and yearly summaries
-- later household users and SimpleFIN, but not now
+- multi-user accounts (implemented); deeper household sharing may come later
+- later SimpleFIN; not Plaid
 
 Deployment target is a domain-hosted website on a Raspberry Pi or similar. SQLite
 is acceptable and should default to a repo-local DB file, configurable with
@@ -24,23 +26,29 @@ Do not blur these data planes:
 
 1. Net worth = current manual assets + portfolio market value - liabilities.
 2. Transactions are a card/spending ledger and do not change net worth.
-3. Net worth snapshots are observed balance-sheet valuations, not transaction
-   rollups.
+3. Net worth snapshots (when used) are observed balance-sheet valuations, not
+   transaction rollups. Live net worth is `GET /api/net-worth/`; snapshot
+   list/create HTTP routes are not currently wired even though the table exists.
 4. Planning is speculative and must not mutate assets, liabilities, holdings, or
    transactions.
 5. Imported brokerage cash sweeps and manual cash assets can double count; the
    app currently leaves that choice to the user and documents it.
 6. Tax documents are a separate review/vault plane. They do not update net
    worth, transactions, or planning inputs.
+7. Job income, fixed expenses, and subscriptions are recurring cashflow data.
+   They may feed cashflow summaries and planning inputs but do not change net
+   worth.
 
 ## Current Stack
 
 - Backend: FastAPI, SQLAlchemy, SQLite, Alembic, yfinance price lookup.
 - Frontend: Angular 19 standalone components, Tailwind, Chart.js.
-- Imports today: Capital One CSV transactions, Fidelity CSV positions.
+- Auth: app-native sessions (cookie + CSRF), roles admin/user, `/admin/users`.
+- Bank imports today: Capital One, Chase, Amex CSV transactions.
+- Brokerage import today: Fidelity CSV positions.
 - Tax docs today: upload/store/download/delete W-2, 1099, 1098, 5498, 1040,
   state return, property tax, and other files; yearly summary aggregates
-  manually entered structured values.
+  structured values; optional extract preview (PDF text/OCR when available).
 - Planned later: SimpleFIN. Plaid is not expected to work for this user.
 
 ## Where To Look
@@ -53,7 +61,9 @@ Do not blur these data planes:
 - `docs/ADDING_A_BANK_IMPORT.md`: add a new CSV bank importer.
 - `backend/models.py`: ORM tables.
 - `backend/services/finance.py`: net worth, imports, response mappers.
+- `backend/services/cashflow.py`: job income / fixed expense / subscription math.
 - `frontend/src/app/services/finance.service.ts`: frontend API contract.
+- `frontend/src/app/app.routes.ts`: routes.
 
 ## Recent Direction
 
@@ -62,13 +72,14 @@ The user clarified:
 - all major finance surfaces matter; do not optimize for only budgeting or only
   investments
 - current net worth must stay separate from transaction history
-- transactions are mostly card-based, but rent/utilities can be first-class
-  manual recurring/cashflow items later
+- transactions are mostly card-based; rent/utilities-style items are first-class
+  fixed expenses (and subscriptions) without mutating net worth
 - CSV import is fine now; SimpleFIN later; Plaid later is not desired
 - domain access is required
 - DB location should be configurable, defaulting to a repo-local SQLite file
 - backups are user-managed for now
-- login/household users are later, not part of the current pass
+- app-native multi-user auth is in place; treat shared household product features
+  as later, not as “no auth yet”
 - tax UI must display important yearly and per-document values directly, not
   hide them in backend-only metadata
 

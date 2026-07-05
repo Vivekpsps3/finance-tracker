@@ -1,6 +1,6 @@
 # SQLite backup and restore
 
-The ledger and uploaded tax documents live in SQLite. Paths:
+The ledger, tax document BLOBs, auth tables, and planning profiles live in SQLite. Paths:
 
 | Mode | Default DB file |
 |------|-----------------|
@@ -47,19 +47,22 @@ cp /path/to/finance.db.bak-YYYYMMDD data/finance.db
 | Dev ledger DB | `backend/finance.db` |
 | Docker ledger DB | `data/finance.db` |
 | Env secrets | `backend/.env` (not in git) |
-| Planning runs & profiles | Inside `finance.db` (`planning_assumption_profiles`, `planning_scenario_runs`) — speculative MC results, not ledger truth (SEC-009) |
+| Users/sessions/audit | Inside `finance.db` |
+| Balance sheet, holdings, transactions, recurring cashflow | Inside `finance.db` |
+| Planning profiles (and any future stored runs) | Inside `finance.db` — speculative MC results are not ledger truth |
 | Tax documents | Inside `finance.db` (`tax_documents.file_bytes`) |
 
 ## `make reset-db` vs backup
 
 | Command | Effect |
 |---------|--------|
-| **`make reset-db`** | **Deletes** `backend/finance.db` (and only that path). All ledger, transactions, and planning runs are gone. Use for a fresh schema on next start—not for preserving data. |
+| **`make reset-db`** | **Deletes** `backend/finance.db` (and only that path). All users, ledger, tax docs, and planning data are gone. Use for a fresh schema on next start—not for preserving data. |
+| **`make reset-docker-db`** | **Deletes** `data/finance.db` for the Docker stack. |
 | **Backup (`cp` above)** | **Copies** the DB file so you can restore later. Always back up before risky imports or schema experiments. |
 
 There is no undo for `reset-db`. If you need an empty DB, prefer renaming the file (`mv finance.db finance.db.old`) instead of deleting when you might want the data back.
 
 ## Related
 
-- Reset empty DB: `make reset-db` (destructive; see table above).
-- Production: set `API_KEY` or `FINANCE_API_KEY` when the API is not localhost-only (see `README.md`).
+- Reset empty DB: `make reset-db` / `make reset-docker-db` (destructive; see table above).
+- Production: app-native session auth is primary; optional `API_KEY` / `FINANCE_API_KEY` for non-browser clients (see [DEPLOY.md](./DEPLOY.md)).

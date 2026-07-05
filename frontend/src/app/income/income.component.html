@@ -1,0 +1,194 @@
+<div class="page">
+  <ui-page-header
+    title="Income"
+    subtitle="Track job income assumptions separately from the transaction ledger.">
+    <div uiPageActions class="header-actions">
+      <ui-button variant="primary" (clicked)="openAddModal()">Add income</ui-button>
+    </div>
+  </ui-page-header>
+
+  <section class="income-summary">
+    <div>
+      <p class="section-eyebrow">Dashboard income</p>
+      <div class="stat-display money">${{ activeAnnualNet | number: '1.2-2' }}</div>
+      <p class="summary-caption">
+        ${{ activeMonthlyTotal | number: '1.2-2' }} monthly net counted into Dashboard cashflow
+      </p>
+    </div>
+    <div class="income-summary-metrics">
+      <div class="summary-pill">
+        <span>Gross</span>
+        <strong class="money">${{ activeAnnualTotal | number: '1.2-2' }}</strong>
+      </div>
+      <div class="summary-pill">
+        <span>Taxes/deductions</span>
+        <strong class="money">−${{ activeAnnualAdjustments | number: '1.2-2' }}</strong>
+      </div>
+      <div class="summary-pill">
+        <ui-icon name="wallet" size="sm" />
+        <span>{{ incomes.length }} income {{ incomes.length === 1 ? 'entry' : 'entries' }}</span>
+      </div>
+    </div>
+  </section>
+
+  <ui-card title="Job income schema">
+    @if (incomes.length) {
+      <ui-data-table ariaLabel="Job income schema">
+        <thead>
+          <tr>
+            <th>Employer</th>
+            <th>Base</th>
+            <th>Gross</th>
+            <th>Net</th>
+            <th>Effective</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of incomes; track row.id) {
+            <tr>
+              <td>
+                <strong>{{ row.employer }}</strong>
+                @if (row.role_title) {
+                  <span class="muted block">{{ row.role_title }}</span>
+                }
+              </td>
+              <td>
+                <span class="money">${{ row.base_pay | number: '1.2-2' }}</span>
+                <span class="muted block">{{ payFrequencyLabel(row.pay_frequency) }}</span>
+              </td>
+              <td>
+                <strong class="money">${{ row.annual_gross | number: '1.2-2' }}</strong>
+                <span class="muted block">${{ row.monthly_gross | number: '1.2-2' }} / month</span>
+              </td>
+              <td>
+                <strong class="money">${{ row.annual_net | number: '1.2-2' }}</strong>
+                <span class="muted block">${{ row.monthly_net | number: '1.2-2' }} / month dashboard</span>
+              </td>
+              <td>{{ row.effective_date }}</td>
+              <td>
+                <ui-badge [variant]="row.is_active ? 'success' : 'default'">
+                  {{ row.is_active ? 'active' : 'inactive' }}
+                </ui-badge>
+              </td>
+              <td class="actions actions--row">
+                <ui-button variant="ghost" size="sm" (clicked)="openEditModal(row)">Edit</ui-button>
+                <ui-button variant="danger" size="sm" (clicked)="deleteIncome(row)">Delete</ui-button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </ui-data-table>
+    } @else {
+      <ui-empty-state message="Add your job income schema for planning and reference.">
+        <ui-icon name="wallet" size="lg" style="display:block; margin: 0 auto 8px; opacity:.5;" />
+        <ui-button variant="primary" (clicked)="openAddModal()">Add income</ui-button>
+      </ui-empty-state>
+    }
+  </ui-card>
+</div>
+
+@if (showModal) {
+  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="income-modal-title">
+    <div class="modal-panel form-card income-panel">
+      <h3 id="income-modal-title">{{ editingId ? 'Edit income' : 'Add income' }}</h3>
+      <form (ngSubmit)="saveIncome()" #incomeForm="ngForm">
+        <div class="form-row">
+          <label class="form-group">
+            <span>Employer</span>
+            <input name="employer" [(ngModel)]="form.employer" required />
+          </label>
+          <label class="form-group">
+            <span>Role</span>
+            <input name="role_title" [(ngModel)]="form.role_title" />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <ui-select
+            label="Pay frequency"
+            [options]="payFrequencyOptions"
+            [(value)]="form.pay_frequency" />
+          <label class="form-group">
+            <span>{{ basePayLabel }}</span>
+            <input name="base_pay" type="number" min="0" step="0.01" [(ngModel)]="form.base_pay" required />
+          </label>
+        </div>
+
+        @if (form.pay_frequency === 'hourly') {
+          <label class="form-group">
+            <span>Hours per week</span>
+            <input name="hours_per_week" type="number" min="0" max="168" step="0.25" [(ngModel)]="form.hours_per_week" required />
+          </label>
+        }
+
+        <div class="form-row">
+          <label class="form-group">
+            <span>Annual bonus</span>
+            <input name="annual_bonus" type="number" min="0" step="0.01" [(ngModel)]="form.annual_bonus" />
+          </label>
+          <label class="form-group">
+            <span>Annual equity</span>
+            <input name="annual_equity" type="number" min="0" step="0.01" [(ngModel)]="form.annual_equity" />
+          </label>
+          <label class="form-group">
+            <span>Other annual</span>
+            <input name="annual_other" type="number" min="0" step="0.01" [(ngModel)]="form.annual_other" />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label class="form-group">
+            <span>{{ payPeriodLabel | titlecase }} taxes</span>
+            <input name="taxes_per_period" type="number" min="0" step="0.01" [(ngModel)]="form.taxes_per_period" />
+          </label>
+          <label class="form-group">
+            <span>{{ payPeriodLabel | titlecase }} deductions</span>
+            <input name="deductions_per_period" type="number" min="0" step="0.01" [(ngModel)]="form.deductions_per_period" />
+          </label>
+        </div>
+
+        <div class="net-preview">
+          <div>
+            <span>Gross per {{ payPeriodLabel }} period</span>
+            <strong class="money">${{ formPeriodGross | number: '1.2-2' }}</strong>
+          </div>
+          <div>
+            <span>Taxes/deductions per period</span>
+            <strong class="money">−${{ formPeriodAdjustments | number: '1.2-2' }}</strong>
+          </div>
+          <div>
+            <span>Net per {{ payPeriodLabel }} period</span>
+            <strong class="money">${{ formPeriodNet | number: '1.2-2' }}</strong>
+          </div>
+          <div>
+            <span>Net annual used by Dashboard</span>
+            <strong class="money">${{ formAnnualNet | number: '1.2-2' }}</strong>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-group">
+            <span>Effective date</span>
+            <input name="effective_date" type="date" [(ngModel)]="form.effective_date" required />
+          </label>
+          <label class="checkbox-field">
+            <input name="is_active" type="checkbox" [(ngModel)]="form.is_active" />
+            <span>Active</span>
+          </label>
+        </div>
+
+        <label class="form-group">
+          <span>Notes</span>
+          <input name="notes" [(ngModel)]="form.notes" />
+        </label>
+
+        <div class="form-actions">
+          <ui-button type="submit" variant="primary" [disabled]="!incomeForm.form.valid || saving">Save</ui-button>
+          <ui-button variant="secondary" (clicked)="closeModal()">Cancel</ui-button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

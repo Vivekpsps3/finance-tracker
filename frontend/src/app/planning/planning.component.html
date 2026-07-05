@@ -1,16 +1,16 @@
-<div class="mc-page">
+<div class="page">
   <ui-page-header
     title="Planning Lab"
     subtitle="Build a complete Monte Carlo scenario from your current balance sheet, transaction trends, goals, dated events, and market assumptions."
   />
 
-  <div class="mc-disclaimer">
+    <div class="mc-callout">
     <ui-icon name="spark" size="sm" />
     <p>{{ disclaimer }}</p>
   </div>
 
   @if (showSpendingFallbackBanner()) {
-    <div class="mc-spending-fallback" role="status">
+    <div class="mc-callout mc-spending-fallback" role="status">
       <ui-icon name="spark" size="sm" />
       <p>
         <strong>No expense history found.</strong>
@@ -24,10 +24,163 @@
     <p class="mc-error" role="alert">{{ error }}</p>
   }
 
+  <nav class="planning-tabs" aria-label="Planning tools">
+    @for (tab of planningTabs; track tab.id) {
+      <button
+        type="button"
+        [class.active]="activeTab === tab.id"
+        (click)="setTab(tab.id)">
+        {{ tab.label }}
+      </button>
+    }
+  </nav>
+
   @if (loading) {
     <ui-skeleton height="320px" />
   } @else {
-    <ui-card title="Saved inputs" class="mc-profiles-card">
+    @if (activeTab !== 'monte-carlo') {
+      <section class="planning-tools-grid">
+        @if (activeTab === 'overview') {
+          <ui-card title="Planning snapshot">
+            <p class="tool-metric">{{ formatMoney(inputs?.net_worth_total) }}</p>
+            <p>Current net worth with {{ formatSignedMoney(effectiveNetCashflow()) }} estimated annual cashflow.</p>
+            <div class="tool-breakdown">
+              <span>Annual spending: {{ formatMoney(effectiveAnnualSpending()) }}</span>
+              <span>Fixed expenses: {{ formatMoney(inputs?.annual_fixed_expenses) }}</span>
+              <span>Subscriptions: {{ formatMoney(inputs?.annual_subscriptions) }}</span>
+            </div>
+          </ui-card>
+          <ui-card title="Useful tools">
+            <p>FIRE, goal funding, and debt payoff use the same ledger-derived spending basis as Monte Carlo. Recurring expenses are included unless you disable them in a tool.</p>
+          </ui-card>
+        }
+        @if (activeTab === 'fire') {
+          <ui-card title="FIRE / 4% Rule" class="tool-card-wide">
+            <div class="tool-form-grid">
+              <label class="mc-field">
+                <span>Withdrawal rate</span>
+                <input type="number" min="0.01" max="0.12" step="0.0025" [(ngModel)]="fire.withdrawalRate" />
+              </label>
+              <label class="mc-field">
+                <span>Expected return</span>
+                <input type="number" min="-0.5" max="0.5" step="0.005" [(ngModel)]="fire.expectedReturn" />
+              </label>
+              <label class="mc-field">
+                <span>Extra annual expenses</span>
+                <input type="number" step="1000" [(ngModel)]="fire.extraAnnualExpenses" />
+              </label>
+              <label class="mc-check tool-check">
+                <input type="checkbox" [(ngModel)]="fire.includeRecurringExpenses" />
+                <span>Include fixed expenses and subscriptions</span>
+              </label>
+            </div>
+            <section class="tool-results-grid">
+              <div>
+                <span>Annual spending basis</span>
+                <strong>{{ formatMoney(fireAnnualSpending()) }}</strong>
+              </div>
+              <div>
+                <span>FI target</span>
+                <strong>{{ formatMoney(fireNumber()) }}</strong>
+              </div>
+              <div>
+                <span>Portfolio gap</span>
+                <strong>{{ formatMoney(fireGap()) }}</strong>
+              </div>
+              <div>
+                <span>Years at current cashflow</span>
+                <strong>{{ yearsToFire() ?? 'Not reachable' }}</strong>
+              </div>
+            </section>
+          </ui-card>
+        }
+        @if (activeTab === 'goals') {
+          <ui-card title="Goal Funding" class="tool-card-wide">
+            <div class="tool-form-grid">
+              <label class="mc-field">
+                <span>Goal name</span>
+                <input type="text" [(ngModel)]="goal.name" />
+              </label>
+              <label class="mc-field">
+                <span>Target amount</span>
+                <input type="number" min="0" step="1000" [(ngModel)]="goal.targetAmount" />
+              </label>
+              <label class="mc-field">
+                <span>Already saved</span>
+                <input type="number" min="0" step="1000" [(ngModel)]="goal.currentSaved" />
+              </label>
+              <label class="mc-field">
+                <span>Years</span>
+                <input type="number" min="0.1" max="80" step="0.5" [(ngModel)]="goal.years" />
+              </label>
+              <label class="mc-field">
+                <span>Expected return</span>
+                <input type="number" min="-0.5" max="0.5" step="0.005" [(ngModel)]="goal.expectedReturn" />
+              </label>
+            </div>
+            <section class="tool-results-grid">
+              <div>
+                <span>Monthly needed</span>
+                <strong>{{ formatMoney(monthlyGoalContribution()) }}</strong>
+              </div>
+              <div>
+                <span>Projected value</span>
+                <strong>{{ formatMoney(goalProjectedValue()) }}</strong>
+              </div>
+              <div>
+                <span>Target</span>
+                <strong>{{ formatMoney(goal.targetAmount) }}</strong>
+              </div>
+            </section>
+          </ui-card>
+        }
+        @if (activeTab === 'debt') {
+          <ui-card title="Debt Payoff" class="tool-card-wide">
+            <div class="tool-form-grid">
+              <label class="mc-field">
+                <span>Debt name</span>
+                <input type="text" [(ngModel)]="debt.name" />
+              </label>
+              <label class="mc-field">
+                <span>Balance</span>
+                <input type="number" min="0" step="100" [(ngModel)]="debt.balance" />
+              </label>
+              <label class="mc-field">
+                <span>APR</span>
+                <input type="number" min="0" max="1" step="0.005" [(ngModel)]="debt.apr" />
+              </label>
+              <label class="mc-field">
+                <span>Minimum payment</span>
+                <input type="number" min="0" step="25" [(ngModel)]="debt.minimumPayment" />
+              </label>
+              <label class="mc-field">
+                <span>Extra payment</span>
+                <input type="number" min="0" step="25" [(ngModel)]="debt.extraPayment" />
+              </label>
+            </div>
+            <section class="tool-results-grid">
+              <div>
+                <span>Monthly payment</span>
+                <strong>{{ formatMoney(debtMonthlyPayment()) }}</strong>
+              </div>
+              <div>
+                <span>Payoff timeline</span>
+                <strong>{{ debtPayoffMonths() ?? 'Review payment' }} months</strong>
+              </div>
+              <div>
+                <span>Payoff date</span>
+                <strong>{{ debtPayoffDate() }}</strong>
+              </div>
+              <div>
+                <span>Total interest</span>
+                <strong>{{ formatMoney(debtTotalInterest()) }}</strong>
+              </div>
+            </section>
+          </ui-card>
+        }
+      </section>
+    } @else {
+    <ui-card title="Saved inputs">
       <p class="mc-saved-hint">Name and save your assumption set. Simulations are not stored—only these input presets.</p>
       <div class="mc-profiles-row">
         <label class="mc-field">
@@ -308,7 +461,7 @@
         </ui-card>
 
         <ui-card title="Future events">
-          <p class="mc-events-help">
+          <p class="mc-help">
             Simulation years: <strong>1</strong> = first year after today, up to your horizon.
             Amount is <strong>per occurrence</strong>, summed into each simulation year (negative = outflow).
             Repeating events use <strong>every N years</strong> (0.5 ≈ twice per year, 2 = every two years).
@@ -423,7 +576,7 @@
 
           <ui-card title="Net worth fan chart">
             @if (fanPathCaption(); as caption) {
-              <p class="mc-chart-note">{{ caption }}</p>
+              <p class="mc-help">{{ caption }}</p>
             }
             <app-monte-carlo-fan-chart
               [data]="chartData"
@@ -457,7 +610,7 @@
                         <td>{{ formatMoney(row.p50) }}</td>
                         <td>{{ formatMoney(row.p90) }}</td>
                         <td>{{ formatPct(row.success_probability_pct, 'percent') }}</td>
-                        <td [class.mc-positive]="(row.gap_to_goal_p50 ?? 0) >= 0" [class.mc-negative]="(row.gap_to_goal_p50 ?? 0) < 0">
+                        <td [class.positive]="(row.gap_to_goal_p50 ?? 0) >= 0" [class.negative]="(row.gap_to_goal_p50 ?? 0) < 0">
                           {{ formatSignedMoney(row.gap_to_goal_p50) }}
                         </td>
                       </tr>
@@ -507,5 +660,6 @@
         }
       </main>
     </div>
+    }
   }
 </div>

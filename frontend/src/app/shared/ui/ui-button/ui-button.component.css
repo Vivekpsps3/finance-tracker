@@ -71,9 +71,3 @@
 .ui-btn--danger:hover:not(:disabled) {
   background: var(--danger-hover);
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .ui-btn {
-    transition: none;
-  }
-}

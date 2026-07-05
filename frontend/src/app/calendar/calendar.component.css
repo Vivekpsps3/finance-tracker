@@ -58,17 +58,6 @@
   box-shadow: var(--shadow-lg);
 }
 
-@media (max-width: 640px) {
-  .calendar-grid {
-    gap: var(--space-1);
-    padding: var(--space-2);
-  }
-
-  .day-btn {
-    font-size: var(--text-sm);
-  }
-}
-
 .weekday {
   text-align: center;
   font-size: var(--text-sm);
@@ -108,7 +97,7 @@
 }
 
 .day-btn.selected {
-  background: rgba(59, 130, 246, 0.2);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
   border-color: var(--accent);
 }
 
@@ -150,4 +139,15 @@
   grid-column: 1 / -1;
   color: var(--text-secondary);
   font-size: var(--text-sm);
+}
+
+@media (max-width: 640px) {
+  .calendar-grid {
+    gap: var(--space-1);
+    padding: var(--space-2);
+  }
+
+  .day-btn {
+    font-size: var(--text-sm);
+  }
 }

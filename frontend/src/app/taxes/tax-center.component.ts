@@ -49,7 +49,10 @@ export class TaxCenterComponent implements OnInit {
   summary: TaxYearSummary | null = null;
   isLoading = true;
   isUploading = false;
+  isExtracting = false;
   error: string | null = null;
+  extractionMessage: string | null = null;
+  extractionStatus: 'extracted' | 'manual_review' | null = null;
 
   uploadFile: File | null = null;
   upload = {
@@ -134,6 +137,40 @@ export class TaxCenterComponent implements OnInit {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.uploadFile = input.files?.[0] ?? null;
+    this.extractionMessage = null;
+    this.extractionStatus = null;
+    if (this.uploadFile) {
+      this.extractSelectedDocument();
+    }
+  }
+
+  extractSelectedDocument(): void {
+    if (!this.uploadFile) return;
+    this.isExtracting = true;
+    this.error = null;
+    this.financeService.extractTaxDocument(this.uploadFile).subscribe({
+      next: result => {
+        for (const [key, value] of Object.entries(result.summary || {})) {
+          if (typeof value === 'number') {
+            this.fieldValues[key as TaxSummaryField] = value;
+          }
+        }
+        this.extractionStatus = result.status;
+        this.extractionMessage =
+          result.status === 'extracted'
+            ? `${result.message} Confidence ${(result.confidence * 100).toFixed(0)}%.`
+            : result.message;
+        this.isExtracting = false;
+        this.cdr.markForCheck();
+      },
+      error: (err: Error) => {
+        this.extractionStatus = 'manual_review';
+        this.extractionMessage = 'Could not extract values from this file. Enter the fields manually before upload.';
+        this.error = err?.message || null;
+        this.isExtracting = false;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   uploadDocument(): void {
@@ -238,5 +275,7 @@ export class TaxCenterComponent implements OnInit {
     }
     this.upload = { documentType: 'w2', issuer: '', taxpayer: '', notes: '' };
     this.fieldValues = {};
+    this.extractionMessage = null;
+    this.extractionStatus = null;
   }
 }

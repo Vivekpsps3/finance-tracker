@@ -141,6 +141,9 @@ class PlanningInputsPreview(BaseModel):
     implied_annual_spending: float
     implied_annual_savings: float
     transaction_count: int
+    recurring_annual_spending: float = 0.0
+    annual_fixed_expenses: float = 0.0
+    annual_subscriptions: float = 0.0
     annual_spending_source: str = Field(
         default="transactions.avg_monthly_expense",
         description="How implied_annual_spending was derived (matches MC when profile spending unset).",

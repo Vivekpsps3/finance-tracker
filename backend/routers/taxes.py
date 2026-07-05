@@ -11,6 +11,7 @@ from models import TaxDocumentType, User
 from schemas import TaxDocumentResponse, TaxYearSummary
 from services.taxes import (
     delete_tax_document,
+    extract_tax_document_preview,
     get_tax_document,
     list_tax_documents,
     store_tax_document,
@@ -52,6 +53,12 @@ async def upload_tax_document(
         file=file,
         user_id=current_user.id,
     )
+
+
+@router.post("/taxes/documents/extract")
+async def extract_tax_document(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    _ = current_user
+    return await extract_tax_document_preview(file)
 
 
 @router.get("/taxes/years/{tax_year}/summary", response_model=TaxYearSummary)

@@ -6,7 +6,22 @@ from sqlalchemy.pool import StaticPool
 
 from models import Base
 
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./finance.db")
+
+def _resolve_database_url(raw_url: str) -> str:
+    """Keep relative SQLite files anchored to backend/, independent of process cwd."""
+    if not raw_url.startswith("sqlite:///") or raw_url.startswith("sqlite:////") or ":memory:" in raw_url:
+        return raw_url
+
+    relative_path = raw_url.removeprefix("sqlite:///")
+    if os.path.isabs(relative_path):
+        return raw_url
+
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    absolute_path = os.path.abspath(os.path.join(backend_dir, relative_path))
+    return f"sqlite:///{absolute_path}"
+
+
+SQLALCHEMY_DATABASE_URL = _resolve_database_url(os.getenv("DATABASE_URL", "sqlite:///./finance.db"))
 SQL_ECHO = os.getenv("LOG_SQL", "").lower() in ("1", "true", "yes")
 
 _engine_kwargs = {"connect_args": {"check_same_thread": False}}

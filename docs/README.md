@@ -4,12 +4,21 @@
 |-----|---------|
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | Setup, `make` targets, repo layout, env |
 | [BACKUP.md](./BACKUP.md) | SQLite backup and restore |
-| [DEPLOY.md](./DEPLOY.md) | Production checklist (API_KEY, CORS, rate limits) |
-| [DATA_MODEL.md](./DATA_MODEL.md) | Net worth, assets, liabilities, income ledger |
-| [FRONTEND.md](./FRONTEND.md) | Angular conventions, tokens, shared UI, dashboard rules |
+| [DEPLOY.md](./DEPLOY.md) | Production checklist (auth, CORS, rate limits, Docker) |
+| [DATA_MODEL.md](./DATA_MODEL.md) | Net worth, tables, cashflow, taxes, planning |
+| [FRONTEND.md](./FRONTEND.md) | Angular routes, tokens, shared UI, page rules |
 | [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | Product/UI metrics, charts, and page standards |
 | [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md) | New bank CSV importer |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | One-page system architecture |
 | [../AGENTS.md](../AGENTS.md) | Fast handoff for future AI agents |
 
 Project overview: [../README.md](../README.md).
+
+## Historical notes (not current architecture)
+
+| Doc | Status |
+|-----|--------|
+| [AI_HANDOFF_2026-06-27.md](./AI_HANDOFF_2026-06-27.md) | Historical session handoff; may describe endpoints or UI that later changed |
+| [SPACEX_REVAMP_PROGRESS.md](./SPACEX_REVAMP_PROGRESS.md) | Historical theming progress checklist; not product truth |
+
+Prefer ARCHITECTURE, DATA_MODEL, FRONTEND, and AGENTS.md over historical notes.

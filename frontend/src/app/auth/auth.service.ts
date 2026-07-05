@@ -4,11 +4,13 @@ import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { apiUrl } from '../core/api-url';
 import { AuthUser, LoginResponse, MeResponse } from './auth.models';
+import { FinanceService } from '../services/finance.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private finance = inject(FinanceService);
   private userSubject = new BehaviorSubject<AuthUser | null>(null);
   private checkedSession = false;
 
@@ -33,11 +35,13 @@ export class AuthService {
     return this.http.get<MeResponse>(apiUrl('/auth/me'), { withCredentials: true }).pipe(
       tap(res => {
         this.checkedSession = true;
+        this.finance.clearSessionState();
         this.userSubject.next(res.user);
       }),
       map(res => res.user),
       catchError(() => {
         this.checkedSession = true;
+        this.finance.clearSessionState();
         this.userSubject.next(null);
         return of(null);
       })
@@ -54,6 +58,7 @@ export class AuthService {
       .pipe(
         tap(res => {
           this.checkedSession = true;
+          this.finance.clearSessionState();
           this.userSubject.next(res.user);
         }),
         map(res => res.user)
@@ -66,6 +71,7 @@ export class AuthService {
       .pipe(
         tap(res => {
           this.checkedSession = true;
+          this.finance.clearSessionState();
           this.userSubject.next(res.user);
         }),
         map(res => res.user)
@@ -78,6 +84,7 @@ export class AuthService {
       .pipe(
         tap(res => {
           this.checkedSession = true;
+          this.finance.clearSessionState();
           this.userSubject.next(res.user);
         }),
         map(res => res.user)
@@ -93,6 +100,7 @@ export class AuthService {
 
   clearLocalSession(): void {
     this.checkedSession = true;
+    this.finance.clearSessionState();
     this.userSubject.next(null);
   }
 

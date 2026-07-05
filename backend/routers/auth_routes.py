@@ -6,7 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from admin_tools import admin_metrics, delete_user_account, execute_admin_sql
+from admin_tools import admin_metrics, delete_user_account, execute_admin_sql, reset_user_contents
 from auth import (
     audit_event,
     clear_session_cookie,
@@ -26,6 +26,7 @@ from models import User, UserRole, UserSession
 from schemas_auth import (
     AdminPasswordReset,
     AdminSqlRequest,
+    AdminUserContentReset,
     BootstrapRequest,
     BootstrapStatusResponse,
     AdminUserCreate,
@@ -256,6 +257,24 @@ def admin_reset_password(
     target.updated_at = utc_now_naive()
     revoke_user_sessions(db, target.id)
     audit_event(db, "password_reset", actor_user_id=admin.id, target_user_id=target.id)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/admin/users/{user_id}/reset-contents")
+def admin_reset_user_contents(
+    user_id: int,
+    body: AdminUserContentReset,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    expected = f"RESET {target.email}"
+    if body.confirm.strip() != expected:
+        raise HTTPException(status_code=400, detail=f'Type "{expected}" to reset this user')
+    reset_user_contents(db, target, actor_user_id=admin.id)
     db.commit()
     return {"ok": True}
 

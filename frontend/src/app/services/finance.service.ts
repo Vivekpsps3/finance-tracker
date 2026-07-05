@@ -20,6 +20,10 @@ import {
   Asset,
   AssetCreate,
   BankImportOption,
+  CashflowSummary,
+  CategoryRenameResult,
+  FixedExpense,
+  FixedExpenseCreate,
   FidelityImportOption,
   FidelityPreviewResult,
   FidelityPreviewRow,
@@ -27,10 +31,14 @@ import {
   ImportCommitResult,
   ImportPreviewResult,
   ImportPreviewRow,
+  JobIncome,
+  JobIncomeCreate,
   Liability,
   LiabilityCreate,
-  NetWorthSnapshot,
+  Subscription,
+  SubscriptionCreate,
   TaxDocument,
+  TaxDocumentExtraction,
   TaxDocumentType,
   TaxSummaryValues,
   TaxYearSummary,
@@ -42,24 +50,35 @@ export type DashboardLoadResult = [
   Transaction[],
   Holding[],
   NetWorth,
-  NetWorthSnapshot[],
+  CashflowSummary,
+  JobIncome[],
+  FixedExpense[],
+  Subscription[],
 ];
 
 @Injectable({ providedIn: 'root' })
 export class FinanceService {
   private _transactions = new BehaviorSubject<Transaction[]>([]);
+  private _dashboardTransactions = new BehaviorSubject<Transaction[]>([]);
   private _holdings = new BehaviorSubject<Holding[]>([]);
   private _netWorth = new BehaviorSubject<NetWorth | null>(null);
-  private _netWorthSnapshots = new BehaviorSubject<NetWorthSnapshot[]>([]);
   private _assets = new BehaviorSubject<Asset[]>([]);
   private _liabilities = new BehaviorSubject<Liability[]>([]);
+  private _jobIncomes = new BehaviorSubject<JobIncome[]>([]);
+  private _fixedExpenses = new BehaviorSubject<FixedExpense[]>([]);
+  private _subscriptions = new BehaviorSubject<Subscription[]>([]);
+  private _cashflowSummary = new BehaviorSubject<CashflowSummary | null>(null);
 
   transactions$ = this._transactions.asObservable();
+  dashboardTransactions$ = this._dashboardTransactions.asObservable();
   holdings$ = this._holdings.asObservable();
   netWorth$ = this._netWorth.asObservable();
-  netWorthSnapshots$ = this._netWorthSnapshots.asObservable();
   assets$ = this._assets.asObservable();
   liabilities$ = this._liabilities.asObservable();
+  jobIncomes$ = this._jobIncomes.asObservable();
+  fixedExpenses$ = this._fixedExpenses.asObservable();
+  subscriptions$ = this._subscriptions.asObservable();
+  cashflowSummary$ = this._cashflowSummary.asObservable();
 
   private isLoading = new BehaviorSubject<boolean>(false);
   isLoading$ = this.isLoading.asObservable();
@@ -77,10 +96,13 @@ export class FinanceService {
     }
     if (!this.dashboardLoad$) {
       this.dashboardLoad$ = forkJoin([
-        this.getTransactions({ limit: 5000 }),
+        this.getDashboardTransactions({ limit: 5000 }),
         this.getHoldings(false),
         this.getNetWorth(),
-        this.getNetWorthSnapshots(),
+        this.getCashflowSummaryForCurrentMonth(),
+        this.getJobIncomes(),
+        this.getFixedExpenses(),
+        this.getSubscriptions(),
       ]).pipe(
         shareReplay({ bufferSize: 1, refCount: false }),
         catchError(err => {
@@ -102,6 +124,7 @@ export class FinanceService {
 
   private refreshAfterImport(): void {
     this.invalidateDashboardCache();
+    this.getDashboardTransactions({ limit: 5000 }).pipe(take(1)).subscribe();
     this.getTransactions({ limit: 5000 }).pipe(take(1)).subscribe();
   }
 
@@ -113,10 +136,13 @@ export class FinanceService {
     this.dashboardLoad$ = null;
     this.isLoading.next(true);
     return forkJoin([
-      this.getTransactions({ limit: 5000 }),
+      this.getDashboardTransactions({ limit: 5000 }),
       this.getHoldings(false),
       this.getNetWorth(),
-      this.getNetWorthSnapshots(),
+      this.getCashflowSummaryForCurrentMonth(),
+      this.getJobIncomes(),
+      this.getFixedExpenses(),
+      this.getSubscriptions(),
     ]).pipe(
       timeout(60_000),
       tap({
@@ -170,6 +196,29 @@ export class FinanceService {
     );
   }
 
+  getDashboardTransactions(options?: { limit?: number }): Observable<Transaction[]> {
+    const limit = options?.limit ?? 5000;
+    const params = new HttpParams().set('skip', '0').set('limit', String(limit));
+    return this.http.get<Transaction[]>(apiUrl('/transactions/'), { params }).pipe(
+      tap(data => this._dashboardTransactions.next(data))
+    );
+  }
+
+  getCashflowSummary(startDate: string, endDate: string): Observable<CashflowSummary> {
+    const params = new HttpParams().set('start_date', startDate).set('end_date', endDate);
+    return this.http.get<CashflowSummary>(apiUrl('/cashflow/summary'), { params }).pipe(
+      tap(summary => this._cashflowSummary.next(summary))
+    );
+  }
+
+  getCashflowSummaryForCurrentMonth(): Observable<CashflowSummary> {
+    const now = new Date();
+    const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+    return this.getCashflowSummary(start, end);
+  }
+
   addTransaction(tx: TransactionCreate): Observable<Transaction> {
     return this.http.post<Transaction>(apiUrl('/transactions/'), tx).pipe(
       tap(created => {
@@ -194,6 +243,140 @@ export class FinanceService {
         this._transactions.next(this._transactions.value.filter(t => t.id !== id));
       })
     );
+  }
+
+  getJobIncomes(): Observable<JobIncome[]> {
+    return this.http.get<JobIncome[]>(apiUrl('/income/')).pipe(
+      tap(data => this._jobIncomes.next(data))
+    );
+  }
+
+  addJobIncome(body: JobIncomeCreate): Observable<JobIncome> {
+    return this.http.post<JobIncome>(apiUrl('/income/'), body).pipe(
+      tap(created => {
+        this._jobIncomes.next([created, ...this._jobIncomes.value]);
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  updateJobIncome(id: number, body: Partial<JobIncomeCreate>): Observable<JobIncome> {
+    return this.http.put<JobIncome>(apiUrl(`/income/${id}`), body).pipe(
+      tap(updated => {
+        this._jobIncomes.next(this._jobIncomes.value.map(row => (row.id === id ? updated : row)));
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  deleteJobIncome(id: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(apiUrl(`/income/${id}`)).pipe(
+      tap(() => {
+        this._jobIncomes.next(this._jobIncomes.value.filter(row => row.id !== id));
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  getFixedExpenses(): Observable<FixedExpense[]> {
+    return this.http.get<FixedExpense[]>(apiUrl('/fixed-expenses/')).pipe(
+      tap(data => this._fixedExpenses.next(data))
+    );
+  }
+
+  getSubscriptions(): Observable<Subscription[]> {
+    return this.http.get<Subscription[]>(apiUrl('/subscriptions/')).pipe(
+      tap(data => this._subscriptions.next(data))
+    );
+  }
+
+  addSubscription(body: SubscriptionCreate): Observable<Subscription> {
+    return this.http.post<Subscription>(apiUrl('/subscriptions/'), body).pipe(
+      tap(created => {
+        this._subscriptions.next([created, ...this._subscriptions.value]);
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  updateSubscription(id: number, body: Partial<SubscriptionCreate>): Observable<Subscription> {
+    return this.http.put<Subscription>(apiUrl(`/subscriptions/${id}`), body).pipe(
+      tap(updated => {
+        this._subscriptions.next(this._subscriptions.value.map(row => (row.id === id ? updated : row)));
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  deleteSubscription(id: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(apiUrl(`/subscriptions/${id}`)).pipe(
+      tap(() => {
+        this._subscriptions.next(this._subscriptions.value.filter(row => row.id !== id));
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  clearSessionState(): void {
+    this.dashboardLoad$ = null;
+    this._transactions.next([]);
+    this._dashboardTransactions.next([]);
+    this._holdings.next([]);
+    this._netWorth.next(null);
+    this._assets.next([]);
+    this._liabilities.next([]);
+    this._jobIncomes.next([]);
+    this._fixedExpenses.next([]);
+    this._subscriptions.next([]);
+    this._cashflowSummary.next(null);
+  }
+
+  addFixedExpense(body: FixedExpenseCreate): Observable<FixedExpense> {
+    return this.http.post<FixedExpense>(apiUrl('/fixed-expenses/'), body).pipe(
+      tap(created => {
+        this._fixedExpenses.next([created, ...this._fixedExpenses.value]);
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  updateFixedExpense(id: number, body: Partial<FixedExpenseCreate>): Observable<FixedExpense> {
+    return this.http.put<FixedExpense>(apiUrl(`/fixed-expenses/${id}`), body).pipe(
+      tap(updated => {
+        this._fixedExpenses.next(this._fixedExpenses.value.map(row => (row.id === id ? updated : row)));
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  deleteFixedExpense(id: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(apiUrl(`/fixed-expenses/${id}`)).pipe(
+      tap(() => {
+        this._fixedExpenses.next(this._fixedExpenses.value.filter(row => row.id !== id));
+        this.invalidateDashboardCache();
+      })
+    );
+  }
+
+  renameCategory(fromCategory: string, toCategory: string): Observable<CategoryRenameResult> {
+    const from_category = fromCategory.trim();
+    const to_category = toCategory.trim();
+    return this.http
+      .put<CategoryRenameResult>(apiUrl('/transactions/categories/rename'), {
+        from_category,
+        to_category,
+      })
+      .pipe(
+        tap(result => {
+          if (result.updated <= 0) return;
+          this.invalidateDashboardCache();
+          this._transactions.next(
+            this._transactions.value.map(t =>
+              t.category === result.from_category ? { ...t, category: result.to_category } : t
+            )
+          );
+        })
+      );
   }
 
   getHoldings(refreshPrices = false): Observable<Holding[]> {
@@ -279,23 +462,6 @@ export class FinanceService {
   getNetWorth(): Observable<NetWorth> {
     return this.http.get<NetWorth>(apiUrl('/net-worth/')).pipe(
       tap(data => this._netWorth.next(data))
-    );
-  }
-
-  getNetWorthSnapshots(limit = 120): Observable<NetWorthSnapshot[]> {
-    const params = new HttpParams().set('limit', String(limit));
-    return this.http.get<NetWorthSnapshot[]>(apiUrl('/net-worth/snapshots'), { params }).pipe(
-      tap(data => this._netWorthSnapshots.next(data))
-    );
-  }
-
-  recordNetWorthSnapshot(note?: string): Observable<NetWorthSnapshot> {
-    return this.http.post<NetWorthSnapshot>(apiUrl('/net-worth/snapshots'), {
-      note: note?.trim() || undefined,
-    }).pipe(
-      tap(created => {
-        this._netWorthSnapshots.next([created, ...this._netWorthSnapshots.value]);
-      })
     );
   }
 
@@ -484,6 +650,15 @@ export class FinanceService {
     if (body.notes?.trim()) form.append('notes', body.notes.trim());
     if (body.summary) form.append('summary_json', JSON.stringify(body.summary));
     return this.http.post<TaxDocument>(apiUrl('/taxes/documents'), form);
+  }
+
+  extractTaxDocument(file: File): Observable<TaxDocumentExtraction> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<TaxDocumentExtraction>(
+      apiUrl('/taxes/documents/extract'),
+      form
+    );
   }
 
   downloadTaxDocument(documentId: number): Observable<Blob> {

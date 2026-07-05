@@ -1,22 +1,3 @@
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-6);
-}
-
-.page-header h1 {
-  margin-bottom: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
 .portfolio-breakdown {
   margin-top: 0.5rem;
   font-size: 0.8rem;
@@ -35,8 +16,11 @@
   vertical-align: middle;
 }
 
-.company-sub {
+.company-sub,
+.refresh-note,
+.price-check-result {
   color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
 .holdings-tip {
@@ -44,8 +28,6 @@
 }
 
 .refresh-note {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
   margin: calc(-1 * var(--space-4)) 0 var(--space-4);
 }
 
@@ -61,8 +43,6 @@
 
 .price-check-result {
   margin: var(--space-2) 0 0;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
 }
 
 .as-of-small {
@@ -73,13 +53,6 @@
 
 .actions {
   white-space: nowrap;
-}
-
-.actions--row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  align-items: center;
 }
 
 .fidelity-preview-table {
@@ -110,36 +83,35 @@
   font-weight: 600;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
-
-/* Grouped account breakdown */
 .account-section {
   margin-bottom: var(--space-6);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--card-bg);
   overflow: hidden;
 }
 
-.section-header {
-  padding: var(--space-3) var(--space-4);
-  background: var(--surface-2);
-  font-weight: 600;
+.section-header,
+.account-sub summary {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-base);
-  list-style: none;
   cursor: pointer;
+  list-style: none;
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.section-header {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+}
+
+.account-sub summary {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  user-select: none;
 }
 
 .section-header::-webkit-details-marker,
@@ -180,18 +152,6 @@ details.account-sub[open] > summary::before {
   border-top: none;
 }
 
-.account-sub summary {
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-  user-select: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  background: var(--surface-2);
-  font-weight: 500;
-}
-
 .account-sub summary:hover {
   background: var(--card-bg);
 }
@@ -217,10 +177,6 @@ details.account-sub[open] > summary::before {
   background: var(--card-bg);
 }
 
-.account-sub > summary {
-  list-style: none;
-}
-
 .price-cell {
   max-width: 11rem;
 }
@@ -228,7 +184,7 @@ details.account-sub[open] > summary::before {
 .price-cell .price-hint {
   display: block;
   margin-top: var(--space-1);
-  font-size: var(--text-xs, 0.75rem);
+  font-size: var(--text-xs);
   line-height: 1.3;
   color: var(--text-tertiary);
 }

@@ -69,6 +69,10 @@ class AdminPasswordReset(BaseModel):
     must_change_password: bool = True
 
 
+class AdminUserContentReset(BaseModel):
+    confirm: str = Field(..., min_length=5, max_length=64)
+
+
 class BootstrapStatusResponse(BaseModel):
     needs_setup: bool
 

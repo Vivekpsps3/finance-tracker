@@ -10,7 +10,8 @@ from typing import Any, Dict
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import Asset, AssetCategory, Liability, Transaction, TransactionType
+from models import Asset, AssetCategory, FixedExpense, Liability, Subscription, Transaction, TransactionType
+from services.cashflow import annual_recurring_amount
 from services.finance import compute_net_worth
 
 
@@ -75,9 +76,34 @@ def _liability_rows(db: Session, user_id: int) -> list:
     ]
 
 
+def summarize_recurring_spending(db: Session, user_id: int) -> Dict[str, Any]:
+    fixed_rows = (
+        db.query(FixedExpense)
+        .filter(FixedExpense.user_id == user_id, FixedExpense.is_active.is_(True))
+        .all()
+    )
+    subscription_rows = (
+        db.query(Subscription)
+        .filter(Subscription.user_id == user_id, Subscription.is_active.is_(True))
+        .all()
+    )
+    fixed_total = sum(annual_recurring_amount(row.amount, row.frequency) for row in fixed_rows)
+    subscription_total = sum(
+        annual_recurring_amount(row.amount, row.frequency) for row in subscription_rows
+    )
+    return {
+        "fixed_expense_count": len(fixed_rows),
+        "subscription_count": len(subscription_rows),
+        "annual_fixed_expenses": round(float(fixed_total), 2),
+        "annual_subscriptions": round(float(subscription_total), 2),
+        "annual_total": round(float(fixed_total + subscription_total), 2),
+    }
+
+
 def build_planning_snapshot(db: Session, user_id: int) -> Dict[str, Any]:
     nw = compute_net_worth(db, user_id)
     tx_summary = summarize_transactions(db, user_id)
+    recurring_summary = summarize_recurring_spending(db, user_id)
     return {
         "as_of": nw.as_of.isoformat() if isinstance(nw.as_of, datetime) else str(nw.as_of),
         "net_worth": {
@@ -88,6 +114,7 @@ def build_planning_snapshot(db: Session, user_id: int) -> Dict[str, Any]:
             "total": nw.total,
         },
         "transactions": tx_summary,
+        "recurring_spending": recurring_summary,
         "liabilities": _liability_rows(db, user_id),
     }
 

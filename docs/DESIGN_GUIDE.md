@@ -8,8 +8,8 @@ clear graphs.
 
 1. Show the most relevant metrics directly on each page.
 2. Prefer charts and summaries over raw tables alone.
-3. Keep financial data planes separate: net worth, transactions, taxes, and
-   planning each have different meanings.
+3. Keep financial data planes separate: net worth, transactions, recurring
+   cashflow, taxes, and planning each have different meanings.
 4. Make the UI useful before it is decorative.
 5. Optimize for future AI agents: if a page has unusual behavior, document the
    invariant near the code or in the relevant doc.
@@ -20,7 +20,6 @@ The dashboard should include:
 
 - current net worth from balance sheet data
 - asset/liability/portfolio breakdown
-- net worth snapshot change
 - selected-period income
 - selected-period spending
 - selected-period net cashflow
@@ -32,16 +31,25 @@ The dashboard should include:
 - spending by category chart
 - portfolio allocation chart
 
-The period filter applies only to transaction-derived metrics and charts. It
-must not imply that net worth is computed from transactions.
+Optional later: observed net worth snapshot change **only** when balance-sheet
+snapshot history is actually wired end-to-end (table exists; list/create API and
+UI are not currently exposed).
+
+The period filter applies only to transaction-derived (and related cashflow)
+metrics and charts. It must not imply that net worth is computed from
+transactions.
 
 ## Subpage Standard
 
 Each major subpage should have page-level metrics at the top:
 
 - Transactions: monthly income, spending, net cashflow, largest category, count.
+- Income: annual/monthly gross and net, active jobs.
+- Fixed expenses: monthly/annual total, active count, largest items.
+- Subscriptions: monthly/annual total, next bills, active count.
 - Balance sheet: total assets, liabilities, net worth, stale balances.
 - Portfolio: market value, account allocation, largest holdings, price freshness.
+- Investment insights: portfolio value, growth assumptions, projected value, withdrawal-rate income (client-side; speculative).
 - Calendar: monthly spending, income, net cashflow, active days.
 - Taxes: document count, missing recommended docs, wages, withholding, AGI,
   taxable income, total tax, refund/owed.
@@ -56,8 +64,10 @@ table when a summary or graph would answer the natural question faster.
 - Use token-based colors from `frontend/src/theme/chart-colors.ts`.
 - Every chart needs a meaningful empty state.
 - Every chart needs a nearby numeric summary so the user does not have to hover.
-- Keep net worth charts sourced from `net_worth_snapshots` or explicit derived
-  projection data, never from transaction sums.
+- Keep net worth charts sourced from the balance-sheet formula or observed
+  snapshots (when implemented), never from transaction sums.
+- Investment-insights projections are speculative client-side charts, not
+  observed net worth history.
 
 ## Tax Center Rules
 
@@ -70,8 +80,10 @@ without making the user download files:
 - important values per stored document
 - download and delete actions
 
-Current tax summaries come from user-entered structured fields during upload.
-Future OCR/LLM extraction should populate the same structured fields.
+Current tax summaries primarily come from user-entered structured fields during
+upload. Optional extract preview may suggest values from PDF text/OCR; users must
+still review before save. Future OCR/LLM extraction should populate the same
+structured fields (`summary_json`).
 
 ## Visual Style
 

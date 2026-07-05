@@ -5,11 +5,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, List
 
+from import_parsers.amex import (
+    BANK_NAME as AMEX_NAME,
+    BANK_SLUG as AMEX_SLUG,
+    IMPORT_HINT as AMEX_HINT,
+    parse_amex_csv,
+)
 from import_parsers.capital_one import (
     BANK_NAME as CAPITAL_ONE_NAME,
     BANK_SLUG as CAPITAL_ONE_SLUG,
     IMPORT_HINT as CAPITAL_ONE_HINT,
     parse_capital_one_csv,
+)
+from import_parsers.chase import (
+    BANK_NAME as CHASE_NAME,
+    BANK_SLUG as CHASE_SLUG,
+    IMPORT_HINT as CHASE_HINT,
+    parse_chase_csv,
 )
 from import_parsers.fidelity import (
     BANK_NAME as FIDELITY_NAME,
@@ -41,6 +53,24 @@ BANK_IMPORTS: Dict[str, BankImportConfig] = {
         bank_slug=CAPITAL_ONE_SLUG,
         bank_name=CAPITAL_ONE_NAME,
     ),
+    CHASE_SLUG: BankImportConfig(
+        slug=CHASE_SLUG,
+        name=CHASE_NAME,
+        hint=CHASE_HINT,
+        file_extensions=(".csv",),
+        parse=parse_chase_csv,
+        bank_slug=CHASE_SLUG,
+        bank_name=CHASE_NAME,
+    ),
+    AMEX_SLUG: BankImportConfig(
+        slug=AMEX_SLUG,
+        name=AMEX_NAME,
+        hint=AMEX_HINT,
+        file_extensions=(".csv",),
+        parse=parse_amex_csv,
+        bank_slug=AMEX_SLUG,
+        bank_name=AMEX_NAME,
+    ),
 }
 
 
@@ -57,7 +87,9 @@ def list_bank_imports() -> List[dict]:
 
 
 SLUG_ALIASES = {
+    "american-express": AMEX_SLUG,
     "capital-one": CAPITAL_ONE_SLUG,
+    "chase-bank": CHASE_SLUG,
 }
 
 

@@ -29,6 +29,23 @@ class TransactionType(str, enum.Enum):
     expense = "expense"
 
 
+class IncomePayFrequency(str, enum.Enum):
+    annual = "annual"
+    monthly = "monthly"
+    semimonthly = "semimonthly"
+    biweekly = "biweekly"
+    weekly = "weekly"
+    hourly = "hourly"
+
+
+class FixedExpenseFrequency(str, enum.Enum):
+    monthly = "monthly"
+    annual = "annual"
+    quarterly = "quarterly"
+    biweekly = "biweekly"
+    weekly = "weekly"
+
+
 class AssetCategory(str, enum.Enum):
     cash = "cash"
     checking = "checking"
@@ -143,6 +160,65 @@ class Transaction(Base):
     bank_account_id = Column(Integer, ForeignKey("bank_accounts.id"), nullable=True, index=True)
     dedupe_key = Column(String, nullable=True, index=True)
     import_batch_id = Column(Integer, ForeignKey("import_batches.id"), nullable=True)
+
+
+class JobIncome(Base):
+    __tablename__ = "job_incomes"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    employer = Column(String, nullable=False)
+    role_title = Column(String, nullable=True)
+    pay_frequency = Column(Enum(IncomePayFrequency), default=IncomePayFrequency.annual, nullable=False)
+    base_pay = Column(Float, nullable=False)
+    hours_per_week = Column(Float, nullable=True)
+    annual_bonus = Column(Float, default=0, nullable=False)
+    annual_equity = Column(Float, default=0, nullable=False)
+    annual_other = Column(Float, default=0, nullable=False)
+    annual_taxes = Column(Float, default=0, nullable=False)
+    annual_deductions = Column(Float, default=0, nullable=False)
+    taxes_per_period = Column(Float, default=0, nullable=False)
+    deductions_per_period = Column(Float, default=0, nullable=False)
+    effective_date = Column(Date, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+
+class FixedExpense(Base):
+    __tablename__ = "fixed_expenses"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    frequency = Column(Enum(FixedExpenseFrequency), default=FixedExpenseFrequency.monthly, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)
+    due_day = Column(Integer, nullable=True)
+    autopay = Column(Boolean, default=False, nullable=False)
+    payment_account = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    category = Column(String, default="Subscriptions", nullable=False)
+    amount = Column(Float, nullable=False)
+    frequency = Column(Enum(FixedExpenseFrequency), default=FixedExpenseFrequency.monthly, nullable=False)
+    next_bill_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)
+    payment_account = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 
 class Holding(Base):
