@@ -4,7 +4,7 @@
 |-----|---------|
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | Setup, `make` targets, repo layout, env |
 | [BACKUP.md](./BACKUP.md) | SQLite backup and restore |
-| [DEPLOY.md](./DEPLOY.md) | Production checklist (auth, CORS, rate limits, Docker) |
+| [DEPLOY.md](./DEPLOY.md) | Production checklist, GitHub Actions deployment, auth, CORS, Docker |
 | [DATA_MODEL.md](./DATA_MODEL.md) | Net worth, tables, cashflow, taxes, planning |
 | [FRONTEND.md](./FRONTEND.md) | Angular routes, tokens, shared UI, page rules |
 | [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | Product/UI metrics, charts, and page standards |

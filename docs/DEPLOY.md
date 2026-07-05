@@ -80,6 +80,97 @@ Create the first admin by opening `/login` after the API starts. After that, `/l
 docker compose exec api python manage.py create-admin --email you@example.com --display-name "Your Name"
 ```
 
+## GitHub Actions production deployment
+
+Production deploys use the `.github/workflows/deploy.yml` workflow. CI runs on
+GitHub-hosted runners, then deployment runs on a self-hosted runner installed on
+the production machine.
+
+The production runner must have these labels:
+
+```text
+self-hosted
+linux
+finance-prod
+```
+
+The runner should run on the production host because the deployment builds from
+the checked-out repo, backs up the local SQLite database, and restarts the local
+Docker Compose stack.
+
+Required GitHub environment variable for the `production` environment:
+
+| Variable | Value |
+|----------|-------|
+| `CORS_ORIGINS` | `https://finance.vivekpanchagnula.com` |
+
+The deploy workflow writes those settings to `.env.production` during the job
+and runs Compose with:
+
+```bash
+sudo -n docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d --remove-orphans
+```
+
+This host currently expects passwordless sudo for Docker. Verify that before
+running the deployment:
+
+```bash
+sudo -n docker compose version
+```
+
+If this fails, fix sudoers or add the runner user to the Docker group and restart
+the runner service. The workflow intentionally uses `sudo -n` so it fails instead
+of hanging on a password prompt.
+
+### Run the self-hosted runner as a service
+
+After registering the GitHub Actions runner, install it as a systemd service from
+the runner directory on the production host:
+
+```bash
+cd /home/vivek/Downloads/actions-runner
+sudo ./svc.sh install vivek
+sudo ./svc.sh start
+```
+
+Check service status:
+
+```bash
+cd /home/vivek/Downloads/actions-runner
+sudo ./svc.sh status
+```
+
+Useful service commands:
+
+```bash
+cd /home/vivek/Downloads/actions-runner
+sudo ./svc.sh stop
+sudo ./svc.sh start
+sudo ./svc.sh uninstall
+```
+
+Also confirm GitHub sees the runner online in the repo settings:
+
+```text
+Settings → Actions → Runners
+```
+
+Expected runner state:
+
+```text
+amd7600-server: online
+labels: self-hosted, Linux, X64, finance-prod
+```
+
+If the runner was already installed before Docker permissions changed, restart
+the service so it picks up the new user groups:
+
+```bash
+cd /home/vivek/Downloads/actions-runner
+sudo ./svc.sh stop
+sudo ./svc.sh start
+```
+
 ## Environment reference
 
 | Variable | Purpose |

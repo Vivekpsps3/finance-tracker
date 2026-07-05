@@ -25,6 +25,7 @@ htmlcov/
 coverage.xml
 
 # SQLite (local data — never commit)
+data/
 *.db
 *.db-wal
 *.db-shm
@@ -33,6 +34,7 @@ coverage.xml
 *.sqlite3
 
 # Backups / scratch
+backups/
 *.bak
 *.swp
 *~

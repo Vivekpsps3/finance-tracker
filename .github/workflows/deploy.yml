@@ -49,11 +49,25 @@ jobs:
         run: |
           mkdir -p "$FINANCE_DATA_DIR" "$FINANCE_BACKUP_DIR"
 
+      - name: Verify Docker access
+        run: sudo -n docker compose version
+
+      - name: Write Compose environment
+        run: |
+          {
+            printf 'FINANCE_DATA_DIR=%s\n' "$FINANCE_DATA_DIR"
+            printf 'CORS_ORIGINS=%s\n' "$CORS_ORIGINS"
+            printf 'SESSION_COOKIE_SECURE=%s\n' "$SESSION_COOKIE_SECURE"
+            printf 'DISABLE_OPENAPI=%s\n' "$DISABLE_OPENAPI"
+            printf 'ALEMBIC_STRICT=%s\n' "$ALEMBIC_STRICT"
+            printf 'WEB_PORT=%s\n' "$WEB_PORT"
+          } > .env.production
+
       - name: Backup SQLite database
         run: scripts/backup-db.sh
 
       - name: Build and restart Compose stack
-        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d --remove-orphans
+        run: sudo -n docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d --remove-orphans
 
       - name: Health check
         run: |
@@ -63,6 +77,6 @@ jobs:
             fi
             sleep 2
           done
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100
+          sudo -n docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml ps
+          sudo -n docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100
           exit 1
