@@ -35,6 +35,7 @@ from schemas_auth import (
     LoginRequest,
     LoginResponse,
     MeResponse,
+    SelfDataResetRequest,
     SignupRequest,
     UserPublic,
 )
@@ -137,6 +138,19 @@ def change_password(
     current_user.updated_at = utc_now_naive()
     revoke_user_sessions(db, current_user.id)
     audit_event(db, "password_changed", actor_user_id=current_user.id, target_user_id=current_user.id)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/auth/reset-data")
+def reset_my_data(
+    body: SelfDataResetRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if body.confirm != "CLEAR MY DATA":
+        raise HTTPException(status_code=400, detail='Confirm with "CLEAR MY DATA" to reset your data')
+    reset_user_contents(db, current_user, actor_user_id=current_user.id, revoke_sessions=False)
     db.commit()
     return {"ok": True}
 

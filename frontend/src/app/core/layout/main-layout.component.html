@@ -28,6 +28,7 @@
       @if (user) {
         <span class="account-email">{{ user.email }}</span>
       }
+      <ui-button variant="danger" size="sm" [disabled]="isResettingData" (clicked)="clearMyData()">Clear data</ui-button>
       <ui-button variant="ghost" size="sm" (clicked)="logout()">Logout</ui-button>
     </div>
   </div>

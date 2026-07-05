@@ -1,0 +1,12 @@
+# Production override for deployments from a self-hosted runner checkout.
+# Keeps SQLite data outside the transient GitHub Actions workspace.
+
+services:
+  api:
+    volumes:
+      - ${FINANCE_DATA_DIR:-./data}:/data
+    environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS to your production origin}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-1}
+      DISABLE_OPENAPI: ${DISABLE_OPENAPI:-1}
+      ALEMBIC_STRICT: ${ALEMBIC_STRICT:-1}

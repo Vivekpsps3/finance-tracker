@@ -28,6 +28,9 @@ List available banks: `GET /api/imports/banks`.
 | `capital_one` | `import_parsers/capital_one.py` | Credits/payments skipped; debits become expenses. Also has legacy `/imports/capital-one/*` routes. |
 | `chase` | `import_parsers/chase.py` | Sale rows only (credit card export). |
 | `amex` | `import_parsers/amex.py` | American Express credit card export. Alias: `american-express`. |
+| `citi` | `import_parsers/citi.py` | Citi credit card export (Status, Debit/Credit, Member Name). Alias: `citi-bank`. |
+
+Merchant rules in `import_parsers/categories.py` (e.g. **Costco** when the description or bank category mentions Costco) apply to all bank parsers and manual transaction create/update.
 
 ## Brokerage (not bank ledger)
 

@@ -7,6 +7,7 @@ import io
 from datetime import date, datetime
 from typing import List
 
+from import_parsers.categories import resolve_transaction_category
 from import_parsers.dedupe import build_dedupe_key, normalize_description
 from import_parsers.types import ParsedImportRow
 
@@ -86,7 +87,7 @@ def parse_chase_csv(content: str) -> List[ParsedImportRow]:
             raise ValueError(f"Line {line_no}: {e}") from e
 
         description = normalize_description(row[idx["description"]])
-        category = row[idx["category"]].strip() or "Uncategorized"
+        category = resolve_transaction_category(description, row[idx["category"]].strip() or None)
         amount = abs(amount_raw)
 
         dedupe_key = build_dedupe_key(BANK_SLUG, ACCOUNT_MASK, tx_date, amount, description)

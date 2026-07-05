@@ -128,6 +128,37 @@ def test_admin_can_delete_user_and_owned_data_is_removed():
         db.close()
 
 
+def test_user_can_reset_own_data_without_affecting_other_users():
+    owner = authenticated_client(app, email="reset-owner@example.com")
+    other = authenticated_client(app, email="reset-other@example.com")
+
+    owner_tx = owner.post(
+        "/api/transactions/",
+        json={"date": "2026-01-01", "type": "income", "category": "Salary", "amount": 100},
+    )
+    assert owner_tx.status_code == 200
+    owner_asset = owner.post(
+        "/api/assets/",
+        json={"name": "Cash", "category": "cash", "current_value": 500, "as_of_date": "2026-01-01"},
+    )
+    assert owner_asset.status_code == 200
+    other_tx = other.post(
+        "/api/transactions/",
+        json={"date": "2026-01-01", "type": "expense", "category": "Food", "amount": 25},
+    )
+    assert other_tx.status_code == 200
+
+    denied = owner.post("/api/auth/reset-data", json={"confirm": "CLEAR"})
+    assert denied.status_code == 422
+
+    reset = owner.post("/api/auth/reset-data", json={"confirm": "CLEAR MY DATA"})
+    assert reset.status_code == 200
+    assert owner.get("/api/auth/me").status_code == 200
+    assert owner.get("/api/transactions/").json() == []
+    assert owner.get("/api/assets/").json() == []
+    assert len(other.get("/api/transactions/").json()) == 1
+
+
 def test_admin_cannot_delete_self_or_final_admin():
     admin = authenticated_client(app, email="solo-admin@example.com", role=UserRole.admin)
     me = admin.get("/api/auth/me").json()["user"]

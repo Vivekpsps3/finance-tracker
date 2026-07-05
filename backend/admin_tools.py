@@ -16,6 +16,7 @@ from models import (
     ImportBatch,
     JobIncome,
     Liability,
+    NetWorthSnapshot,
     PlanningAssumptionProfile,
     PlanningScenarioRun,
     Subscription,
@@ -31,6 +32,7 @@ USER_OWNED_MODELS = [
     ImportBatch,
     Asset,
     Liability,
+    NetWorthSnapshot,
     Holding,
     BrokerageAccount,
     JobIncome,
@@ -95,10 +97,11 @@ def execute_admin_sql(db: Session, sql: str) -> dict[str, Any]:
     return {"columns": [], "rows": [], "row_count": 0, "truncated": False}
 
 
-def reset_user_contents(db: Session, user: User, *, actor_user_id: int) -> None:
+def reset_user_contents(db: Session, user: User, *, actor_user_id: int, revoke_sessions: bool = True) -> None:
     for model in USER_OWNED_MODELS:
         db.query(model).filter(model.user_id == user.id).delete(synchronize_session=False)
-    db.query(UserSession).filter(UserSession.user_id == user.id).delete(synchronize_session=False)
+    if revoke_sessions:
+        db.query(UserSession).filter(UserSession.user_id == user.id).delete(synchronize_session=False)
     audit = AuditEvent(
         actor_user_id=actor_user_id,
         target_user_id=user.id,

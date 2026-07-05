@@ -5,6 +5,9 @@ import { AuthUser } from '../../auth/auth.models';
 import { AuthService } from '../../auth/auth.service';
 import { filter } from 'rxjs';
 import { UiButtonComponent, UiCardComponent, UiIconComponent, UiIconName } from '../../shared/ui';
+import { ConfirmService } from '../../services/confirm.service';
+import { FinanceService } from '../../services/finance.service';
+import { ToastService } from '../../services/toast.service';
 
 export interface NavItem {
   path: string;
@@ -35,9 +38,13 @@ export class MainLayoutComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
   private auth = inject(AuthService);
   private router = inject(Router);
+  private confirm = inject(ConfirmService);
+  private finance = inject(FinanceService);
+  private toast = inject(ToastService);
 
   apiOffline = false;
   user: AuthUser | null = null;
+  isResettingData = false;
 
   /** Absolute paths so nav works from any child route (relative links break e.g. /portfolio/planning). */
   readonly navGroups: NavGroup[] = [
@@ -124,6 +131,30 @@ export class MainLayoutComponent implements OnInit {
 
   logout(): void {
     this.auth.logout();
+  }
+
+  async clearMyData(): Promise<void> {
+    const confirmed = await this.confirm.ask(
+      'Clear your data?',
+      'This permanently removes your transactions, imports, assets, liabilities, holdings, cashflow, planning runs, saved planning inputs, tax documents, and net worth snapshots. Your account and password stay in place.',
+      'Clear my data'
+    );
+    if (!confirmed) return;
+    this.isResettingData = true;
+    this.cdr.markForCheck();
+    this.finance.resetMyData().subscribe({
+      next: () => {
+        this.isResettingData = false;
+        this.toast.success('Your data has been cleared');
+        this.router.navigate(['/']);
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        this.isResettingData = false;
+        this.toast.error(err?.error?.detail || 'Could not clear your data');
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   refreshApiStatus(): void {

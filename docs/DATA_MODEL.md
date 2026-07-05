@@ -88,7 +88,7 @@ Optional `brokerage_accounts` / `brokerages` group imported positions; nickname 
 
 The user mostly transacts by card. Rent and utilities can be modeled as fixed expenses (below) rather than only as one-off transactions; neither path directly mutates net worth.
 
-Imports: see [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md). Built-in bank slugs today: `capital_one`, `chase`, `amex`. Brokerage: Fidelity positions CSV.
+Imports: see [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md). Built-in bank slugs today: `capital_one`, `chase`, `amex`, `citi`. Brokerage: Fidelity positions CSV.
 
 SimpleFIN is the likely future aggregation path. Plaid placeholders may exist in env examples, but Plaid is not the intended integration for this user.
 

@@ -65,6 +65,8 @@ def test_parse_chase_imports_negative_sales_and_skips_payments():
         "COSTCO WHSE #0001",
         "FLATSTICK PUB REDMOND",
     }
+    costco = next(r for r in rows if r.description == "COSTCO WHSE #0001")
+    assert costco.category == "Costco"
 
 
 def test_parse_chase_blank_category_defaults_to_uncategorized():

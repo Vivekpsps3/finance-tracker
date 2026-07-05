@@ -7,6 +7,7 @@ import io
 from datetime import date, datetime
 from typing import List
 
+from import_parsers.categories import resolve_transaction_category
 from import_parsers.dedupe import build_dedupe_key, normalize_description
 from import_parsers.types import ParsedImportRow
 
@@ -86,8 +87,8 @@ def parse_amex_csv(content: str) -> List[ParsedImportRow]:
 
         account_mask = _normalize_account_mask(row[idx["account #"]])
         description = normalize_description(row[idx["description"]])
-        category = row[category_idx].strip() if category_idx is not None else ""
-        category = category or "Uncategorized"
+        bank_category = row[category_idx].strip() if category_idx is not None else ""
+        category = resolve_transaction_category(description, bank_category or None)
 
         dedupe_key = build_dedupe_key(BANK_SLUG, account_mask, tx_date, amount, description)
         rows.append(

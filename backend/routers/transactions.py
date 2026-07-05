@@ -14,6 +14,7 @@ from schemas import (
     TransactionResponse,
     TransactionUpdate,
 )
+from import_parsers.categories import resolve_transaction_category
 from services.finance import transactions_to_responses
 
 router = APIRouter(tags=["transactions"])
@@ -21,7 +22,9 @@ router = APIRouter(tags=["transactions"])
 
 @router.post("/transactions/", response_model=TransactionResponse)
 def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_tx = Transaction(**tx.model_dump(), source="manual", user_id=current_user.id)
+    data = tx.model_dump()
+    data["category"] = resolve_transaction_category(data["description"], data["category"])
+    db_tx = Transaction(**data, source="manual", user_id=current_user.id)
     db.add(db_tx)
     db.commit()
     db.refresh(db_tx)
@@ -79,8 +82,11 @@ def update_transaction(tx_id: int, update: TransactionUpdate, db: Session = Depe
     tx = db.query(Transaction).filter(Transaction.id == tx_id, Transaction.user_id == current_user.id).first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    for field, value in update.model_dump(exclude_unset=True).items():
+    data = update.model_dump(exclude_unset=True)
+    for field, value in data.items():
         setattr(tx, field, value)
+    if "description" in data or "category" in data:
+        tx.category = resolve_transaction_category(tx.description, tx.category)
     db.commit()
     db.refresh(tx)
     return transactions_to_responses(db, current_user.id, [tx])[0]

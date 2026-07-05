@@ -23,6 +23,12 @@ from import_parsers.chase import (
     IMPORT_HINT as CHASE_HINT,
     parse_chase_csv,
 )
+from import_parsers.citi import (
+    BANK_NAME as CITI_NAME,
+    BANK_SLUG as CITI_SLUG,
+    IMPORT_HINT as CITI_HINT,
+    parse_citi_csv,
+)
 from import_parsers.fidelity import (
     BANK_NAME as FIDELITY_NAME,
     BANK_SLUG as FIDELITY_SLUG,
@@ -71,6 +77,15 @@ BANK_IMPORTS: Dict[str, BankImportConfig] = {
         bank_slug=AMEX_SLUG,
         bank_name=AMEX_NAME,
     ),
+    CITI_SLUG: BankImportConfig(
+        slug=CITI_SLUG,
+        name=CITI_NAME,
+        hint=CITI_HINT,
+        file_extensions=(".csv",),
+        parse=parse_citi_csv,
+        bank_slug=CITI_SLUG,
+        bank_name=CITI_NAME,
+    ),
 }
 
 
@@ -90,6 +105,7 @@ SLUG_ALIASES = {
     "american-express": AMEX_SLUG,
     "capital-one": CAPITAL_ONE_SLUG,
     "chase-bank": CHASE_SLUG,
+    "citi-bank": CITI_SLUG,
 }
 
 

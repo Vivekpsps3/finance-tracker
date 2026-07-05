@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finance-tracker-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build And Deploy On Server
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on:
+      - self-hosted
+      - linux
+      - finance-prod
+    environment: production
+    env:
+      FINANCE_DATA_DIR: /home/vivek/Deployments/finance-tracker/data
+      FINANCE_BACKUP_DIR: /home/vivek/Deployments/finance-tracker/backups
+      WEB_PORT: "8080"
+      CORS_ORIGINS: ${{ vars.CORS_ORIGINS }}
+      SESSION_COOKIE_SECURE: "1"
+      DISABLE_OPENAPI: "1"
+      ALEMBIC_STRICT: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Validate production settings
+        run: |
+          test -n "$CORS_ORIGINS"
+          test "$CORS_ORIGINS" != "*"
+
+      - name: Prepare data directories
+        run: |
+          mkdir -p "$FINANCE_DATA_DIR" "$FINANCE_BACKUP_DIR"
+
+      - name: Backup SQLite database
+        run: scripts/backup-db.sh
+
+      - name: Build and restart Compose stack
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d --remove-orphans
+
+      - name: Health check
+        run: |
+          for attempt in {1..30}; do
+            if curl -fsS "http://127.0.0.1:${WEB_PORT}/api/health"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100
+          exit 1

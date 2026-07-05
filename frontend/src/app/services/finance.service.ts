@@ -331,6 +331,12 @@ export class FinanceService {
     this._cashflowSummary.next(null);
   }
 
+  resetMyData(): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(apiUrl('/auth/reset-data'), { confirm: 'CLEAR MY DATA' }).pipe(
+      tap(() => this.clearSessionState())
+    );
+  }
+
   addFixedExpense(body: FixedExpenseCreate): Observable<FixedExpense> {
     return this.http.post<FixedExpense>(apiUrl('/fixed-expenses/'), body).pipe(
       tap(created => {

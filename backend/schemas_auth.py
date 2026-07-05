@@ -73,6 +73,10 @@ class AdminUserContentReset(BaseModel):
     confirm: str = Field(..., min_length=5, max_length=64)
 
 
+class SelfDataResetRequest(BaseModel):
+    confirm: str = Field(..., min_length=13, max_length=13)
+
+
 class BootstrapStatusResponse(BaseModel):
     needs_setup: bool
 

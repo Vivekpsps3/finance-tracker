@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, UploadFile
