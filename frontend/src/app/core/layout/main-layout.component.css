@@ -158,6 +158,91 @@
   padding-bottom: var(--space-12);
 }
 
+.tutorial-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-4);
+}
+
+.tutorial-panel {
+  width: min(760px, 100%);
+  max-height: calc(100vh - var(--space-8));
+  overflow: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-8);
+}
+
+.tutorial-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: flex-start;
+  margin-bottom: var(--space-6);
+}
+
+.tutorial-header h2 {
+  margin: 0 0 var(--space-2);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  letter-spacing: -0.03em;
+}
+
+.tutorial-header p,
+.tutorial-step p,
+.tutorial-callout {
+  color: var(--text-secondary);
+}
+
+.tutorial-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.tutorial-step {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  padding: var(--space-4);
+}
+
+.tutorial-step__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+}
+
+.tutorial-step h3 {
+  margin: 0 0 var(--space-2);
+}
+
+.tutorial-step a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tutorial-callout {
+  margin-top: var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--accent-glow) 40%, var(--surface-2));
+  padding: var(--space-4);
+}
+
 @media (max-width: 900px) {
   .nav-link__label {
     display: none;
@@ -186,6 +271,7 @@
   .account-menu {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .account-email {
@@ -216,5 +302,17 @@
 
   .nav-link__short {
     display: none;
+  }
+
+  .tutorial-backdrop {
+    padding: var(--space-2);
+  }
+
+  .tutorial-panel {
+    padding: var(--space-5);
+  }
+
+  .tutorial-header {
+    flex-direction: column;
   }
 }

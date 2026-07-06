@@ -90,6 +90,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { value: 'all', label: 'All time' },
   ];
 
+  readonly onboardingSteps = [
+    { label: 'Balance sheet', path: '/balance-sheet', detail: 'Add cash, assets, debts, loans, and mortgages.' },
+    { label: 'Transactions', path: '/transactions', detail: 'Import card and bank CSVs for spending review.' },
+    { label: 'Income', path: '/income', detail: 'Add jobs and realistic tax/deduction estimates.' },
+    { label: 'Bills', path: '/fixed-expenses', detail: 'Record rent, utilities, insurance, and debt minimums.' },
+    { label: 'Subscriptions', path: '/subscriptions', detail: 'Capture recurring software, media, and memberships.' },
+    { label: 'Portfolio', path: '/portfolio', detail: 'Import or enter investments for market-value net worth.' },
+    { label: 'Taxes', path: '/taxes', detail: 'Store annual documents and summaries.' },
+  ];
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -240,6 +250,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return '-';
     }
     return `${value.toFixed(1)}%`;
+  }
+
+  get onboardingCompleteCount(): number {
+    let count = 0;
+    if ((this.netWorth?.total_assets || 0) > 0 || (this.netWorth?.liabilities || 0) > 0) count += 1;
+    if (this.transactions.length > 0) count += 1;
+    if (this.jobIncomes.length > 0) count += 1;
+    if (this.fixedExpenses.length > 0) count += 1;
+    if (this.subscriptions.length > 0) count += 1;
+    if ((this.netWorth?.portfolio || 0) > 0) count += 1;
+    return count;
+  }
+
+  get showOnboardingChecklist(): boolean {
+    return this.onboardingCompleteCount < 5;
+  }
+
+  isOnboardingStepDone(label: string): boolean {
+    if (label === 'Balance sheet') return (this.netWorth?.total_assets || 0) > 0 || (this.netWorth?.liabilities || 0) > 0;
+    if (label === 'Transactions') return this.transactions.length > 0;
+    if (label === 'Income') return this.jobIncomes.length > 0;
+    if (label === 'Bills') return this.fixedExpenses.length > 0;
+    if (label === 'Subscriptions') return this.subscriptions.length > 0;
+    if (label === 'Portfolio') return (this.netWorth?.portfolio || 0) > 0;
+    return false;
   }
 
   portfolioFreshness(): string {

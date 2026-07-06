@@ -28,6 +28,7 @@
       @if (user) {
         <span class="account-email">{{ user.email }}</span>
       }
+      <ui-button variant="secondary" size="sm" (clicked)="openTutorial()">Tutorial</ui-button>
       <ui-button variant="danger" size="sm" [disabled]="isResettingData" (clicked)="clearMyData()">Clear data</ui-button>
       <ui-button variant="ghost" size="sm" (clicked)="logout()">Logout</ui-button>
     </div>
@@ -66,3 +67,65 @@
 <main id="main-content" class="main-content">
   <router-outlet />
 </main>
+
+@if (showTutorial) {
+  <div class="tutorial-backdrop" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+    <section class="tutorial-panel">
+      <div class="tutorial-header">
+        <div>
+          <p class="section-eyebrow">First-time setup</p>
+          <h2 id="tutorial-title">Build a complete American household finance picture</h2>
+          <p>
+            Work through these steps in order. Each section keeps its own data plane: bank transactions review spending,
+            balance sheet and portfolio drive net worth, recurring cashflow feeds planning, and tax documents stay in the vault.
+          </p>
+        </div>
+        <ui-button variant="ghost" size="sm" (clicked)="closeTutorial()">Close</ui-button>
+      </div>
+
+      <div class="tutorial-grid">
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">1</span>
+          <h3>Start with net worth</h3>
+          <p>Add checking/savings cash, home equity or other assets, credit cards, loans, and mortgages in Balance sheet.</p>
+          <a routerLink="/balance-sheet" (click)="closeTutorial()">Open Balance sheet</a>
+        </article>
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">2</span>
+          <h3>Import recent bank cards</h3>
+          <p>Export CSV files from Capital One, Chase, or Amex, preview duplicates, then import only the selected new rows.</p>
+          <a routerLink="/transactions" (click)="closeTutorial()">Import transactions</a>
+        </article>
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">3</span>
+          <h3>Add paycheck reality</h3>
+          <p>Enter gross pay, bonuses, equity, pre-tax deductions, and an estimated U.S. tax withholding so cashflow feels real.</p>
+          <a routerLink="/income" (click)="closeTutorial()">Add income</a>
+        </article>
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">4</span>
+          <h3>Separate bills from swipes</h3>
+          <p>Put rent, mortgage, utilities, insurance, debt minimums, and subscriptions in their recurring sections.</p>
+          <a routerLink="/fixed-expenses" (click)="closeTutorial()">Add fixed expenses</a>
+        </article>
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">5</span>
+          <h3>Load investments</h3>
+          <p>Add holdings manually or import Fidelity positions. Watch for brokerage cash sweeps versus manual cash double counting.</p>
+          <a routerLink="/portfolio" (click)="closeTutorial()">Open Portfolio</a>
+        </article>
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">6</span>
+          <h3>Make tax season boring</h3>
+          <p>Upload W-2s, 1099s, 1098s, 5498s, returns, and property tax records. These files do not alter net worth.</p>
+          <a routerLink="/taxes" (click)="closeTutorial()">Open Tax Center</a>
+        </article>
+      </div>
+
+      <div class="tutorial-callout">
+        <strong>Rule of thumb:</strong>
+        Transactions answer "where did my card spending go?" Net worth answers "what am I worth today?" Planning answers "what if?"
+      </div>
+    </section>
+  </div>
+}

@@ -45,6 +45,7 @@ export class MainLayoutComponent implements OnInit {
   apiOffline = false;
   user: AuthUser | null = null;
   isResettingData = false;
+  showTutorial = false;
 
   /** Absolute paths so nav works from any child route (relative links break e.g. /portfolio/planning). */
   readonly navGroups: NavGroup[] = [
@@ -155,6 +156,16 @@ export class MainLayoutComponent implements OnInit {
         this.cdr.markForCheck();
       },
     });
+  }
+
+  openTutorial(): void {
+    this.showTutorial = true;
+    this.cdr.markForCheck();
+  }
+
+  closeTutorial(): void {
+    this.showTutorial = false;
+    this.cdr.markForCheck();
   }
 
   refreshApiStatus(): void {

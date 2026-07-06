@@ -11,6 +11,90 @@
   overflow: hidden;
 }
 
+.onboarding-card {
+  background:
+    radial-gradient(ellipse 80% 80% at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent),
+    var(--card-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle));
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  margin-bottom: var(--space-8);
+  box-shadow: var(--shadow-card);
+}
+
+.onboarding-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: flex-start;
+  margin-bottom: var(--space-5);
+}
+
+.onboarding-card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  letter-spacing: -0.03em;
+}
+
+.onboarding-card p {
+  color: var(--text-secondary);
+  max-width: 58rem;
+}
+
+.onboarding-progress {
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.onboarding-step {
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  padding: var(--space-4);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.onboarding-step:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.onboarding-step.done {
+  opacity: 0.72;
+}
+
+.onboarding-step__status {
+  display: inline-block;
+  margin-bottom: var(--space-2);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.onboarding-step small {
+  display: block;
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
 .net-worth-card::before {
   content: '';
   position: absolute;
@@ -230,4 +314,10 @@
   margin-top: var(--space-3);
   font-size: var(--text-sm);
   color: var(--text-secondary);
+}
+
+@media (max-width: 760px) {
+  .onboarding-card__header {
+    flex-direction: column;
+  }
 }

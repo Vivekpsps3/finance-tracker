@@ -6,6 +6,23 @@
     </div>
   </ui-page-header>
 
+  <section class="import-guide-card" aria-labelledby="import-guide-heading">
+    <div>
+      <p class="section-eyebrow">First import</p>
+      <h2 id="import-guide-heading">Bring in card and bank CSVs safely</h2>
+      <p>
+        Download CSV activity from your bank, choose the matching importer, preview every row, then import only the new transactions.
+        This ledger is for spending review and cashflow; it never changes your current net worth.
+      </p>
+    </div>
+    <div class="import-guide-steps">
+      <span title="Most banks expose CSV export from activity, statements, or download transactions.">1. Export CSV</span>
+      <span title="Preview catches duplicates before anything is saved.">2. Preview</span>
+      <span title="Uncheck any transfer, payment, or duplicate you do not want in the ledger.">3. Select rows</span>
+      <span title="Use Category tools after import to normalize merchant categories.">4. Clean categories</span>
+    </div>
+  </section>
+
   <section class="month-hero">
     <p class="section-eyebrow">This month</p>
     <div class="month-summary-row">
@@ -187,6 +204,8 @@
       @if (!loading) {
         <ui-empty-state title="No transactions yet">
           <ui-icon name="transactions" size="lg" style="margin-bottom: 8px; opacity: 0.6;" />
+          <p class="empty-import-copy">Start with a bank CSV if you want the fastest and most accurate history.</p>
+          <ui-button variant="secondary" (clicked)="openImportModal()">Import from bank</ui-button>
           <ui-button variant="primary" (clicked)="openAddModal()">Add income or expense</ui-button>
         </ui-empty-state>
       }
@@ -199,6 +218,15 @@
     <h3 id="import-modal-title">Import bank statement</h3>
 
     @if (importStep === 'upload') {
+      <div class="import-instructions">
+        <strong>How to import without surprises</strong>
+        <ol>
+          <li>In your bank website, export posted transactions as CSV. Avoid PDF statements.</li>
+          <li>Select the matching bank here. Supported importers currently cover Capital One, Chase, and Amex.</li>
+          <li>Upload the CSV and use Preview import. Nothing is saved until you confirm selected rows.</li>
+          <li>Review duplicate badges, transfers, card payments, refunds, and account labels before importing.</li>
+        </ol>
+      </div>
       <ui-select
         selectId="import-bank"
         label="Bank"

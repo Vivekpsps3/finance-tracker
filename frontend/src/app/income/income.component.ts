@@ -50,6 +50,11 @@ export class IncomeComponent implements OnInit, OnDestroy {
   saving = false;
   editingId: number | null = null;
   form: JobIncomeCreate = this.emptyForm();
+  taxEstimator = {
+    state: 'average',
+    filingStatus: 'single',
+    preTaxDeductionsPerPeriod: 0,
+  };
 
   readonly payFrequencyOptions: UiSelectOption[] = [
     { value: 'annual', label: 'Annual salary' },
@@ -58,6 +63,20 @@ export class IncomeComponent implements OnInit, OnDestroy {
     { value: 'biweekly', label: 'Every two weeks' },
     { value: 'weekly', label: 'Weekly' },
     { value: 'hourly', label: 'Hourly' },
+  ];
+
+  readonly filingStatusOptions: UiSelectOption[] = [
+    { value: 'single', label: 'Single' },
+    { value: 'married_joint', label: 'Married filing jointly' },
+    { value: 'head_of_household', label: 'Head of household' },
+  ];
+
+  readonly stateTaxOptions: UiSelectOption[] = [
+    { value: 'average', label: 'U.S. average estimate' },
+    { value: 'none', label: 'No state income tax' },
+    { value: 'low', label: 'Lower-tax state' },
+    { value: 'medium', label: 'Middle-tax state' },
+    { value: 'high', label: 'Higher-tax state' },
   ];
 
   private destroy$ = new Subject<void>();
@@ -143,6 +162,23 @@ export class IncomeComponent implements OnInit, OnDestroy {
     return Math.max(this.formPeriodGross - this.formPeriodAdjustments, 0);
   }
 
+  get estimatedTaxesPerPeriod(): number {
+    const taxableAnnual = Math.max(
+      this.formAnnualGross - Number(this.taxEstimator.preTaxDeductionsPerPeriod || 0) * this.payPeriodsPerYear,
+      0
+    );
+    const federalEffective = this.estimatedFederalEffectiveRate(taxableAnnual, this.taxEstimator.filingStatus);
+    const ficaRate = 0.0765;
+    const stateRate = this.estimatedStateRate(this.taxEstimator.state);
+    return this.roundMoney((taxableAnnual * (federalEffective + ficaRate + stateRate)) / this.payPeriodsPerYear);
+  }
+
+  get estimatedTaxRateLabel(): string {
+    if (!this.formAnnualGross) return '0.0%';
+    const annualEstimate = this.estimatedTaxesPerPeriod * this.payPeriodsPerYear;
+    return `${((annualEstimate / this.formAnnualGross) * 100).toFixed(1)}%`;
+  }
+
   get basePayLabel(): string {
     if (this.form.pay_frequency === 'hourly') return 'Hourly rate';
     if (this.form.pay_frequency === 'annual') return 'Annual base pay';
@@ -184,6 +220,7 @@ export class IncomeComponent implements OnInit, OnDestroy {
   openAddModal(): void {
     this.editingId = null;
     this.form = this.emptyForm();
+    this.taxEstimator = { state: 'average', filingStatus: 'single', preTaxDeductionsPerPeriod: 0 };
     this.showModal = true;
   }
 
@@ -207,6 +244,16 @@ export class IncomeComponent implements OnInit, OnDestroy {
       notes: row.notes || '',
     };
     this.showModal = true;
+  }
+
+  applyEstimatedTaxes(): void {
+    this.form.taxes_per_period = this.estimatedTaxesPerPeriod;
+    this.cdr.markForCheck();
+  }
+
+  copyPreTaxToDeductions(): void {
+    this.form.deductions_per_period = this.roundMoney(Number(this.taxEstimator.preTaxDeductionsPerPeriod || 0));
+    this.cdr.markForCheck();
   }
 
   closeModal(): void {
@@ -291,5 +338,20 @@ export class IncomeComponent implements OnInit, OnDestroy {
     if (frequency === 'biweekly') return 26;
     if (frequency === 'weekly' || frequency === 'hourly') return 52;
     return 1;
+  }
+
+  private estimatedFederalEffectiveRate(annualIncome: number, filingStatus: string): number {
+    const single = annualIncome < 50000 ? 0.10 : annualIncome < 100000 ? 0.15 : annualIncome < 200000 ? 0.19 : 0.23;
+    if (filingStatus === 'married_joint') return Math.max(single - 0.035, 0.08);
+    if (filingStatus === 'head_of_household') return Math.max(single - 0.015, 0.09);
+    return single;
+  }
+
+  private estimatedStateRate(bucket: string): number {
+    if (bucket === 'none') return 0;
+    if (bucket === 'low') return 0.025;
+    if (bucket === 'medium') return 0.045;
+    if (bucket === 'high') return 0.07;
+    return 0.04;
   }
 }

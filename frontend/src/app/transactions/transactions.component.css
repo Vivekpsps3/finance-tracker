@@ -21,6 +21,45 @@
   box-shadow: var(--shadow-card);
 }
 
+.import-guide-card {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-5);
+  align-items: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-card);
+}
+
+.import-guide-card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.import-guide-card p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.import-guide-steps {
+  display: grid;
+  gap: var(--space-2);
+  min-width: min(260px, 100%);
+}
+
+.import-guide-steps span {
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
 .month-summary-row,
 .month-totals {
   display: flex;
@@ -168,9 +207,29 @@
 .import-hint,
 .import-summary,
 .file-name,
-.account-cell {
+.account-cell,
+.empty-import-copy {
   color: var(--text-secondary);
   font-size: var(--text-sm);
+}
+
+.import-instructions {
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--accent-glow) 36%, var(--surface-2));
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.import-instructions ol {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.25rem;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.import-instructions li + li {
+  margin-top: var(--space-1);
 }
 
 .import-table-scroll {
@@ -213,6 +272,11 @@
 }
 
 @media (max-width: 800px) {
+  .import-guide-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .category-merge-grid {
     grid-template-columns: 1fr;
   }
