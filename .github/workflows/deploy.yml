@@ -29,7 +29,8 @@ jobs:
     env:
       FINANCE_DATA_DIR: /home/vivek/Deployments/finance-tracker/data
       FINANCE_BACKUP_DIR: /home/vivek/Deployments/finance-tracker/backups
-      WEB_PORT: "8080"
+      COMPOSE_PROJECT_NAME: finance_tracker
+      WEB_PORT: "8085"
       CORS_ORIGINS: ${{ vars.CORS_ORIGINS }}
       SESSION_COOKIE_SECURE: "1"
       DISABLE_OPENAPI: "1"
@@ -56,6 +57,7 @@ jobs:
         run: |
           {
             printf 'FINANCE_DATA_DIR=%s\n' "$FINANCE_DATA_DIR"
+            printf 'COMPOSE_PROJECT_NAME=%s\n' "$COMPOSE_PROJECT_NAME"
             printf 'CORS_ORIGINS=%s\n' "$CORS_ORIGINS"
             printf 'SESSION_COOKIE_SECURE=%s\n' "$SESSION_COOKIE_SECURE"
             printf 'DISABLE_OPENAPI=%s\n' "$DISABLE_OPENAPI"

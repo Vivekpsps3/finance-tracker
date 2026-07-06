@@ -37,7 +37,9 @@ domain / LAN / VPN
 docker compose up --build
 ```
 
-UI: http://127.0.0.1:8080
+UI: http://127.0.0.1:8080 by default. Production currently uses
+http://127.0.0.1:8085 because nginx routes `finance.vivekpanchagnula.com` to
+that loopback port.
 
 The API is private to the Compose network and is reached through the web
 container at `/api`.
@@ -69,8 +71,8 @@ still a normal file on the host.
 Run Compose on the host, then proxy HTTPS traffic to the loopback web port. Finance Tracker handles login and account management inside the app.
 
 ```caddyfile
-finance.example.com {
-  reverse_proxy 127.0.0.1:8080
+finance.vivekpanchagnula.com {
+  reverse_proxy 127.0.0.1:8085
 }
 ```
 
@@ -110,6 +112,11 @@ and runs Compose with:
 ```bash
 sudo -n docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d --remove-orphans
 ```
+
+Production uses Compose project name `finance_tracker` and publishes the web
+container on `127.0.0.1:8085`. Keep this aligned with
+`/home/vivek/Deployments/nginx/conf/conf.d/finance.vivekpanchagnula.com.conf`,
+which proxies the public domain to `http://127.0.0.1:8085`.
 
 This host currently expects passwordless sudo for Docker. Verify that before
 running the deployment:
