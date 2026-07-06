@@ -9,14 +9,13 @@ Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** per
 | **Balance sheet** | per-user `assets`, `liabilities`, `holdings` + market prices | CRUD + Fidelity CSV (holdings per brokerage account) | **Net worth** (`GET /api/net-worth/`) |
 | **Transactions ledger** | per-user `transactions` (income/expense, `source=import` from bank CSV) | Manual CRUD + bank import preview/commit | Dashboard period charts, calendar, planning **inputs** (averages) |
 | **Recurring cashflow** | per-user `job_incomes`, `fixed_expenses`, `subscriptions` | CRUD on those tables only | Income / fixed-expense / subscription pages; `GET /api/cashflow/summary`; planning spending inputs |
-| **Tax documents** | per-user `tax_documents` official document vault + structured values | Upload/download/delete docs, optional extract preview, yearly summary | Tax Center (`/taxes`) |
 | **Planning (speculative)** | `planning_assumption_profiles` (+ unused `planning_scenario_runs` table) | Profiles only; MC run results are **ephemeral** (not stored) | Monte Carlo UI at `/planning` |
 
-**Invariant:** Net worth is always balance-sheet based: manual assets + portfolio market value − liabilities. Transactions, recurring cashflow rows, tax docs, and simulations **never** update net worth.
+**Invariant:** Net worth is always balance-sheet based: manual assets + portfolio market value − liabilities. Transactions, recurring cashflow rows, and simulations **never** update net worth.
 
 `net_worth_snapshots` is an ORM/table for observed balance-sheet valuations (same formula). As of the current code, **only** live `GET /api/net-worth/` is wired; list/create snapshot HTTP routes and dashboard “record snapshot” UI are **not** exposed (model + migration exist; some tests still expect the routes).
 
-Tax documents are also separate. W-2s, 1099s, tax returns, and related files are stored for review and yearly tax summaries; they do not mutate net worth, transactions, or planning inputs unless a future feature explicitly maps values.
+Tax document storage was removed. Do not add document vault/BLOB storage back without a fresh product/security decision.
 
 Recurring cashflow (job income, rent/utilities-style fixed expenses, subscriptions) is a budget/plan plane. It can appear in cashflow summaries and planning inputs but does **not** change assets, liabilities, holdings, or net worth.
 
@@ -29,8 +28,8 @@ Browser (:4200 dev proxy, or :8080 Docker web)
        → routers: health, auth (+ admin users/metrics/sql), imports,
                   transactions, cashflow, income, fixed_expenses,
                   subscriptions, assets, liabilities, market, holdings,
-                  net_worth, taxes, planning (/planning/v1)
-       → services/finance.py, cashflow.py, market_data.py, taxes.py
+                   net_worth, planning (/planning/v1)
+        → services/finance.py, cashflow.py, market_data.py
        → services/planning/{snapshot,runner,tools_registry,assumptions}
        → services/analytics/monte_carlo.py  (only MC tool wired)
   → SQLite finance.db
@@ -72,19 +71,6 @@ There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo 
 - **Brokerage:** Fidelity positions CSV → replace holdings for accounts in file; `POST /api/imports/fidelity/*`.
 
 **SimpleFIN later:** the user wants SimpleFIN eventually. **Plaid is not the intended integration** even if placeholder env vars exist. CSV only today.
-
-## Taxes
-
-- API prefix: `/api/taxes`.
-- UI route: `/taxes`.
-- Uploaded files are stored in SQLite BLOBs for repo-local portability.
-- Metadata includes tax year, document type, issuer, taxpayer, file hash, notes,
-  and structured summary values (`summary_json`).
-- Yearly summaries aggregate structured values such as wages, withholding,
-  dividends, AGI, taxable income, total tax, and refund/owed.
-- Optional `POST /api/taxes/documents/extract` can preview values from embedded PDF
-  text or OCR (when tesseract is available). Users still review and save values;
-  extraction does not auto-write the vault or any other plane.
 
 ## Frontend
 

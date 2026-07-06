@@ -9,7 +9,7 @@ clear graphs.
 1. Show the most relevant metrics directly on each page.
 2. Prefer charts and summaries over raw tables alone.
 3. Keep financial data planes separate: net worth, transactions, recurring
-   cashflow, taxes, and planning each have different meanings.
+   cashflow, and planning each have different meanings.
 4. Make the UI useful before it is decorative.
 5. Optimize for future AI agents: if a page has unusual behavior, document the
    invariant near the code or in the relevant doc.
@@ -51,8 +51,6 @@ Each major subpage should have page-level metrics at the top:
 - Portfolio: market value, account allocation, largest holdings, price freshness.
 - Investment insights: portfolio value, growth assumptions, projected value, withdrawal-rate income (client-side; speculative).
 - Calendar: monthly spending, income, net cashflow, active days.
-- Taxes: document count, missing recommended docs, wages, withholding, AGI,
-  taxable income, total tax, refund/owed.
 - Planning: scenario success rate, median ending value, risk bands, assumptions.
 
 Tables are acceptable for detail, but a page is incomplete if it only exposes a
@@ -68,22 +66,6 @@ table when a summary or graph would answer the natural question faster.
   snapshots (when implemented), never from transaction sums.
 - Investment-insights projections are speculative client-side charts, not
   observed net worth history.
-
-## Tax Center Rules
-
-Tax documents are a first-class feature. The UI must show the important values
-without making the user download files:
-
-- yearly totals
-- document coverage
-- missing recommended document types
-- important values per stored document
-- download and delete actions
-
-Current tax summaries primarily come from user-entered structured fields during
-upload. Optional extract preview may suggest values from PDF text/OCR; users must
-still review before save. Future OCR/LLM extraction should populate the same
-structured fields (`summary_json`).
 
 ## Visual Style
 

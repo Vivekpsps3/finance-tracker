@@ -1,7 +1,7 @@
 # Data model
 
 Code truth: `backend/models.py`, `backend/services/finance.py`, `backend/services/cashflow.py`,
-`backend/services/taxes.py`, `backend/services/planning/`.
+`backend/services/planning/`.
 
 ## Users and ownership
 
@@ -13,7 +13,7 @@ App-native auth uses three security tables:
 | `user_sessions` | Hashed session tokens, CSRF token hashes, expiry/revocation metadata |
 | `audit_events` | Login, logout, user create/update, password reset, and related account events |
 
-The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions, bank accounts, import batches, assets, liabilities, holdings, brokerage accounts, job incomes, fixed expenses, subscriptions, net worth snapshots (table present), tax documents, planning profiles, and planning runs (table present). Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics and the guarded SQL console read from the same SQLite database.
+The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions, bank accounts, import batches, assets, liabilities, holdings, brokerage accounts, job incomes, fixed expenses, subscriptions, net worth snapshots (table present), planning profiles, and planning runs (table present). Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics and the guarded SQL console read from the same SQLite database.
 
 Deleting an account is destructive: the admin API removes that user, their sessions, and all rows in user-owned finance tables. It does not delete global provider/cache tables. The API refuses self-delete and refuses deleting an account only when that account is the final active admin. Inactive admins can be deleted when at least one other active admin remains.
 
@@ -29,7 +29,7 @@ net_worth     = total_assets − liabilities
 
 Always **current** via `GET /api/net-worth/` (computed from assets + portfolio market value − liabilities).
 
-**Not** derived from transactions, imports, job income, fixed expenses, subscriptions, or tax docs.
+**Not** derived from transactions, imports, job income, fixed expenses, or subscriptions.
 
 ### Net worth snapshots (schema present; HTTP not wired)
 
@@ -108,51 +108,6 @@ This is a cashflow view only: it does **not** write assets, liabilities, holding
 
 Planning reads recurring annual fixed expenses and subscriptions into its input snapshot for
 spending estimates when useful.
-
-## Tax document vault
-
-`tax_documents` stores per-user official tax files and user-entered structured values for
-yearly review.
-
-| Field group | Purpose |
-|-------------|---------|
-| Metadata | `tax_year`, `document_type`, `issuer`, `taxpayer`, `filename`, `content_type`, `size_bytes`, `sha256`, `uploaded_at` |
-| File storage | `file_bytes` SQLite BLOB; keeps docs inside the repo-local DB file |
-| Review values | `summary_json` for values read from official docs |
-
-Supported document types:
-
-- W-2
-- 1099
-- 1098
-- 5498
-- 1040 tax return
-- state return
-- property tax
-- other
-
-Yearly summary endpoint:
-
-```
-GET /api/taxes/years/{tax_year}/summary
-```
-
-Aggregated values include wages, federal/state withholding, Social Security and
-Medicare wages/tax, interest, dividends, capital gain distributions, retirement
-contributions, AGI, taxable income, total tax, and refund/amount owed.
-
-Optional extract preview:
-
-```
-POST /api/taxes/documents/extract
-```
-
-May fill candidate `summary_json` fields from PDF text or OCR when available; saving a
-document still requires an explicit upload with reviewed values.
-
-Important boundary: tax documents do not update net worth, transactions, or
-planning. They are a review/documentation plane. Future extraction/OCR should
-populate `summary_json` from files but preserve the same API contract.
 
 ## Planning lab (speculative)
 

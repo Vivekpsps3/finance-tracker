@@ -9,7 +9,6 @@ from models import (
     FixedExpenseFrequency,
     IncomePayFrequency,
     LiabilityCategory,
-    TaxDocumentType,
     TransactionType,
 )
 
@@ -524,33 +523,6 @@ class NetWorthResponse(BaseModel):
     as_of: datetime
     portfolio_sources: Dict[str, str]
     portfolio_breakdown: Dict[str, float] = {}  # e.g. {"Fidelity ···Z21741448 (Individual)": 1234.56, "Manual": 500.0, ...}
-
-
-class TaxDocumentResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    tax_year: int
-    document_type: str
-    issuer: Optional[str] = None
-    taxpayer: Optional[str] = None
-    filename: str
-    content_type: str
-    size_bytes: int
-    sha256: str
-    summary: Dict[str, float] = {}
-    notes: Optional[str] = None
-    uploaded_at: datetime
-
-
-class TaxYearSummary(BaseModel):
-    tax_year: int
-    document_count: int
-    total_size_bytes: int
-    document_counts: Dict[str, int]
-    totals: Dict[str, float]
-    missing_recommended: List[str]
-    documents: List[TaxDocumentResponse]
 
 
 class TransactionUpdate(BaseModel):

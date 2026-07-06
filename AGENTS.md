@@ -12,7 +12,6 @@ Personal, self-hosted finance tracker. The user wants first-class support for:
 - investments and portfolio imports
 - recurring cashflow (job income, fixed expenses, subscriptions)
 - planning/retirement analysis
-- official tax document storage and yearly summaries
 - multi-user accounts (implemented); deeper household sharing may come later
 - later SimpleFIN; not Plaid
 
@@ -33,11 +32,11 @@ Do not blur these data planes:
    transactions.
 5. Imported brokerage cash sweeps and manual cash assets can double count; the
    app currently leaves that choice to the user and documents it.
-6. Tax documents are a separate review/vault plane. They do not update net
-   worth, transactions, or planning inputs.
-7. Job income, fixed expenses, and subscriptions are recurring cashflow data.
+6. Job income, fixed expenses, and subscriptions are recurring cashflow data.
    They may feed cashflow summaries and planning inputs but do not change net
    worth.
+7. Tax document storage was intentionally removed. Do not reintroduce document
+   vault/BLOB storage unless the product direction changes explicitly.
 
 ## Current Stack
 
@@ -46,9 +45,6 @@ Do not blur these data planes:
 - Auth: app-native sessions (cookie + CSRF), roles admin/user, `/admin/users`.
 - Bank imports today: Capital One, Chase, Amex CSV transactions.
 - Brokerage import today: Fidelity CSV positions.
-- Tax docs today: upload/store/download/delete W-2, 1099, 1098, 5498, 1040,
-  state return, property tax, and other files; yearly summary aggregates
-  structured values; optional extract preview (PDF text/OCR when available).
 - Planned later: SimpleFIN. Plaid is not expected to work for this user.
 
 ## Where To Look
@@ -80,17 +76,14 @@ The user clarified:
 - backups are user-managed for now
 - app-native multi-user auth is in place; treat shared household product features
   as later, not as “no auth yet”
-- tax UI must display important yearly and per-document values directly, not
-  hide them in backend-only metadata
+- tax document storage no longer makes sense for this app and has been removed
+- user-level encryption should aim for server-blind storage: browser-owned
+  plaintext, backend-owned ciphertext only
 
 ## Implementation Notes
 
 Prefer additive API changes. Preserve current endpoints unless intentionally
 migrating them with tests and docs. Add tests for any financial invariant.
-
-For tax work, keep `summary_json` as the stable structured-value contract.
-Future OCR/LLM extraction should populate the same fields rather than inventing
-a parallel model.
 
 For UI work, keep operational density. Avoid marketing/landing pages. Use shared
 `ui-*` components where practical and keep cards for real grouped surfaces.

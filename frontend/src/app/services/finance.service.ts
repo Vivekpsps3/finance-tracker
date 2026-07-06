@@ -38,11 +38,6 @@ import {
   LiabilityCreate,
   Subscription,
   SubscriptionCreate,
-  TaxDocument,
-  TaxDocumentExtraction,
-  TaxDocumentType,
-  TaxSummaryValues,
-  TaxYearSummary,
   Transaction,
   TransactionCreate,
 } from '../models/transaction.model';
@@ -653,54 +648,4 @@ export class FinanceService {
     );
   }
 
-  getTaxDocuments(taxYear?: number): Observable<TaxDocument[]> {
-    let params = new HttpParams();
-    if (taxYear) {
-      params = params.set('tax_year', String(taxYear));
-    }
-    return this.http.get<TaxDocument[]>(apiUrl('/taxes/documents'), { params });
-  }
-
-  getTaxYearSummary(taxYear: number): Observable<TaxYearSummary> {
-    return this.http.get<TaxYearSummary>(apiUrl(`/taxes/years/${taxYear}/summary`));
-  }
-
-  uploadTaxDocument(body: {
-    taxYear: number;
-    documentType: TaxDocumentType;
-    file: File;
-    issuer?: string;
-    taxpayer?: string;
-    notes?: string;
-    summary?: TaxSummaryValues;
-  }): Observable<TaxDocument> {
-    const form = new FormData();
-    form.append('tax_year', String(body.taxYear));
-    form.append('document_type', body.documentType);
-    form.append('file', body.file, body.file.name);
-    if (body.issuer?.trim()) form.append('issuer', body.issuer.trim());
-    if (body.taxpayer?.trim()) form.append('taxpayer', body.taxpayer.trim());
-    if (body.notes?.trim()) form.append('notes', body.notes.trim());
-    if (body.summary) form.append('summary_json', JSON.stringify(body.summary));
-    return this.http.post<TaxDocument>(apiUrl('/taxes/documents'), form);
-  }
-
-  extractTaxDocument(file: File): Observable<TaxDocumentExtraction> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<TaxDocumentExtraction>(
-      apiUrl('/taxes/documents/extract'),
-      form
-    );
-  }
-
-  downloadTaxDocument(documentId: number): Observable<Blob> {
-    return this.http.get(apiUrl(`/taxes/documents/${documentId}/download`), {
-      responseType: 'blob',
-    });
-  }
-
-  deleteTaxDocument(documentId: number): Observable<{ ok: boolean }> {
-    return this.http.delete<{ ok: boolean }>(apiUrl(`/taxes/documents/${documentId}`));
-  }
 }

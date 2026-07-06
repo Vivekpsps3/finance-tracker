@@ -17,7 +17,6 @@ first-class support for:
 - spending/transactions
 - investments/portfolio
 - planning
-- official tax document storage and yearly tax summaries
 - Docker one-command hosting on a Raspberry Pi or similar
 
 Future agents should preserve the central invariant:
@@ -26,8 +25,8 @@ Future agents should preserve the central invariant:
 net worth = current manual assets + current portfolio market value - liabilities
 ```
 
-Transactions, tax documents, and planning must stay separate data planes unless
-a feature explicitly maps them.
+Transactions and planning must stay separate data planes unless a feature
+explicitly maps them.
 
 ## Implemented In This Pass
 
@@ -47,28 +46,6 @@ Important files:
 - `backend/routers/net_worth.py`
 - `backend/alembic/versions/9a7d1c3e5f20_add_net_worth_snapshots.py`
 - `frontend/src/app/dashboard/*`
-
-### Tax Center
-
-- Added first-class tax document table storing files as SQLite BLOBs.
-- Added structured tax summary values via `summary_json`.
-- Added upload/list/summary/download/delete APIs under `/api/taxes`.
-- Added Tax Center UI route `/taxes`.
-- UI displays yearly totals, missing recommended docs, upload form, and stored
-  document values.
-- Added duplicate hash rejection per tax year/type.
-- Added tax upload rate limiting.
-- Added safer download headers and basic PDF/PNG/JPEG magic validation.
-
-Important files:
-
-- `backend/models.py`
-- `backend/services/taxes.py`
-- `backend/routers/taxes.py`
-- `backend/alembic/versions/b4e8f3a1c2d9_add_tax_documents.py`
-- `frontend/src/app/taxes/*`
-- `frontend/src/app/services/finance.service.ts`
-- `frontend/src/app/models/transaction.model.ts`
 
 ### Dashboard / Charts
 
@@ -139,10 +116,6 @@ Applied fixes from subagent review:
 - Added Caddy domain recipe.
 - Added production requirements file.
 - Fixed dashboard average daily spend denominator.
-- Fixed mobile nav overflow after adding Tax Center.
-- Reset native tax file input after upload.
-- Replaced native tax delete confirm with app confirm service.
-- Fixed tax table action layout.
 - Fixed snapshot delta to compare against prior snapshot.
 - Removed negative letter spacing from key stat/nav styles.
 - Updated stale frontend docs.
@@ -174,8 +147,7 @@ Interrupted commands:
 
 ```bash
 make test-backend
-cd backend && ../backend/.venv/bin/python -m pytest -q tests/test_balance_sheet.py tests/test_taxes.py tests/test_migrations.py tests/test_openapi.py
-cd backend && ../backend/.venv/bin/python -m pytest -vv -s tests/test_taxes.py::test_upload_tax_document_and_year_summary
+cd backend && ../backend/.venv/bin/python -m pytest -q tests/test_balance_sheet.py tests/test_migrations.py tests/test_openapi.py
 ```
 
 ## Recommended Next Agent Steps
@@ -214,10 +186,6 @@ cd backend && ../backend/.venv/bin/python -m pytest -vv -s tests/test_taxes.py::
 
 ## Important Caveats
 
-- Tax summaries are manually entered structured values from official documents.
-  No OCR/LLM extraction is implemented yet.
-- Tax documents are stored inside SQLite; this keeps one-file backup semantics
-  but can grow the DB quickly.
 - Domain exposure should use Caddy/Cloudflare Access/Tailscale/external auth.
   Do not put an API key in Angular static assets.
 - The app has no household login yet.

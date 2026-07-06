@@ -41,8 +41,6 @@ def _is_limited(request: Request) -> bool:
         return True
     if path.startswith("/api/imports/") and ("/preview" in path or "/commit" in path):
         return True
-    if path == "/api/taxes/documents":
-        return True
     return False
 
 

@@ -77,7 +77,7 @@
           <h2 id="tutorial-title">Build a complete American household finance picture</h2>
           <p>
             Work through these steps in order. Each section keeps its own data plane: bank transactions review spending,
-            balance sheet and portfolio drive net worth, recurring cashflow feeds planning, and tax documents stay in the vault.
+            balance sheet and portfolio drive net worth, and recurring cashflow feeds planning.
           </p>
         </div>
         <ui-button variant="ghost" size="sm" (clicked)="closeTutorial()">Close</ui-button>
@@ -113,12 +113,6 @@
           <h3>Load investments</h3>
           <p>Add holdings manually or import Fidelity positions. Watch for brokerage cash sweeps versus manual cash double counting.</p>
           <a routerLink="/portfolio" (click)="closeTutorial()">Open Portfolio</a>
-        </article>
-        <article class="tutorial-step">
-          <span class="tutorial-step__number">6</span>
-          <h3>Make tax season boring</h3>
-          <p>Upload W-2s, 1099s, 1098s, 5498s, returns, and property tax records. These files do not alter net worth.</p>
-          <a routerLink="/taxes" (click)="closeTutorial()">Open Tax Center</a>
         </article>
       </div>
 

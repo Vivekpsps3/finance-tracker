@@ -1,6 +1,6 @@
 # SQLite backup and restore
 
-The ledger, tax document BLOBs, auth tables, and planning profiles live in SQLite. Paths:
+The ledger, auth tables, and planning profiles live in SQLite. Paths:
 
 | Mode | Default DB file |
 |------|-----------------|
@@ -50,13 +50,12 @@ cp /path/to/finance.db.bak-YYYYMMDD data/finance.db
 | Users/sessions/audit | Inside `finance.db` |
 | Balance sheet, holdings, transactions, recurring cashflow | Inside `finance.db` |
 | Planning profiles (and any future stored runs) | Inside `finance.db` — speculative MC results are not ledger truth |
-| Tax documents | Inside `finance.db` (`tax_documents.file_bytes`) |
 
 ## `make reset-db` vs backup
 
 | Command | Effect |
 |---------|--------|
-| **`make reset-db`** | **Deletes** `backend/finance.db` (and only that path). All users, ledger, tax docs, and planning data are gone. Use for a fresh schema on next start—not for preserving data. |
+| **`make reset-db`** | **Deletes** `backend/finance.db` (and only that path). All users, ledger, and planning data are gone. Use for a fresh schema on next start—not for preserving data. |
 | **`make reset-docker-db`** | **Deletes** `data/finance.db` for the Docker stack. |
 | **Backup (`cp` above)** | **Copies** the DB file so you can restore later. Always back up before risky imports or schema experiments. |
 

@@ -10,7 +10,6 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
-    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -61,17 +60,6 @@ class LiabilityCategory(str, enum.Enum):
     student_loan = "student_loan"
     credit_card = "credit_card"
     personal_loan = "personal_loan"
-    other = "other"
-
-
-class TaxDocumentType(str, enum.Enum):
-    w2 = "w2"
-    form_1099 = "1099"
-    form_1098 = "1098"
-    form_5498 = "5498"
-    tax_return_1040 = "1040"
-    state_return = "state_return"
-    property_tax = "property_tax"
     other = "other"
 
 
@@ -306,26 +294,6 @@ class NetWorthSnapshot(Base):
     as_of = Column(DateTime, default=utc_now, nullable=False, index=True)
     source = Column(String, default="manual", nullable=False)
     note = Column(String, nullable=True)
-
-
-class TaxDocument(Base):
-    """Official tax document stored in SQLite for repo-local portability."""
-
-    __tablename__ = "tax_documents"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    tax_year = Column(Integer, nullable=False, index=True)
-    document_type = Column(Enum(TaxDocumentType), nullable=False, index=True)
-    issuer = Column(String, nullable=True)
-    taxpayer = Column(String, nullable=True)
-    filename = Column(String, nullable=False)
-    content_type = Column(String, nullable=False)
-    size_bytes = Column(Integer, nullable=False)
-    sha256 = Column(String, nullable=False, index=True)
-    file_bytes = Column(LargeBinary, nullable=False)
-    summary_json = Column(Text, nullable=False, default="{}")
-    notes = Column(String, nullable=True)
-    uploaded_at = Column(DateTime, default=utc_now, nullable=False, index=True)
 
 
 class PlanningAssumptionProfile(Base):

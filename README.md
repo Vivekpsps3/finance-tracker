@@ -1,6 +1,6 @@
 # Personal Finance Tracker
 
-Personal finance app: balance-sheet net worth (assets & liabilities), portfolio with cached/live prices, transactions and bank CSV import, recurring cashflow (income / fixed expenses / subscriptions), tax document vault, planning Monte Carlo, and app-native multi-user auth—Angular 19 + FastAPI + SQLite.
+Personal finance app: balance-sheet net worth (assets & liabilities), portfolio with cached/live prices, transactions and bank CSV import, recurring cashflow (income / fixed expenses / subscriptions), planning Monte Carlo, and app-native multi-user auth—Angular 19 + FastAPI + SQLite.
 
 ## Quick start
 
@@ -31,7 +31,6 @@ Details: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 - **Portfolio** — Holdings CRUD, Fidelity positions CSV import (per-account replace), refresh prices
 - **Investment insights** — Client-side growth / withdrawal-rate views from portfolio value
 - **Calendar** — Daily transaction summary
-- **Tax Center** — Store official W-2/1099/1040/etc. documents and view yearly summaries
 - **Monte Carlo** (`/planning`) — Net worth fan chart, tunable assumptions from your ledger (speculative; does not change net worth or ledger)
 - **Auth / admin** — Session login, signup after first admin, `/admin/users` for admins
 
@@ -79,7 +78,6 @@ Adding banks: **[docs/ADDING_A_BANK_IMPORT.md](docs/ADDING_A_BANK_IMPORT.md)**. 
 - **Net worth** = manual assets + portfolio market value − liabilities (always current).
 - **Transactions** — income, expenses, and card imports for tracking; not part of net worth.
 - **Recurring cashflow** — job income, fixed expenses, subscriptions; cashflow views only.
-- **Tax documents** — vault + yearly structured summaries; not ledger mutations.
 - **Planning** — speculative; does not mutate balance sheet or transactions.
 
 Local database: `backend/finance.db` (not committed; see `.gitignore`). Docker default: `data/finance.db`.

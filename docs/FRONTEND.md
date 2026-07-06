@@ -23,7 +23,6 @@ Angular 19 standalone app under `frontend/src/app/`.
 | `/portfolio` | Portfolio (manual + Fidelity CSV import with account grouping) |
 | `/investment-insights` | Client-side portfolio growth / withdrawal-rate insights (uses holdings values; not a separate backend analytics API) |
 | `/calendar` | Calendar |
-| `/taxes` | Tax Center (official document vault + yearly summary) |
 | `/planning` | Monte Carlo net worth simulator (fan chart; save **named input presets** only—runs not stored) |
 | `/admin/users` | Admin user management (admin role only) |
 | `/charts` | Redirects to `/` (legacy path) |
@@ -81,20 +80,6 @@ When adding history charts later, keep two concepts separate:
 |---------|--------|
 | Observed net worth | balance-sheet formula / future `net_worth_snapshots` API |
 | Spending/income trends | `transactions` (+ optional cashflow summary) |
-
-## Tax Center behavior
-
-- Route: `/taxes`.
-- Shows yearly totals from structured values entered during upload (and optional extract preview).
-- Upload accepts PDF, CSV, text, JPG, and PNG tax documents.
-- Important values are visible on the page and on each document row.
-- Document downloads use `/api/taxes/documents/{id}/download`.
-- Tax summaries are not financial ledger mutations; keep tax docs separate from
-  net worth and transactions.
-- Tax Center uses native file, textarea, and dense numeric inputs because shared
-  UI components do not yet cover those controls ergonomically. Keep the local
-  `.field` pattern contained to the page until reusable file/textarea controls
-  exist.
 
 ## Recurring cashflow pages
 

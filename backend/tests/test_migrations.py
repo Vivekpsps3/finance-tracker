@@ -56,7 +56,7 @@ def test_alembic_upgrade_head_on_legacy_holdings_sqlite():
         inspector = inspect(engine2)
         assert inspector.has_table("brokerages")
         assert inspector.has_table("brokerage_accounts")
-        assert inspector.has_table("tax_documents")
+        assert not inspector.has_table("tax_documents")
         holdings_cols = {c["name"] for c in inspector.get_columns("holdings")}
         assert "brokerage_account_id" in holdings_cols
         assert inspector.has_table("net_worth_snapshots")

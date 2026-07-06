@@ -97,7 +97,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { label: 'Bills', path: '/fixed-expenses', detail: 'Record rent, utilities, insurance, and debt minimums.' },
     { label: 'Subscriptions', path: '/subscriptions', detail: 'Capture recurring software, media, and memberships.' },
     { label: 'Portfolio', path: '/portfolio', detail: 'Import or enter investments for market-value net worth.' },
-    { label: 'Taxes', path: '/taxes', detail: 'Store annual documents and summaries.' },
   ];
 
   private destroy$ = new Subject<void>();

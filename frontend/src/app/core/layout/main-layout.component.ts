@@ -84,12 +84,6 @@ export class MainLayoutComponent implements OnInit {
       items: [{ path: '/planning', label: 'Planning Tools', shortLabel: 'Tools', icon: 'trending', exact: false }],
     },
     {
-      label: 'Taxes',
-      shortLabel: 'Taxes',
-      icon: 'document',
-      items: [{ path: '/taxes', label: 'Tax Center', shortLabel: 'Tax Center', icon: 'document', exact: false }],
-    },
-    {
       label: 'Admin',
       shortLabel: 'Admin',
       icon: 'building',
@@ -137,7 +131,7 @@ export class MainLayoutComponent implements OnInit {
   async clearMyData(): Promise<void> {
     const confirmed = await this.confirm.ask(
       'Clear your data?',
-      'This permanently removes your transactions, imports, assets, liabilities, holdings, cashflow, planning runs, saved planning inputs, tax documents, and net worth snapshots. Your account and password stay in place.',
+        'This permanently removes your transactions, imports, assets, liabilities, holdings, cashflow, planning runs, saved planning inputs, and net worth snapshots. Your account and password stay in place.',
       'Clear my data'
     );
     if (!confirmed) return;

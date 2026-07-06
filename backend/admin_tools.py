@@ -20,7 +20,6 @@ from models import (
     PlanningAssumptionProfile,
     PlanningScenarioRun,
     Subscription,
-    TaxDocument,
     Transaction,
     User,
     UserSession,
@@ -38,7 +37,6 @@ USER_OWNED_MODELS = [
     JobIncome,
     FixedExpense,
     Subscription,
-    TaxDocument,
     PlanningAssumptionProfile,
     PlanningScenarioRun,
 ]

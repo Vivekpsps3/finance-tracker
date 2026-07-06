@@ -85,12 +85,6 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./admin/users/admin-users.component').then(m => m.AdminUsersComponent),
       },
-      {
-        path: 'taxes',
-        title: 'Tax Center · Finance',
-        loadComponent: () =>
-          import('./taxes/tax-center.component').then(m => m.TaxCenterComponent),
-      },
     ],
   },
   { path: 'charts', redirectTo: '', pathMatch: 'full' },
