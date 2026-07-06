@@ -8,6 +8,8 @@ from auth import get_current_user
 from database import get_db
 from models import Transaction, User
 from schemas import (
+    TransactionCategoryBulkRenameRequest,
+    TransactionCategoryBulkRenameResponse,
     TransactionCategoryRenameRequest,
     TransactionCategoryRenameResponse,
     TransactionCreate,
@@ -75,6 +77,32 @@ def rename_transaction_category(
     )
     db.commit()
     return {"from_category": from_category, "to_category": to_category, "updated": updated}
+
+
+@router.put("/transactions/categories/bulk-rename", response_model=TransactionCategoryBulkRenameResponse)
+def bulk_rename_transaction_categories(
+    body: TransactionCategoryBulkRenameRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    details = []
+    total = 0
+    seen_sources: set[str] = set()
+    for item in body.renames:
+        from_category = item.from_category.strip()
+        to_category = item.to_category.strip()
+        if from_category == to_category or from_category in seen_sources:
+            continue
+        seen_sources.add(from_category)
+        updated = (
+            db.query(Transaction)
+            .filter(Transaction.user_id == current_user.id, Transaction.category == from_category)
+            .update({Transaction.category: to_category}, synchronize_session=False)
+        )
+        total += updated
+        details.append({"from_category": from_category, "to_category": to_category, "updated": updated})
+    db.commit()
+    return {"updated": total, "renames": details}
 
 
 @router.put("/transactions/{tx_id}", response_model=TransactionResponse)

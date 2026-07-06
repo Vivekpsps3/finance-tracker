@@ -46,6 +46,11 @@ export interface CategoryRenameResult {
   updated: number;
 }
 
+export interface CategoryBulkRenameResult {
+  updated: number;
+  renames: CategoryRenameResult[];
+}
+
 export type IncomePayFrequency =
   | 'annual'
   | 'monthly'

@@ -21,6 +21,7 @@ import {
   AssetCreate,
   BankImportOption,
   CashflowSummary,
+  CategoryBulkRenameResult,
   CategoryRenameResult,
   FixedExpense,
   FixedExpenseCreate,
@@ -380,6 +381,32 @@ export class FinanceService {
             this._transactions.value.map(t =>
               t.category === result.from_category ? { ...t, category: result.to_category } : t
             )
+          );
+        })
+      );
+  }
+
+  bulkRenameCategories(
+    renames: { fromCategory: string; toCategory: string }[]
+  ): Observable<CategoryBulkRenameResult> {
+    const payload = {
+      renames: renames.map(row => ({
+        from_category: row.fromCategory.trim(),
+        to_category: row.toCategory.trim(),
+      })),
+    };
+    return this.http
+      .put<CategoryBulkRenameResult>(apiUrl('/transactions/categories/bulk-rename'), payload)
+      .pipe(
+        tap(result => {
+          if (result.updated <= 0) return;
+          this.invalidateDashboardCache();
+          const lookup = new Map(result.renames.map(row => [row.from_category, row.to_category]));
+          this._transactions.next(
+            this._transactions.value.map(t => {
+              const to = lookup.get(t.category);
+              return to ? { ...t, category: to } : t;
+            })
           );
         })
       );

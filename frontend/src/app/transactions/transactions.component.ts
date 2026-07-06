@@ -86,6 +86,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   categoryMergeFrom = '';
   categoryMergeTo = '';
   categoryMergeSaving = false;
+  categoryBulkRows: { fromCategory: string; toCategory: string }[] = [this.emptyBulkRenameRow()];
 
   readonly pageSize = 200;
   loadingMore = false;
@@ -114,6 +115,10 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       amount: 0,
       description: '',
     };
+  }
+
+  private emptyBulkRenameRow(): { fromCategory: string; toCategory: string } {
+    return { fromCategory: '', toCategory: '' };
   }
 
   ngOnInit() {
@@ -204,6 +209,25 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     const from = this.categoryMergeFrom.trim();
     const to = this.categoryMergeTo.trim();
     return !!from && !!to && from !== to && !this.categoryMergeSaving;
+  }
+
+  get validBulkRenameRows(): { fromCategory: string; toCategory: string }[] {
+    const seen = new Set<string>();
+    const rows: { fromCategory: string; toCategory: string }[] = [];
+    for (const row of this.categoryBulkRows) {
+      const fromCategory = row.fromCategory.trim();
+      const toCategory = row.toCategory.trim();
+      if (!fromCategory || !toCategory || fromCategory === toCategory || seen.has(fromCategory)) {
+        continue;
+      }
+      seen.add(fromCategory);
+      rows.push({ fromCategory, toCategory });
+    }
+    return rows;
+  }
+
+  get canBulkRenameCategories(): boolean {
+    return this.validBulkRenameRows.length > 0 && !this.categoryMergeSaving;
   }
 
   onSummaryMonthChange() {
@@ -419,6 +443,53 @@ export class TransactionsComponent implements OnInit, OnDestroy {
           this.categoryMergeSaving = false;
           this.categoryMergeFrom = '';
           this.categoryMergeTo = '';
+          this.applyFilterAndSort();
+          this.toastService.success(`Updated ${result.updated} transaction(s)`);
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.categoryMergeSaving = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  addBulkRenameRow(): void {
+    this.categoryBulkRows = [...this.categoryBulkRows, this.emptyBulkRenameRow()];
+    this.cdr.markForCheck();
+  }
+
+  removeBulkRenameRow(index: number): void {
+    this.categoryBulkRows = this.categoryBulkRows.filter((_, i) => i !== index);
+    if (this.categoryBulkRows.length === 0) {
+      this.categoryBulkRows = [this.emptyBulkRenameRow()];
+    }
+    this.cdr.markForCheck();
+  }
+
+  async bulkRenameCategories(): Promise<void> {
+    const rows = this.validBulkRenameRows;
+    if (!rows.length) {
+      this.toastService.error('Add at least one valid category rename.');
+      return;
+    }
+
+    const ok = await this.confirmService.ask(
+      'Bulk rename categories?',
+      `Apply ${rows.length} category rename(s) across all transactions?`,
+      'Rename',
+      'Cancel'
+    );
+    if (!ok) return;
+
+    this.categoryMergeSaving = true;
+    this.financeService
+      .bulkRenameCategories(rows)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: result => {
+          this.categoryMergeSaving = false;
+          this.categoryBulkRows = [this.emptyBulkRenameRow()];
           this.applyFilterAndSort();
           this.toastService.success(`Updated ${result.updated} transaction(s)`);
           this.cdr.markForCheck();

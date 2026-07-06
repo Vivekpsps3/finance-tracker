@@ -35,6 +35,12 @@ from import_parsers.fidelity import (
     IMPORT_HINT as FIDELITY_HINT,
     parse_fidelity_csv,
 )
+from import_parsers.x_money import (
+    BANK_NAME as X_MONEY_NAME,
+    BANK_SLUG as X_MONEY_SLUG,
+    IMPORT_HINT as X_MONEY_HINT,
+    parse_x_money_csv,
+)
 from import_parsers.types import ParsedFidelityRow, ParsedImportRow
 
 
@@ -86,6 +92,15 @@ BANK_IMPORTS: Dict[str, BankImportConfig] = {
         bank_slug=CITI_SLUG,
         bank_name=CITI_NAME,
     ),
+    X_MONEY_SLUG: BankImportConfig(
+        slug=X_MONEY_SLUG,
+        name=X_MONEY_NAME,
+        hint=X_MONEY_HINT,
+        file_extensions=(".csv",),
+        parse=parse_x_money_csv,
+        bank_slug=X_MONEY_SLUG,
+        bank_name=X_MONEY_NAME,
+    ),
 }
 
 
@@ -106,6 +121,7 @@ SLUG_ALIASES = {
     "capital-one": CAPITAL_ONE_SLUG,
     "chase-bank": CHASE_SLUG,
     "citi-bank": CITI_SLUG,
+    "x-money": X_MONEY_SLUG,
 }
 
 

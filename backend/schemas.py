@@ -76,6 +76,34 @@ class TransactionCategoryRenameResponse(BaseModel):
     updated: int
 
 
+class TransactionCategoryBulkRenameItem(BaseModel):
+    from_category: str = Field(..., min_length=1, max_length=100)
+    to_category: str = Field(..., min_length=1, max_length=100)
+
+    @field_validator("from_category", "to_category")
+    @classmethod
+    def category_not_blank(cls, value: str) -> str:
+        clean = value.strip()
+        if not clean:
+            raise ValueError("Category is required")
+        return clean
+
+
+class TransactionCategoryBulkRenameRequest(BaseModel):
+    renames: List[TransactionCategoryBulkRenameItem] = Field(..., min_length=1, max_length=100)
+
+
+class TransactionCategoryBulkRenameDetail(BaseModel):
+    from_category: str
+    to_category: str
+    updated: int
+
+
+class TransactionCategoryBulkRenameResponse(BaseModel):
+    updated: int
+    renames: List[TransactionCategoryBulkRenameDetail]
+
+
 class JobIncomeBase(BaseModel):
     employer: str = Field(..., min_length=1, max_length=120)
     role_title: Optional[str] = Field(None, max_length=120)

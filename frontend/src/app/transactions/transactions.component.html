@@ -81,6 +81,50 @@
           }
         </div>
       </div>
+      <div class="category-bulk-rename">
+        <div class="category-bulk-rename__header">
+          <div>
+            <strong>Bulk rename</strong>
+            <p>Rename several categories in one save. Duplicate sources and no-op rows are ignored.</p>
+          </div>
+          <ui-button variant="ghost" size="sm" (clicked)="addBulkRenameRow()">Add row</ui-button>
+        </div>
+        @for (row of categoryBulkRows; track $index) {
+          <div class="category-bulk-rename__row">
+            <label class="form-group">
+              <span>From</span>
+              <input
+                type="text"
+                list="category-options"
+                [(ngModel)]="row.fromCategory"
+                placeholder="Current category"
+                [attr.aria-label]="'Bulk rename source ' + ($index + 1)" />
+            </label>
+            <label class="form-group">
+              <span>To</span>
+              <input
+                type="text"
+                list="category-options"
+                [(ngModel)]="row.toCategory"
+                placeholder="New category"
+                [attr.aria-label]="'Bulk rename target ' + ($index + 1)" />
+            </label>
+            <ui-button variant="ghost" size="sm" (clicked)="removeBulkRenameRow($index)">Remove</ui-button>
+          </div>
+        }
+        <div class="category-bulk-rename__actions">
+          <ui-button
+            variant="secondary"
+            size="sm"
+            (clicked)="bulkRenameCategories()"
+            [disabled]="!canBulkRenameCategories">
+            {{ categoryMergeSaving ? 'Renaming' : 'Apply bulk rename' }}
+          </ui-button>
+          @if (validBulkRenameRows.length > 0) {
+            <span class="category-merge-count">{{ validBulkRenameRows.length }} valid rename(s)</span>
+          }
+        </div>
+      </div>
       <datalist id="category-options">
         @for (category of categoryOptions; track category) {
           <option [value]="category"></option>
