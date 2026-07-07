@@ -1,27 +1,27 @@
 <div class="page">
   <ui-page-header
-    title="Fixed expenses"
+    title="Bills"
     subtitle="Track rent and recurring expenses separately from imported card transactions.">
     <div uiPageActions class="header-actions">
-      <ui-button variant="primary" (clicked)="openAddModal()">Add fixed expense</ui-button>
+      <ui-button variant="primary" (clicked)="openAddModal()">Add bill</ui-button>
     </div>
   </ui-page-header>
 
   <section class="fixed-summary">
     <div>
-      <p class="section-eyebrow">Active fixed expenses</p>
+      <p class="section-eyebrow">Active bills</p>
       <div class="stat-display money">${{ activeMonthlyTotal | number: '1.2-2' }}</div>
       <p class="summary-caption">${{ activeAnnualTotal | number: '1.2-2' }} annual equivalent</p>
     </div>
     <div class="summary-pill">
       <ui-icon name="credit-card" size="sm" />
-      <span>{{ expenses.length }} fixed {{ expenses.length === 1 ? 'expense' : 'expenses' }}</span>
+      <span>{{ expenses.length }} {{ expenses.length === 1 ? 'bill' : 'bills' }}</span>
     </div>
   </section>
 
   <ui-card title="Rent and recurring expenses">
     @if (expenses.length) {
-      <ui-data-table ariaLabel="Fixed expenses">
+      <ui-data-table ariaLabel="Bills">
         <thead>
           <tr>
             <th>Name</th>
@@ -70,7 +70,7 @@
     } @else {
       <ui-empty-state message="Add rent, utilities, insurance, subscriptions, or other fixed expenses.">
         <ui-icon name="credit-card" size="lg" style="display:block; margin: 0 auto 8px; opacity:.5;" />
-        <ui-button variant="primary" (clicked)="openAddModal()">Add fixed expense</ui-button>
+        <ui-button variant="primary" (clicked)="openAddModal()">Add bill</ui-button>
       </ui-empty-state>
     }
   </ui-card>
@@ -79,7 +79,7 @@
 @if (showModal) {
   <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="fixed-expense-modal-title">
     <div class="modal-panel form-card fixed-panel">
-      <h3 id="fixed-expense-modal-title">{{ editingId ? 'Edit fixed expense' : 'Add fixed expense' }}</h3>
+      <h3 id="fixed-expense-modal-title">{{ editingId ? 'Edit bill' : 'Add bill' }}</h3>
       <form (ngSubmit)="saveExpense()" #expenseForm="ngForm">
         <div class="form-row">
           <label class="form-group">

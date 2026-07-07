@@ -56,32 +56,41 @@ export class MainLayoutComponent implements OnInit {
       items: [{ path: '/', label: 'Dashboard', shortLabel: 'Dashboard', icon: 'dashboard', exact: true }],
     },
     {
-      label: 'Money',
-      shortLabel: 'Money',
+      label: 'Activity',
+      shortLabel: 'Activity',
       icon: 'transactions',
       items: [
-        { path: '/transactions', label: 'Transactions', shortLabel: 'Activity', icon: 'transactions', exact: false },
-        { path: '/income', label: 'Income', shortLabel: 'Income', icon: 'building', exact: false },
-        { path: '/fixed-expenses', label: 'Fixed expenses', shortLabel: 'Fixed', icon: 'credit-card', exact: false },
-        { path: '/subscriptions', label: 'Subscriptions', shortLabel: 'Subs', icon: 'wallet', exact: false },
-        { path: '/balance-sheet', label: 'Balance sheet', shortLabel: 'Balances', icon: 'scale', exact: false },
+        { path: '/transactions', label: 'Transactions', shortLabel: 'Txns', icon: 'transactions', exact: false },
         { path: '/calendar', label: 'Calendar', shortLabel: 'Calendar', icon: 'calendar', exact: false },
       ],
     },
     {
-      label: 'Investing',
-      shortLabel: 'Invest',
-      icon: 'portfolio',
+      label: 'Cashflow',
+      shortLabel: 'Cash',
+      icon: 'wallet',
       items: [
+        { path: '/income', label: 'Income', shortLabel: 'Income', icon: 'building', exact: false },
+        { path: '/fixed-expenses', label: 'Bills', shortLabel: 'Bills', icon: 'credit-card', exact: false },
+        { path: '/subscriptions', label: 'Subscriptions', shortLabel: 'Subs', icon: 'wallet', exact: false },
+      ],
+    },
+    {
+      label: 'Net Worth',
+      shortLabel: 'Worth',
+      icon: 'scale',
+      items: [
+        { path: '/balance-sheet', label: 'Balance sheet', shortLabel: 'Balances', icon: 'scale', exact: false },
         { path: '/portfolio', label: 'Portfolio', shortLabel: 'Portfolio', icon: 'portfolio', exact: false },
-        { path: '/investment-insights', label: 'Investment Insights', shortLabel: 'Insights', icon: 'trending', exact: false },
       ],
     },
     {
       label: 'Planning',
       shortLabel: 'Plan',
       icon: 'trending',
-      items: [{ path: '/planning', label: 'Planning Tools', shortLabel: 'Tools', icon: 'trending', exact: false }],
+      items: [
+        { path: '/investment-insights', label: 'Investment insights', shortLabel: 'Insights', icon: 'trending', exact: false },
+        { path: '/planning', label: 'Monte Carlo', shortLabel: 'MC', icon: 'trending', exact: false },
+      ],
     },
     {
       label: 'Admin',

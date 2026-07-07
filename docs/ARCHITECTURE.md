@@ -74,7 +74,7 @@ There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo 
 
 ## Frontend
 
-- Shell: `MainLayoutComponent` (grouped nav); lazy feature routes in `app.routes.ts`; `authGuard` protects the app shell; `adminGuard` for `/admin/users`.
+- Shell: `MainLayoutComponent` (grouped nav by user intent: Overview, Activity, Cashflow, Net Worth, Planning, Admin); lazy feature routes in `app.routes.ts`; `authGuard` protects the app shell; `adminGuard` for `/admin/users`.
 - State: `FinanceService` (ledger, balance sheet, recurring cashflow); `PlanningService` (MC); `AuthService`.
 - Prices: memory → optional Redis → SQLite EOD → yfinance (`market_data`).
 

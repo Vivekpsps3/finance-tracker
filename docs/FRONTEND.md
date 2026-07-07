@@ -15,19 +15,19 @@ Angular 19 standalone app under `frontend/src/app/`.
 |------|-----------|
 | `/login` | Auth (bootstrap first admin, signup, login) — outside shell |
 | `/` | Dashboard (lazy; current net worth, period trends) |
-| `/transactions` | Transactions (income, expenses, bank CSV import) |
-| `/income` | Job income configurations |
-| `/fixed-expenses` | Recurring fixed expenses (rent/utilities-style) |
-| `/subscriptions` | Subscriptions |
-| `/balance-sheet` | Manual assets & liabilities |
-| `/portfolio` | Portfolio (manual + Fidelity CSV import with account grouping) |
-| `/investment-insights` | Client-side portfolio growth / withdrawal-rate insights (uses holdings values; not a separate backend analytics API) |
-| `/calendar` | Calendar |
-| `/planning` | Monte Carlo net worth simulator (fan chart; save **named input presets** only—runs not stored) |
+| `/transactions` | Activity → Transactions (income, expenses, bank CSV import) |
+| `/calendar` | Activity → Calendar |
+| `/income` | Cashflow → Job income configurations |
+| `/fixed-expenses` | Cashflow → Bills / recurring fixed expenses (rent/utilities-style) |
+| `/subscriptions` | Cashflow → Subscriptions |
+| `/balance-sheet` | Net Worth → Manual assets & liabilities |
+| `/portfolio` | Net Worth → Portfolio (manual + Fidelity CSV import with account grouping) |
+| `/investment-insights` | Planning → Client-side portfolio growth / withdrawal-rate insights |
+| `/planning` | Planning → Monte Carlo net worth simulator (fan chart; save **named input presets** only—runs not stored) |
 | `/admin/users` | Admin user management (admin role only) |
 | `/charts` | Redirects to `/` (legacy path) |
 
-Shell: `MainLayoutComponent` (grouped top nav + subnav, `#main-content`). Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
+Shell: `MainLayoutComponent` (grouped top nav + subnav, `#main-content`). Top-level groups are Overview, Activity, Cashflow, Net Worth, Planning, and Admin. Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
 
 ## Design tokens
 

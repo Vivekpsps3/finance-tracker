@@ -76,8 +76,8 @@
           <p class="section-eyebrow">First-time setup</p>
           <h2 id="tutorial-title">Build a complete American household finance picture</h2>
           <p>
-            Work through these steps in order. Each section keeps its own data plane: bank transactions review spending,
-            balance sheet and portfolio drive net worth, and recurring cashflow feeds planning.
+            Work through these sections by intent: Activity reviews what happened, Cashflow captures what is scheduled,
+            Net Worth tracks what you own and owe, and Planning explores what could happen.
           </p>
         </div>
         <ui-button variant="ghost" size="sm" (clicked)="closeTutorial()">Close</ui-button>
@@ -106,7 +106,7 @@
           <span class="tutorial-step__number">4</span>
           <h3>Separate bills from swipes</h3>
           <p>Put rent, mortgage, utilities, insurance, debt minimums, and subscriptions in their recurring sections.</p>
-          <a routerLink="/fixed-expenses" (click)="closeTutorial()">Add fixed expenses</a>
+          <a routerLink="/fixed-expenses" (click)="closeTutorial()">Add bills</a>
         </article>
         <article class="tutorial-step">
           <span class="tutorial-step__number">5</span>
@@ -118,7 +118,7 @@
 
       <div class="tutorial-callout">
         <strong>Rule of thumb:</strong>
-        Transactions answer "where did my card spending go?" Net worth answers "what am I worth today?" Planning answers "what if?"
+        Activity answers "what happened?" Cashflow answers "what is scheduled?" Net Worth answers "what am I worth today?" Planning answers "what if?"
       </div>
     </section>
   </div>

@@ -45,7 +45,7 @@ Each major subpage should have page-level metrics at the top:
 
 - Transactions: monthly income, spending, net cashflow, largest category, count.
 - Income: annual/monthly gross and net, active jobs.
-- Fixed expenses: monthly/annual total, active count, largest items.
+- Bills: monthly/annual total, active count, largest items.
 - Subscriptions: monthly/annual total, next bills, active count.
 - Balance sheet: total assets, liabilities, net worth, stale balances.
 - Portfolio: market value, account allocation, largest holdings, price freshness.

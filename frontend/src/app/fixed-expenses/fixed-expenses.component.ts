@@ -185,7 +185,7 @@ export class FixedExpensesComponent implements OnInit, OnDestroy {
   async deleteExpense(row: FixedExpense): Promise<void> {
     const ok = await this.confirmService.ask(
       'Delete fixed expense?',
-      `Remove ${row.name} from fixed expenses?`,
+      `Remove ${row.name} from bills?`,
       'Delete',
       'Cancel'
     );

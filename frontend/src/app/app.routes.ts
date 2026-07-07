@@ -33,7 +33,7 @@ export const routes: Routes = [
       },
       {
         path: 'fixed-expenses',
-        title: 'Fixed expenses · Finance',
+        title: 'Bills · Finance',
         loadComponent: () =>
           import('./fixed-expenses/fixed-expenses.component').then(m => m.FixedExpensesComponent),
       },
@@ -51,7 +51,7 @@ export const routes: Routes = [
       },
       {
         path: 'investment-insights',
-        title: 'Investment Insights · Finance',
+        title: 'Investment insights · Finance',
         loadComponent: () =>
           import('./investment-insights/investment-insights.component').then(
             m => m.InvestmentInsightsComponent
