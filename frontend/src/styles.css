@@ -146,10 +146,11 @@
 }
 
 .page {
-  max-width: 1180px;
+  box-sizing: border-box;
+  width: min(100%, 1760px);
+  max-width: none;
   margin: 0 auto;
-  padding: var(--space-8) max(var(--space-6), env(safe-area-inset-right)) var(--space-10)
-    max(var(--space-6), env(safe-area-inset-left));
+  padding: var(--space-8) clamp(var(--space-6), 3vw, var(--space-10)) var(--space-10);
   animation: page-enter 0.35s var(--ease-emphasized);
   display: flex;
   flex-direction: column;

@@ -12,10 +12,15 @@
 
 .api-banner-wrap,
 .nav-content,
-.subnav-content,
-.main-content {
-  max-width: 1180px;
+.subnav-content {
+  box-sizing: border-box;
+  width: min(100%, 1760px);
+  max-width: none;
   margin: 0 auto;
+}
+
+.main-content {
+  width: 100%;
 }
 
 .api-banner-wrap {

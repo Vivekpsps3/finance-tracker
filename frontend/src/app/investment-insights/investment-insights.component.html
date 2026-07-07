@@ -15,18 +15,35 @@
     </ui-card>
   } @else {
     <section class="insights-answer" title="This headline updates as you change assumptions below.">
-      <p class="section-eyebrow">Projection answer</p>
-      <h2>
-        At {{ annualGrowthRate | number: '1.1-1' }}% growth, your
-        <span class="money">${{ portfolioValue | number: '1.0-0' }}</span> portfolio projects to
-        <span class="money">${{ projectedValue | number: '1.0-0' }}</span> in {{ projectionYears }} years.
-      </h2>
-      <p>
-        Inflation-adjusted, that is roughly
-        <strong class="money">${{ projectedRealValue | number: '1.0-0' }}</strong> in today's dollars.
-        A {{ withdrawalRate | number: '1.1-1' }}% withdrawal rule implies
-        <strong class="money">${{ monthlyWithdrawalIncome | number: '1.2-2' }}</strong> per month today.
-      </p>
+      <div class="answer-copy">
+        <p class="section-eyebrow">Projection answer</p>
+        <h2>Projected portfolio</h2>
+        <strong class="answer-value money">${{ projectedValue | number: '1.0-0' }}</strong>
+        <p>
+          In {{ projectionYears }} years, starting from
+          <strong class="money">${{ portfolioValue | number: '1.0-0' }}</strong>, assuming
+          <strong>{{ annualGrowthRate | number: '1.1-1' }}%</strong> annual growth and
+          <strong class="money">${{ monthlyContribution | number: '1.0-0' }}</strong> monthly contributions.
+        </p>
+      </div>
+
+      <div class="answer-metrics" aria-label="Projection answer details">
+        <div title="Projected value discounted by your inflation assumption.">
+          <span>Today's-dollar value</span>
+          <strong class="money">${{ projectedRealValue | number: '1.0-0' }}</strong>
+          <small>After {{ inflationRate | number: '1.1-1' }}% inflation</small>
+        </div>
+        <div title="Monthly income estimate from the projected future portfolio using the selected withdrawal rate.">
+          <span>Future monthly income</span>
+          <strong class="money">${{ projectedMonthlyWithdrawalIncome | number: '1.0-0' }}</strong>
+          <small>{{ withdrawalRate | number: '1.1-1' }}% rule on projected value</small>
+        </div>
+        <div title="Inflation-adjusted monthly income estimate from the projected portfolio.">
+          <span>Spending power / month</span>
+          <strong class="money">${{ projectedRealMonthlyWithdrawalIncome | number: '1.0-0' }}</strong>
+          <small>In today's dollars</small>
+        </div>
+      </div>
     </section>
 
     <section class="investment-workbench">
@@ -113,7 +130,7 @@
             <strong class="money">${{ annualExpectedGrowth | number: '1.2-2' }}</strong>
           </div>
           <div class="insight-box primary" title="Monthly income estimate using the selected withdrawal-rate assumption.">
-            <span>Monthly withdrawal estimate</span>
+            <span>If retiring today</span>
             <strong class="money">${{ monthlyWithdrawalIncome | number: '1.2-2' }}</strong>
           </div>
           <div class="insight-box" title="The percent of final projected value that comes from growth rather than starting balance or contributions.">

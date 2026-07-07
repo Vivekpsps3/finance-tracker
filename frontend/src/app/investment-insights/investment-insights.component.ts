@@ -199,6 +199,14 @@ export class InvestmentInsightsComponent implements OnInit, AfterViewInit, OnDes
     return this.nominalAnnualIncome / 12;
   }
 
+  get projectedMonthlyWithdrawalIncome(): number {
+    return (this.projectedValue * (this.withdrawalRate / 100)) / 12;
+  }
+
+  get projectedRealMonthlyWithdrawalIncome(): number {
+    return (this.projectedRealValue * (this.withdrawalRate / 100)) / 12;
+  }
+
   get contributionShareOfFinal(): number {
     if (this.projectedValue <= 0) return 0;
     return (this.totalContributions / this.projectedValue) * 100;
