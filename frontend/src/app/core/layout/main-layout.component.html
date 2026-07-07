@@ -25,12 +25,23 @@
       }
     </div>
     <div class="account-menu">
-      @if (user) {
-        <span class="account-email" [attr.title]="'Signed in as ' + user.email">{{ user.email }}</span>
-      }
       <ui-button variant="secondary" size="sm" tooltip="Open the guided setup workflow and section explanations." (clicked)="openTutorial()">Guide</ui-button>
-      <ui-button variant="danger" size="sm" tooltip="Permanently delete your finance data while keeping your account." [disabled]="isResettingData" (clicked)="clearMyData()">Clear data</ui-button>
-      <ui-button variant="ghost" size="sm" tooltip="End this session and return to sign in." (clicked)="logout()">Logout</ui-button>
+      <details class="account-actions">
+        <summary [attr.title]="user ? 'Signed in as ' + user.email : 'Open account actions'">
+          <span class="account-avatar" aria-hidden="true">{{ user?.email?.charAt(0)?.toUpperCase() || 'U' }}</span>
+          <span class="account-email">{{ user?.email || 'Account' }}</span>
+        </summary>
+        <div class="account-popover">
+          @if (user) {
+            <p class="account-popover__email" [attr.title]="'Signed in as ' + user.email">{{ user.email }}</p>
+          }
+          @if (isAdmin) {
+            <a routerLink="/admin/users" title="Manage users, sessions, password resets, content resets, and admin metrics.">Admin users</a>
+          }
+          <button type="button" title="End this session and return to sign in." (click)="logout()">Logout</button>
+          <button type="button" class="danger" title="Permanently delete your finance data while keeping your account." [disabled]="isResettingData" (click)="clearMyData()">Clear data</button>
+        </div>
+      </details>
     </div>
   </div>
   <div class="subnav-content">

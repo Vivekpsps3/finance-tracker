@@ -27,7 +27,7 @@ Angular 19 standalone app under `frontend/src/app/`.
 | `/admin/users` | Admin user management (admin role only) |
 | `/charts` | Redirects to `/` (legacy path) |
 
-Shell: `MainLayoutComponent` (grouped top nav + subnav, `#main-content`). Top-level groups are Overview, Activity, Cashflow, Net Worth, Planning, and Admin. Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
+Shell: `MainLayoutComponent` (grouped top nav + subnav, `#main-content`). Top-level groups are Overview, Activity, Cashflow, Net Worth, and Planning; admin/user actions live in the account menu. Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
 
 ## Design tokens
 

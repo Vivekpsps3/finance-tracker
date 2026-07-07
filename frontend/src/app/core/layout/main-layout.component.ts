@@ -171,23 +171,6 @@ export class MainLayoutComponent implements OnInit {
         },
       ],
     },
-    {
-      label: 'Admin',
-      shortLabel: 'Admin',
-      icon: 'building',
-      tooltip: 'Admin-only user, account, and system management.',
-      adminOnly: true,
-      items: [
-        {
-          path: '/admin/users',
-          label: 'Users',
-          shortLabel: 'Users',
-          icon: 'building',
-          exact: false,
-          tooltip: 'Manage users, sessions, password resets, content resets, and admin metrics.',
-        },
-      ],
-    },
   ];
 
   ngOnInit() {
