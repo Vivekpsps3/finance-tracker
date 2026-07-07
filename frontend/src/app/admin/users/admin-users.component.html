@@ -110,28 +110,10 @@
   </form>
 </section>
 
-<section class="sql-panel" aria-label="Read-only SQL inspection">
-  <h2>Read-only inspection</h2>
-  <p class="muted">Only a single SELECT statement is allowed. Use reset contents for cleanup.</p>
-  <textarea class="sql-input" [(ngModel)]="sql" rows="6" spellcheck="false"></textarea>
-  <div class="sql-actions">
-    <ui-button variant="secondary" (clicked)="runSql()" [disabled]="sqlRunning || !sql.trim()">
-      {{ sqlRunning ? 'Running' : 'Run query' }}
-    </ui-button>
-  </div>
-  @if (sqlResult) {
-    <p class="status">Rows: {{ sqlResult.row_count }}{{ sqlResult.truncated ? ' (truncated)' : '' }}</p>
-    @if (sqlResult.columns.length) {
-      <div class="sql-table-wrap">
-        <table class="sql-table">
-          <thead><tr>@for (col of sqlResult.columns; track col) { <th>{{ col }}</th> }</tr></thead>
-          <tbody>
-            @for (row of sqlResult.rows; track $index) {
-              <tr>@for (col of sqlResult.columns; track col) { <td>{{ row[col] }}</td> }</tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  }
+<section class="sql-panel" aria-label="Admin SQL disabled">
+  <h2>Database inspection</h2>
+  <p class="muted">
+    Admin SQL is disabled for server-blind storage. Use account metrics and content reset tools only.
+    Finance plaintext and ciphertext payloads are not queryable from this console.
+  </p>
 </section>

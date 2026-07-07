@@ -11,6 +11,8 @@ from models import (
     AuditEvent,
     BankAccount,
     BrokerageAccount,
+    EncryptedRecord,
+    EncryptedRecordIndex,
     FixedExpense,
     Holding,
     ImportBatch,
@@ -22,7 +24,9 @@ from models import (
     Subscription,
     Transaction,
     User,
+    UserCryptoMigration,
     UserSession,
+    UserVault,
 )
 
 USER_OWNED_MODELS = [
@@ -54,14 +58,24 @@ def admin_metrics(db: Session) -> dict[str, Any]:
         "audit_events": db.query(AuditEvent).count(),
     }
     finance_rows = {model.__tablename__: db.query(model).count() for model in USER_OWNED_MODELS}
+    finance_rows["encrypted_records"] = db.query(EncryptedRecord).count()
+    finance_rows["user_vaults"] = db.query(UserVault).count()
     per_user = []
     for user in users:
+        migration = (
+            db.query(UserCryptoMigration)
+            .filter(UserCryptoMigration.user_id == user.id)
+            .one_or_none()
+        )
         row = {
             "id": user.id,
             "email": user.email,
             "display_name": user.display_name,
             "role": user.role.value if hasattr(user.role, "value") else str(user.role),
             "is_active": user.is_active,
+            "crypto_migration_status": migration.status if migration else "none",
+            "has_vault": db.query(UserVault).filter(UserVault.user_id == user.id).count() > 0,
+            "encrypted_records": db.query(EncryptedRecord).filter(EncryptedRecord.user_id == user.id).count(),
         }
         row.update({model.__tablename__: db.query(model).filter(model.user_id == user.id).count() for model in USER_OWNED_MODELS})
         per_user.append(row)
@@ -77,27 +91,20 @@ def admin_metrics(db: Session) -> dict[str, Any]:
 
 
 def execute_admin_sql(db: Session, sql: str) -> dict[str, Any]:
-    statement = sql.strip()
-    if not statement:
-        raise HTTPException(status_code=400, detail="SQL is required")
-    if "\x00" in statement:
-        raise HTTPException(status_code=400, detail="Invalid SQL")
-    lowered = statement.lower()
-    first = lowered.split(None, 1)[0] if lowered.split(None, 1) else ""
-    if first != "select" or ";" in statement.rstrip(";"):
-        raise HTTPException(status_code=400, detail="Only a single read-only SELECT statement is allowed")
-    if any(token in lowered for token in ("load_extension", "sqlite_master", "pragma")):
-        raise HTTPException(status_code=400, detail="That SQL statement is not allowed")
-    result = db.execute(text(statement))
-    if result.returns_rows:
-        rows = result.mappings().fetchmany(200)
-        return {"columns": list(result.keys()), "rows": [dict(row) for row in rows], "row_count": len(rows), "truncated": len(rows) == 200}
-    return {"columns": [], "rows": [], "row_count": 0, "truncated": False}
+    # Server-blind storage: admins must not query finance plaintext or ciphertext payloads.
+    raise HTTPException(
+        status_code=403,
+        detail="Admin SQL console is disabled. Use metrics counts and account tools only.",
+    )
 
 
 def reset_user_contents(db: Session, user: User, *, actor_user_id: int, revoke_sessions: bool = True) -> None:
     for model in USER_OWNED_MODELS:
         db.query(model).filter(model.user_id == user.id).delete(synchronize_session=False)
+    db.query(EncryptedRecordIndex).filter(EncryptedRecordIndex.user_id == user.id).delete(synchronize_session=False)
+    db.query(EncryptedRecord).filter(EncryptedRecord.user_id == user.id).delete(synchronize_session=False)
+    db.query(UserVault).filter(UserVault.user_id == user.id).delete(synchronize_session=False)
+    db.query(UserCryptoMigration).filter(UserCryptoMigration.user_id == user.id).delete(synchronize_session=False)
     if revoke_sessions:
         db.query(UserSession).filter(UserSession.user_id == user.id).delete(synchronize_session=False)
     audit = AuditEvent(
@@ -112,6 +119,10 @@ def reset_user_contents(db: Session, user: User, *, actor_user_id: int, revoke_s
 def delete_user_account(db: Session, user: User, *, actor_user_id: int) -> None:
     for model in USER_OWNED_MODELS:
         db.query(model).filter(model.user_id == user.id).delete(synchronize_session=False)
+    db.query(EncryptedRecordIndex).filter(EncryptedRecordIndex.user_id == user.id).delete(synchronize_session=False)
+    db.query(EncryptedRecord).filter(EncryptedRecord.user_id == user.id).delete(synchronize_session=False)
+    db.query(UserVault).filter(UserVault.user_id == user.id).delete(synchronize_session=False)
+    db.query(UserCryptoMigration).filter(UserCryptoMigration.user_id == user.id).delete(synchronize_session=False)
     db.query(UserSession).filter(UserSession.user_id == user.id).delete(synchronize_session=False)
     db.query(AuditEvent).filter(AuditEvent.actor_user_id == user.id).update(
         {AuditEvent.actor_user_id: None}, synchronize_session=False

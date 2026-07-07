@@ -1,5 +1,13 @@
 # Migration to server-blind encryption
 
+**Status (feature/server-blind-encryption):** implemented end-to-end.
+
+- Vault + encrypted records + blind indexes + migration status tables
+- Browser WebCrypto (AES-GCM + PBKDF2) vault setup/unlock/recovery
+- Dual-mode finance/planning services (legacy plaintext vs encrypted client store)
+- Legacy finance APIs return `410` after migration completes and wipe plaintext
+- Admin SQL console disabled
+
 This is the implementation sequence for moving finance data to browser-owned
 plaintext and backend-owned ciphertext.
 

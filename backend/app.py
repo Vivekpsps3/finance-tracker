@@ -15,7 +15,7 @@ from price_cache import EOD_MAX_AGE_HOURS, REDIS_URL
 from api_auth import ApiKeyMiddleware
 from rate_limit import RateLimitMiddleware
 from request_logging import RequestLoggingMiddleware
-from routers import assets, auth_routes, cashflow, fixed_expenses, health, holdings, imports, income, liabilities, market, net_worth, planning, subscriptions, transactions
+from routers import assets, auth_routes, cashflow, fixed_expenses, health, holdings, imports, income, liabilities, market, net_worth, planning, subscriptions, transactions, vault
 
 setup_logging()
 logger = get_logger()
@@ -97,6 +97,7 @@ def create_app() -> FastAPI:
     api_prefix = "/api"
     application.include_router(health.router, prefix=api_prefix)
     application.include_router(auth_routes.router, prefix=api_prefix)
+    application.include_router(vault.router, prefix=api_prefix)
     application.include_router(imports.router, prefix=api_prefix)
     application.include_router(transactions.router, prefix=api_prefix)
     application.include_router(cashflow.router, prefix=api_prefix)

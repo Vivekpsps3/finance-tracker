@@ -6,6 +6,7 @@ import { AuthService } from '../../auth/auth.service';
 import { filter } from 'rxjs';
 import { UiButtonComponent, UiCardComponent, UiIconComponent, UiIconName } from '../../shared/ui';
 import { ConfirmService } from '../../services/confirm.service';
+import { VaultService } from '../../crypto/vault.service';
 import { FinanceService } from '../../services/finance.service';
 import { ToastService } from '../../services/toast.service';
 
@@ -43,6 +44,7 @@ export class MainLayoutComponent implements OnInit {
   private confirm = inject(ConfirmService);
   private finance = inject(FinanceService);
   private toast = inject(ToastService);
+  private vault = inject(VaultService);
 
   apiOffline = false;
   user: AuthUser | null = null;
@@ -203,6 +205,12 @@ export class MainLayoutComponent implements OnInit {
   isActiveItem(item: NavItem): boolean {
     const url = this.router.url.split('?')[0].split('#')[0];
     return item.exact ? url === item.path : url === item.path || url.startsWith(`${item.path}/`);
+  }
+
+  lockVault(): void {
+    this.finance.clearSessionState();
+    this.vault.lock();
+    void this.router.navigateByUrl('/vault/unlock');
   }
 
   logout(): void {

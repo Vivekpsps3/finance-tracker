@@ -74,9 +74,11 @@ There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo 
 
 ## Frontend
 
-- Shell: `MainLayoutComponent` (grouped nav by user intent: Overview, Activity, Cashflow, Net Worth, Planning; admin/user actions in the account menu); lazy feature routes in `app.routes.ts`; `authGuard` protects the app shell; `adminGuard` for `/admin/users`.
-- State: `FinanceService` (ledger, balance sheet, recurring cashflow); `PlanningService` (MC); `AuthService`.
-- Prices: memory → optional Redis → SQLite EOD → yfinance (`market_data`).
+- Shell: `MainLayoutComponent` (grouped nav by user intent: Overview, Activity, Cashflow, Net Worth, Planning; admin/user actions in the account menu); lazy feature routes in `app.routes.ts`; `authGuard` + `vaultGuard` protect the app shell; `adminGuard` for `/admin/users`.
+- Vault routes (auth only, outside shell): `/vault/setup`, `/vault/unlock`, `/vault/migrate`.
+- State: `FinanceService` (ledger, balance sheet, recurring cashflow; dual-mode legacy HTTP vs encrypted client store); `PlanningService` (MC; client-side for migrated users); `VaultService` / `EncryptedStoreService`; `AuthService`.
+- Prices: legacy mode uses memory → optional Redis → SQLite EOD → yfinance. Migrated/encrypted mode keeps symbols client-side and uses manual/imported prices (no per-user symbol disclosure).
+- Server-blind storage: `/api/vault/*` stores wraps + ciphertext only; backend never decrypts.
 
 ## Where to read more
 

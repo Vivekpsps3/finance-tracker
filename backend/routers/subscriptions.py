@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from auth import get_current_user
+from crypto_gate import require_legacy_finance_access as get_current_user
 from database import get_db
 from models import Subscription, User
 from schemas import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './core/layout/main-layout.component';
 import { adminGuard, authGuard } from './auth/auth.guard';
+import { vaultGuard } from './crypto/vault.guard';
 
 export const routes: Routes = [
   {
@@ -9,9 +10,27 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/login.component').then(m => m.LoginComponent),
   },
   {
+    path: 'vault/setup',
+    title: 'Create vault · Finance',
+    canActivate: [authGuard],
+    loadComponent: () => import('./vault/vault-setup.component').then(m => m.VaultSetupComponent),
+  },
+  {
+    path: 'vault/unlock',
+    title: 'Unlock vault · Finance',
+    canActivate: [authGuard],
+    loadComponent: () => import('./vault/vault-unlock.component').then(m => m.VaultUnlockComponent),
+  },
+  {
+    path: 'vault/migrate',
+    title: 'Encrypt data · Finance',
+    canActivate: [authGuard],
+    loadComponent: () => import('./vault/vault-migrate.component').then(m => m.VaultMigrateComponent),
+  },
+  {
     path: '',
     component: MainLayoutComponent,
-    canActivate: [authGuard],
+    canActivate: [authGuard, vaultGuard],
     children: [
       {
         path: '',

@@ -38,6 +38,7 @@
           @if (isAdmin) {
             <a routerLink="/admin/users" title="Manage users, sessions, password resets, content resets, and admin metrics.">Admin users</a>
           }
+          <button type="button" title="Lock the vault and clear decrypted finance data from memory." (click)="lockVault()">Lock vault</button>
           <button type="button" title="End this session and return to sign in." (click)="logout()">Logout</button>
           <button type="button" class="danger" title="Permanently delete your finance data while keeping your account." [disabled]="isResettingData" (click)="clearMyData()">Clear data</button>
         </div>

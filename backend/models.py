@@ -328,3 +328,72 @@ class PlanningScenarioRun(Base):
     result_artifacts_json = Column(String, nullable=True)
     started_at = Column(DateTime, default=utc_now)
     finished_at = Column(DateTime, nullable=True)
+
+
+class UserVault(Base):
+    """Browser-owned DEK wraps only. Backend never sees passphrase or unwrapped key."""
+
+    __tablename__ = "user_vaults"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    kdf_algorithm = Column(String, nullable=False, default="PBKDF2")
+    kdf_salt_b64 = Column(String, nullable=False)
+    kdf_iterations = Column(Integer, nullable=False, default=310000)
+    wrapped_dek_b64 = Column(Text, nullable=False)
+    recovery_wrapped_dek_b64 = Column(Text, nullable=False)
+    key_version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class EncryptedRecord(Base):
+    """Opaque finance ciphertext. Backend validates ownership/metadata only."""
+
+    __tablename__ = "encrypted_records"
+    __table_args__ = (
+        UniqueConstraint("user_id", "collection", "client_id", name="uq_user_collection_client_id"),
+    )
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    collection = Column(String, nullable=False, index=True)
+    client_id = Column(String, nullable=False, index=True)
+    ciphertext_b64 = Column(Text, nullable=False)
+    schema_version = Column(Integer, nullable=False, default=1)
+    key_version = Column(Integer, nullable=False, default=1)
+    revision = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False, index=True)
+
+
+class EncryptedRecordIndex(Base):
+    """Optional HMAC blind indexes for exact-match checks (e.g. import dedupe)."""
+
+    __tablename__ = "encrypted_record_indexes"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "collection", "index_name", "index_value_b64", name="uq_user_blind_index_value"
+        ),
+    )
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    collection = Column(String, nullable=False, index=True)
+    client_id = Column(String, nullable=False, index=True)
+    index_name = Column(String, nullable=False, index=True)
+    index_value_b64 = Column(String, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+class UserCryptoMigration(Base):
+    """Per-user migration status from legacy plaintext tables to encrypted records."""
+
+    __tablename__ = "user_crypto_migrations"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    status = Column(String, nullable=False, default="none", index=True)
+    legacy_counts_json = Column(Text, nullable=True)
+    encrypted_counts_json = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    verified_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)

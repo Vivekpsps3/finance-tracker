@@ -4,6 +4,7 @@ import {
   BehaviorSubject,
   Observable,
   forkJoin,
+  from,
   tap,
   timeout,
   catchError,
@@ -12,6 +13,8 @@ import {
   take,
 } from 'rxjs';
 import { apiUrl } from '../core/api-url';
+import { EncryptedStoreService } from '../crypto/encrypted-store.service';
+import { VaultService } from '../crypto/vault.service';
 import {
   Holding,
   HoldingCreate,
@@ -81,7 +84,15 @@ export class FinanceService {
 
   private dashboardLoad$: Observable<DashboardLoadResult> | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private vault: VaultService,
+    private encStore: EncryptedStoreService
+  ) {}
+
+  private get encMode(): boolean {
+    return this.vault.usesEncryptedStore;
+  }
 
   /**
    * One coordinated fetch for dashboard + embedded charts (deduped via shareReplay).
@@ -163,6 +174,25 @@ export class FinanceService {
     limit?: number;
     append?: boolean;
   }): Observable<Transaction[]> {
+    if (this.encMode) {
+      return from(this.encStore.getTransactions().then(rows => {
+        let out = rows;
+        if (options?.search) {
+          const q = options.search.toLowerCase();
+          out = out.filter(r =>
+            (r.description || '').toLowerCase().includes(q) ||
+            (r.category || '').toLowerCase().includes(q)
+          );
+        }
+        const skip = options?.skip ?? 0;
+        const limit = options?.limit ?? out.length;
+        out = out.slice(skip, skip + limit);
+        if (options?.append) this._transactions.next([...this._transactions.value, ...out]);
+        else this._transactions.next(out);
+        return out;
+      }));
+    }
+
     const search = options?.search?.trim();
     const skip = options?.skip ?? 0;
     const limit = options?.limit ?? 5000;
@@ -193,6 +223,14 @@ export class FinanceService {
   }
 
   getDashboardTransactions(options?: { limit?: number }): Observable<Transaction[]> {
+    if (this.encMode) {
+      return from(this.encStore.getTransactions().then(rows => {
+        const out = rows.slice(0, options?.limit ?? 5000);
+        this._dashboardTransactions.next(out);
+        return out;
+      }));
+    }
+
     const limit = options?.limit ?? 5000;
     const params = new HttpParams().set('skip', '0').set('limit', String(limit));
     return this.http.get<Transaction[]>(apiUrl('/transactions/'), { params }).pipe(
@@ -201,6 +239,13 @@ export class FinanceService {
   }
 
   getCashflowSummary(startDate: string, endDate: string): Observable<CashflowSummary> {
+    if (this.encMode) {
+      return from(this.encStore.getCashflowSummary(startDate, endDate).then(s => {
+        this._cashflowSummary.next(s as any);
+        return s as any;
+      }));
+    }
+
     const params = new HttpParams().set('start_date', startDate).set('end_date', endDate);
     return this.http.get<CashflowSummary>(apiUrl('/cashflow/summary'), { params }).pipe(
       tap(summary => this._cashflowSummary.next(summary))
@@ -216,6 +261,14 @@ export class FinanceService {
   }
 
   addTransaction(tx: TransactionCreate): Observable<Transaction> {
+    if (this.encMode) {
+      return from(this.encStore.addTransaction(tx as any).then(async row => {
+        this._transactions.next(await this.encStore.getTransactions());
+        this.invalidateDashboardCache();
+        return row;
+      }));
+    }
+
     return this.http.post<Transaction>(apiUrl('/transactions/'), tx).pipe(
       tap(created => {
         this._transactions.next([created, ...this._transactions.value]);
@@ -224,6 +277,14 @@ export class FinanceService {
   }
 
   updateTransaction(id: number, tx: Partial<TransactionCreate>): Observable<Transaction> {
+    if (this.encMode) {
+      return from(this.encStore.updateTransaction(id, tx as any).then(async row => {
+        this._transactions.next(await this.encStore.getTransactions());
+        this.invalidateDashboardCache();
+        return row;
+      }));
+    }
+
     return this.http.put<Transaction>(apiUrl(`/transactions/${id}`), tx).pipe(
       tap(updated => {
         this._transactions.next(
@@ -234,6 +295,14 @@ export class FinanceService {
   }
 
   deleteTransaction(id: number): Observable<{ ok: boolean }> {
+    if (this.encMode) {
+      return from(this.encStore.deleteTransaction(id).then(async () => {
+        this._transactions.next(await this.encStore.getTransactions());
+        this.invalidateDashboardCache();
+        return { ok: true };
+      }));
+    }
+
     return this.http.delete<{ ok: boolean }>(apiUrl(`/transactions/${id}`)).pipe(
       tap(() => {
         this._transactions.next(this._transactions.value.filter(t => t.id !== id));
@@ -242,12 +311,26 @@ export class FinanceService {
   }
 
   getJobIncomes(): Observable<JobIncome[]> {
+    if (this.encMode) {
+      return from(this.encStore.getJobIncomes().then(rows => {
+        this._jobIncomes.next(rows);
+        return rows;
+      }));
+    }
+
     return this.http.get<JobIncome[]>(apiUrl('/income/')).pipe(
       tap(data => this._jobIncomes.next(data))
     );
   }
 
   addJobIncome(body: JobIncomeCreate): Observable<JobIncome> {
+    if (this.encMode) {
+      return from(this.encStore.addJobIncome(body).then(async row => {
+        this._jobIncomes.next(await this.encStore.getJobIncomes());
+        return row;
+      }));
+    }
+
     return this.http.post<JobIncome>(apiUrl('/income/'), body).pipe(
       tap(created => {
         this._jobIncomes.next([created, ...this._jobIncomes.value]);
@@ -257,6 +340,13 @@ export class FinanceService {
   }
 
   updateJobIncome(id: number, body: Partial<JobIncomeCreate>): Observable<JobIncome> {
+    if (this.encMode) {
+      return from(this.encStore.updateJobIncome(id, body).then(async row => {
+        this._jobIncomes.next(await this.encStore.getJobIncomes());
+        return row;
+      }));
+    }
+
     return this.http.put<JobIncome>(apiUrl(`/income/${id}`), body).pipe(
       tap(updated => {
         this._jobIncomes.next(this._jobIncomes.value.map(row => (row.id === id ? updated : row)));
@@ -266,6 +356,13 @@ export class FinanceService {
   }
 
   deleteJobIncome(id: number): Observable<{ ok: boolean }> {
+    if (this.encMode) {
+      return from(this.encStore.deleteJobIncome(id).then(async () => {
+        this._jobIncomes.next(await this.encStore.getJobIncomes());
+        return { ok: true };
+      }));
+    }
+
     return this.http.delete<{ ok: boolean }>(apiUrl(`/income/${id}`)).pipe(
       tap(() => {
         this._jobIncomes.next(this._jobIncomes.value.filter(row => row.id !== id));
@@ -275,18 +372,39 @@ export class FinanceService {
   }
 
   getFixedExpenses(): Observable<FixedExpense[]> {
+    if (this.encMode) {
+      return from(this.encStore.getFixedExpenses().then(rows => {
+        this._fixedExpenses.next(rows);
+        return rows;
+      }));
+    }
+
     return this.http.get<FixedExpense[]>(apiUrl('/fixed-expenses/')).pipe(
       tap(data => this._fixedExpenses.next(data))
     );
   }
 
   getSubscriptions(): Observable<Subscription[]> {
+    if (this.encMode) {
+      return from(this.encStore.getSubscriptions().then(rows => {
+        this._subscriptions.next(rows);
+        return rows;
+      }));
+    }
+
     return this.http.get<Subscription[]>(apiUrl('/subscriptions/')).pipe(
       tap(data => this._subscriptions.next(data))
     );
   }
 
   addSubscription(body: SubscriptionCreate): Observable<Subscription> {
+    if (this.encMode) {
+      return from(this.encStore.addSubscription(body).then(async row => {
+        this._subscriptions.next(await this.encStore.getSubscriptions());
+        return row;
+      }));
+    }
+
     return this.http.post<Subscription>(apiUrl('/subscriptions/'), body).pipe(
       tap(created => {
         this._subscriptions.next([created, ...this._subscriptions.value]);
@@ -296,6 +414,13 @@ export class FinanceService {
   }
 
   updateSubscription(id: number, body: Partial<SubscriptionCreate>): Observable<Subscription> {
+    if (this.encMode) {
+      return from(this.encStore.updateSubscription(id, body).then(async row => {
+        this._subscriptions.next(await this.encStore.getSubscriptions());
+        return row;
+      }));
+    }
+
     return this.http.put<Subscription>(apiUrl(`/subscriptions/${id}`), body).pipe(
       tap(updated => {
         this._subscriptions.next(this._subscriptions.value.map(row => (row.id === id ? updated : row)));
@@ -305,6 +430,13 @@ export class FinanceService {
   }
 
   deleteSubscription(id: number): Observable<{ ok: boolean }> {
+    if (this.encMode) {
+      return from(this.encStore.deleteSubscription(id).then(async () => {
+        this._subscriptions.next(await this.encStore.getSubscriptions());
+        return { ok: true };
+      }));
+    }
+
     return this.http.delete<{ ok: boolean }>(apiUrl(`/subscriptions/${id}`)).pipe(
       tap(() => {
         this._subscriptions.next(this._subscriptions.value.filter(row => row.id !== id));
@@ -314,6 +446,8 @@ export class FinanceService {
   }
 
   clearSessionState(): void {
+    this.encStore.clear();
+    this.vault.lock();
     this.dashboardLoad$ = null;
     this._transactions.next([]);
     this._dashboardTransactions.next([]);
@@ -334,6 +468,13 @@ export class FinanceService {
   }
 
   addFixedExpense(body: FixedExpenseCreate): Observable<FixedExpense> {
+    if (this.encMode) {
+      return from(this.encStore.addFixedExpense(body).then(async row => {
+        this._fixedExpenses.next(await this.encStore.getFixedExpenses());
+        return row;
+      }));
+    }
+
     return this.http.post<FixedExpense>(apiUrl('/fixed-expenses/'), body).pipe(
       tap(created => {
         this._fixedExpenses.next([created, ...this._fixedExpenses.value]);
@@ -343,6 +484,13 @@ export class FinanceService {
   }
 
   updateFixedExpense(id: number, body: Partial<FixedExpenseCreate>): Observable<FixedExpense> {
+    if (this.encMode) {
+      return from(this.encStore.updateFixedExpense(id, body).then(async row => {
+        this._fixedExpenses.next(await this.encStore.getFixedExpenses());
+        return row;
+      }));
+    }
+
     return this.http.put<FixedExpense>(apiUrl(`/fixed-expenses/${id}`), body).pipe(
       tap(updated => {
         this._fixedExpenses.next(this._fixedExpenses.value.map(row => (row.id === id ? updated : row)));
@@ -352,6 +500,13 @@ export class FinanceService {
   }
 
   deleteFixedExpense(id: number): Observable<{ ok: boolean }> {
+    if (this.encMode) {
+      return from(this.encStore.deleteFixedExpense(id).then(async () => {
+        this._fixedExpenses.next(await this.encStore.getFixedExpenses());
+        return { ok: true };
+      }));
+    }
+
     return this.http.delete<{ ok: boolean }>(apiUrl(`/fixed-expenses/${id}`)).pipe(
       tap(() => {
         this._fixedExpenses.next(this._fixedExpenses.value.filter(row => row.id !== id));
@@ -408,6 +563,13 @@ export class FinanceService {
   }
 
   getHoldings(refreshPrices = false): Observable<Holding[]> {
+    if (this.encMode) {
+      return from(this.encStore.getHoldings().then(rows => {
+        this._holdings.next(rows);
+        return rows;
+      }));
+    }
+
     let params = new HttpParams();
     if (refreshPrices) {
       params = params.set('refresh_prices', 'true');
@@ -418,6 +580,11 @@ export class FinanceService {
   }
 
   refreshAllHoldingPrices(): Observable<Holding[]> {
+    if (this.encMode) {
+      // Server-blind: no per-user symbol disclosure for quote refresh.
+      return this.getHoldings(false);
+    }
+
     this.isLoading.next(true);
     return this.getHoldings(true).pipe(
       tap({
@@ -431,6 +598,14 @@ export class FinanceService {
   }
 
   refreshHoldingPrice(holdingId: number): Observable<Holding> {
+    if (this.encMode) {
+      return from(this.encStore.getHoldings().then(rows => {
+        const row = rows.find(r => r.id === holdingId);
+        if (!row) throw new Error('Holding not found');
+        return row;
+      }));
+    }
+
     return this.http
       .post<Holding>(apiUrl(`/holdings/${holdingId}/refresh-price`), {})
       .pipe(
@@ -455,6 +630,14 @@ export class FinanceService {
   }
 
   addHolding(holding: HoldingCreate): Observable<Holding> {
+    if (this.encMode) {
+      return from(this.encStore.addHolding(holding).then(async row => {
+        this._holdings.next(await this.encStore.getHoldings());
+        this.refreshDerivedMetrics();
+        return row;
+      }));
+    }
+
     return this.http.post<Holding>(apiUrl('/holdings/'), holding).pipe(
       tap(created => {
         this._holdings.next([...this._holdings.value, created]);
@@ -468,6 +651,14 @@ export class FinanceService {
     id: number,
     holding: Partial<HoldingCreate>
   ): Observable<Holding> {
+    if (this.encMode) {
+      return from(this.encStore.updateHolding(id, holding as any).then(async row => {
+        this._holdings.next(await this.encStore.getHoldings());
+        this.refreshDerivedMetrics();
+        return row;
+      }));
+    }
+
     return this.http.put<Holding>(apiUrl(`/holdings/${id}`), holding).pipe(
       tap(updated => {
         this._holdings.next(this._holdings.value.map(h => (h.id === id ? updated : h)));
@@ -478,6 +669,14 @@ export class FinanceService {
   }
 
   deleteHolding(id: number): Observable<{ ok: boolean }> {
+    if (this.encMode) {
+      return from(this.encStore.deleteHolding(id).then(async () => {
+        this._holdings.next(await this.encStore.getHoldings());
+        this.refreshDerivedMetrics();
+        return { ok: true };
+      }));
+    }
+
     return this.http.delete<{ ok: boolean }>(apiUrl(`/holdings/${id}`)).pipe(
       tap(() => {
         this._holdings.next(this._holdings.value.filter(h => h.id !== id));
@@ -488,18 +687,40 @@ export class FinanceService {
   }
 
   getNetWorth(): Observable<NetWorth> {
+    if (this.encMode) {
+      return from(this.encStore.getNetWorth().then(nw => {
+        this._netWorth.next(nw);
+        return nw;
+      }));
+    }
+
     return this.http.get<NetWorth>(apiUrl('/net-worth/')).pipe(
       tap(data => this._netWorth.next(data))
     );
   }
 
   getAssets(): Observable<Asset[]> {
+    if (this.encMode) {
+      return from(this.encStore.getAssets().then(rows => {
+        this._assets.next(rows);
+        return rows;
+      }));
+    }
+
     return this.http.get<Asset[]>(apiUrl('/assets/')).pipe(
       tap(data => this._assets.next(data))
     );
   }
 
   addAsset(body: AssetCreate): Observable<Asset> {
+    if (this.encMode) {
+      return from(this.encStore.addAsset(body).then(async row => {
+        this._assets.next(await this.encStore.getAssets());
+        this.refreshDerivedMetrics();
+        return row;
+      }));
+    }
+
     return this.http.post<Asset>(apiUrl('/assets/'), body).pipe(
       tap(created => {
         this._assets.next([...this._assets.value, created]);
@@ -510,6 +731,14 @@ export class FinanceService {
   }
 
   updateAsset(id: number, body: Partial<AssetCreate>): Observable<Asset> {
+    if (this.encMode) {
+      return from(this.encStore.updateAsset(id, body).then(async row => {
+        this._assets.next(await this.encStore.getAssets());
+        this.refreshDerivedMetrics();
+        return row;
+      }));
+    }
+
     return this.http.put<Asset>(apiUrl(`/assets/${id}`), body).pipe(
       tap(updated => {
         this._assets.next(this._assets.value.map(a => (a.id === id ? updated : a)));
@@ -520,6 +749,14 @@ export class FinanceService {
   }
 
   deleteAsset(id: number): Observable<{ ok: boolean }> {
+    if (this.encMode) {
+      return from(this.encStore.deleteAsset(id).then(async () => {
+        this._assets.next(await this.encStore.getAssets());
+        this.refreshDerivedMetrics();
+        return { ok: true };
+      }));
+    }
+
     return this.http.delete<{ ok: boolean }>(apiUrl(`/assets/${id}`)).pipe(
       tap(() => {
         this._assets.next(this._assets.value.filter(a => a.id !== id));
@@ -530,12 +767,27 @@ export class FinanceService {
   }
 
   getLiabilities(): Observable<Liability[]> {
+    if (this.encMode) {
+      return from(this.encStore.getLiabilities().then(rows => {
+        this._liabilities.next(rows);
+        return rows;
+      }));
+    }
+
     return this.http.get<Liability[]>(apiUrl('/liabilities/')).pipe(
       tap(data => this._liabilities.next(data))
     );
   }
 
   addLiability(body: LiabilityCreate): Observable<Liability> {
+    if (this.encMode) {
+      return from(this.encStore.addLiability(body).then(async row => {
+        this._liabilities.next(await this.encStore.getLiabilities());
+        this.refreshDerivedMetrics();
+        return row;
+      }));
+    }
+
     return this.http.post<Liability>(apiUrl('/liabilities/'), body).pipe(
       tap(created => {
         this._liabilities.next([...this._liabilities.value, created]);
@@ -546,6 +798,14 @@ export class FinanceService {
   }
 
   updateLiability(id: number, body: Partial<LiabilityCreate>): Observable<Liability> {
+    if (this.encMode) {
+      return from(this.encStore.updateLiability(id, body).then(async row => {
+        this._liabilities.next(await this.encStore.getLiabilities());
+        this.refreshDerivedMetrics();
+        return row;
+      }));
+    }
+
     return this.http.put<Liability>(apiUrl(`/liabilities/${id}`), body).pipe(
       tap(updated => {
         this._liabilities.next(
@@ -558,6 +818,14 @@ export class FinanceService {
   }
 
   deleteLiability(id: number): Observable<{ ok: boolean }> {
+    if (this.encMode) {
+      return from(this.encStore.deleteLiability(id).then(async () => {
+        this._liabilities.next(await this.encStore.getLiabilities());
+        this.refreshDerivedMetrics();
+        return { ok: true };
+      }));
+    }
+
     return this.http.delete<{ ok: boolean }>(apiUrl(`/liabilities/${id}`)).pipe(
       tap(() => {
         this._liabilities.next(this._liabilities.value.filter(li => li.id !== id));
