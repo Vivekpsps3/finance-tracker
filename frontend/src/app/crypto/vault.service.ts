@@ -50,12 +50,9 @@ export class VaultService {
     return this.unlockedSubject.value && !!this.dek;
   }
 
-  get isMigrated(): boolean {
-    return !!this.statusSubject.value?.migrated;
-  }
-
   get usesEncryptedStore(): boolean {
-    return this.isUnlocked && this.isMigrated;
+    // All users are on the encrypted path once the vault is unlocked.
+    return this.isUnlocked;
   }
 
   get currentStatus(): VaultStatus | null {
@@ -163,15 +160,6 @@ export class VaultService {
 
   deleteRecords(records: Array<{ collection: string; client_id: string }>): Observable<{ deleted: number }> {
     return this.http.post<{ deleted: number }>(apiUrl('/vault/records/delete'), { records });
-  }
-
-  updateMigration(body: {
-    status: string;
-    legacy_counts?: Record<string, number>;
-    encrypted_counts?: Record<string, number>;
-    error_message?: string;
-  }): Observable<{ status: string }> {
-    return this.http.put<{ status: string }>(apiUrl('/vault/migration'), body);
   }
 
   getCounts(): Observable<{ counts: Record<string, number> }> {

@@ -8,7 +8,6 @@ import { VaultService } from './vault.service';
  * Requires an authenticated session and an unlocked vault.
  * - no vault -> /vault/setup
  * - vault locked -> /vault/unlock
- * - not migrated -> /vault/migrate
  */
 export const vaultGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
@@ -22,7 +21,6 @@ export const vaultGuard: CanActivateFn = () => {
         map(status => {
           if (!status.exists) return router.createUrlTree(['/vault/setup']);
           if (!vault.isUnlocked) return router.createUrlTree(['/vault/unlock']);
-          if (!status.migrated) return router.createUrlTree(['/vault/migrate']);
           return true;
         })
       );

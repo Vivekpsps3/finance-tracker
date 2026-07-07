@@ -142,10 +142,8 @@ def create_vault(
         key_version=key_version,
     )
     db.add(vault)
-    migration = get_or_create_migration(db, user_id)
-    if migration.status == "none":
-        migration.status = "vault_ready"
-        migration.updated_at = utc_now()
+    # All users are treated as fully on the encrypted path; no one-time legacy migration step.
+    set_migration_status(db, user_id, status="completed", legacy_counts={}, encrypted_counts={})
     return vault
 
 

@@ -77,10 +77,10 @@ The user clarified:
 - app-native multi-user auth is in place; treat shared household product features
   as later, not as “no auth yet”
 - tax document storage no longer makes sense for this app and has been removed
-- user-level encryption is implemented as server-blind storage: browser-owned
-  plaintext (WebCrypto AES-GCM + PBKDF2 vault), backend-owned ciphertext only
-  via `/api/vault/*`. After migration, legacy finance endpoints return 410.
-  See `docs/SECURITY_MODEL.md` and `docs/MIGRATION_TO_SERVER_BLIND_ENCRYPTION.md`.
+- user-level encryption is server-blind storage: browser-owned plaintext
+  (WebCrypto AES-GCM + PBKDF2 vault), backend-owned ciphertext only via
+  `/api/vault/*`. All users use the encrypted path; legacy finance endpoints
+  always return 410. See `docs/SECURITY_MODEL.md`.
 
 ## Implementation Notes
 

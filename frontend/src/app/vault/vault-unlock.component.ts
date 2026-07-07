@@ -77,7 +77,7 @@ export class VaultUnlockComponent implements OnInit {
       return;
     }
     if (this.vault.isUnlocked) {
-      await this.router.navigateByUrl(status.migrated ? '/' : '/vault/migrate');
+      await this.router.navigateByUrl('/');
     }
   }
 
@@ -96,8 +96,8 @@ export class VaultUnlockComponent implements OnInit {
         if (this.passphrase.length < 12) throw new Error('New passphrase must be at least 12 characters');
         await this.vault.unlockWithRecovery(this.recoveryKey.trim(), this.passphrase);
       }
-      const status = await this.vault.refreshStatus();
-      await this.router.navigateByUrl(status.migrated ? '/' : '/vault/migrate');
+      await this.vault.refreshStatus();
+      await this.router.navigateByUrl('/');
     } catch (e: any) {
       this.error = e?.error?.detail || e?.message || 'Unlock failed';
     } finally {

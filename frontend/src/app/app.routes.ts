@@ -22,12 +22,6 @@ export const routes: Routes = [
     loadComponent: () => import('./vault/vault-unlock.component').then(m => m.VaultUnlockComponent),
   },
   {
-    path: 'vault/migrate',
-    title: 'Encrypt data · Finance',
-    canActivate: [authGuard],
-    loadComponent: () => import('./vault/vault-migrate.component').then(m => m.VaultMigrateComponent),
-  },
-  {
     path: '',
     component: MainLayoutComponent,
     canActivate: [authGuard, vaultGuard],

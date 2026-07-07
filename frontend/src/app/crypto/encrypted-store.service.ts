@@ -353,39 +353,4 @@ export class EncryptedStoreService {
   async deletePlanningProfile(id: number): Promise<void> {
     return this.remove('planning_profiles', id);
   }
-
-  async migrateFromLegacy(http: {
-    get: <T>(url: string) => Promise<T>;
-  }): Promise<{ legacy: Record<string, number>; encrypted: Record<string, number> }> {
-    const legacy: Record<string, number> = {};
-    const encrypted: Record<string, number> = {};
-
-    const loadList = async <T>(path: string, collection: CollectionName, map?: (x: T) => any) => {
-      try {
-        const rows = await http.get<T[]>(path);
-        legacy[collection] = rows.length;
-        for (const row of rows) {
-          const payload = map ? map(row) : row;
-          await this.upsert(collection, payload as any);
-        }
-        encrypted[collection] = this.bags[collection].size;
-      } catch {
-        legacy[collection] = 0;
-        encrypted[collection] = this.bags[collection].size;
-      }
-    };
-
-    this.clear();
-    this.loaded = true; // start empty; we're writing fresh
-
-    await loadList('/api/transactions/?skip=0&limit=10000', 'transactions');
-    await loadList('/api/assets/', 'assets');
-    await loadList('/api/liabilities/', 'liabilities');
-    await loadList('/api/holdings/', 'holdings');
-    await loadList('/api/income/', 'job_incomes');
-    await loadList('/api/fixed-expenses/', 'fixed_expenses');
-    await loadList('/api/subscriptions/', 'subscriptions');
-
-    return { legacy, encrypted };
-  }
 }

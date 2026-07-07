@@ -88,7 +88,7 @@ export class VaultSetupComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     const status = await this.vault.refreshStatus();
     if (status.exists) {
-      await this.router.navigateByUrl(status.migrated ? '/vault/unlock' : '/vault/migrate');
+      await this.router.navigateByUrl('/vault/unlock');
     }
   }
 
@@ -114,7 +114,7 @@ export class VaultSetupComponent implements OnInit {
   }
 
   async continueAfterRecovery(): Promise<void> {
-    const status = await this.vault.refreshStatus();
-    await this.router.navigateByUrl(status.migrated ? '/' : '/vault/migrate');
+    await this.vault.refreshStatus();
+    await this.router.navigateByUrl('/');
   }
 }

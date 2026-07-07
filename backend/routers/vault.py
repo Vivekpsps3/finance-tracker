@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -13,8 +11,6 @@ from schemas_vault import (
     EncryptedRecordBatchDelete,
     EncryptedRecordBatchUpsert,
     EncryptedRecordResponse,
-    MigrationStatusResponse,
-    MigrationStatusUpdate,
     VaultCreateRequest,
     VaultResponse,
     VaultUpdateRequest,
@@ -173,62 +169,6 @@ def lookup_index(
         index_value_b64=body.index_value_b64,
     )
     return {"client_ids": client_ids}
-
-
-@router.get("/migration", response_model=MigrationStatusResponse)
-def get_migration(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    row = store.get_or_create_migration(db, current_user.id)
-    db.commit()
-    return MigrationStatusResponse(
-        status=row.status,
-        legacy_counts=json.loads(row.legacy_counts_json) if row.legacy_counts_json else None,
-        encrypted_counts=json.loads(row.encrypted_counts_json) if row.encrypted_counts_json else None,
-        error_message=row.error_message,
-        verified_at=_iso(row.verified_at),
-        completed_at=_iso(row.completed_at),
-    )
-
-
-@router.put("/migration", response_model=MigrationStatusResponse)
-def update_migration(
-    body: MigrationStatusUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    if body.status == "completed" and not store.get_vault(db, current_user.id):
-        raise HTTPException(status_code=400, detail="Vault required to complete migration")
-    if body.status == "completed":
-        # Browser must have verified first; allow verified -> completed, or in_progress with counts.
-        current = store.get_or_create_migration(db, current_user.id)
-        if current.status not in {"verified", "in_progress", "vault_ready"}:
-            if current.status != "completed":
-                raise HTTPException(status_code=400, detail="Migration not ready to complete")
-    row = store.set_migration_status(
-        db,
-        current_user.id,
-        status=body.status,
-        legacy_counts=body.legacy_counts,
-        encrypted_counts=body.encrypted_counts,
-        error_message=body.error_message,
-    )
-    if body.status == "completed":
-        # Delete legacy plaintext finance rows after browser-confirmed migration.
-        from admin_tools import USER_OWNED_MODELS
-
-        for model in USER_OWNED_MODELS:
-            db.query(model).filter(model.user_id == current_user.id).delete(synchronize_session=False)
-    db.commit()
-    return MigrationStatusResponse(
-        status=row.status,
-        legacy_counts=json.loads(row.legacy_counts_json) if row.legacy_counts_json else None,
-        encrypted_counts=json.loads(row.encrypted_counts_json) if row.encrypted_counts_json else None,
-        error_message=row.error_message,
-        verified_at=_iso(row.verified_at),
-        completed_at=_iso(row.completed_at),
-    )
 
 
 @router.get("/counts")
