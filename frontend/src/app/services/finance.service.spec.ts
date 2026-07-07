@@ -2,15 +2,30 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { FinanceService } from './finance.service';
 import { environment } from '../../environments/environment';
+import { VaultService } from '../crypto/vault.service';
+import { EncryptedStoreService } from '../crypto/encrypted-store.service';
 
 describe('FinanceService', () => {
   let service: FinanceService;
   let http: HttpTestingController;
+  let vault: { usesEncryptedStore: boolean };
+  let encStore: jasmine.SpyObj<EncryptedStoreService>;
 
   beforeEach(() => {
+    vault = { usesEncryptedStore: false };
+    encStore = jasmine.createSpyObj<EncryptedStoreService>('EncryptedStoreService', [
+      'getTransactions',
+      'addTransaction',
+      'getHoldings',
+      'getNetWorth',
+    ]);
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [FinanceService],
+      providers: [
+        FinanceService,
+        { provide: VaultService, useValue: vault },
+        { provide: EncryptedStoreService, useValue: encStore },
+      ],
     });
     service = TestBed.inject(FinanceService);
     http = TestBed.inject(HttpTestingController);
@@ -80,5 +95,44 @@ describe('FinanceService', () => {
     http.expectOne(`${environment.apiUrl}/holdings/`).flush(holding);
     http.expectOne(`${environment.apiUrl}/net-worth/`).flush(nw);
     service.netWorth$.subscribe(n => expect(n?.total).toBe(400));
+  });
+
+  it('imports bank CSV through encrypted records without legacy import API calls', done => {
+    vault.usesEncryptedStore = true;
+    encStore.getTransactions.and.resolveTo([]);
+    encStore.addTransaction.and.resolveTo({ id: 1 } as any);
+    const file = new File(
+      [
+        [
+          'Transaction Date,Posted Date,Card No.,Description,Category,Debit,Credit',
+          '2026-01-02,2026-01-03,1234,Coffee,Food,5.25,',
+        ].join('\n'),
+      ],
+      'capital.csv',
+      { type: 'text/csv' }
+    );
+
+    service.previewBankImport('capital_one', file).subscribe({
+      next: preview => {
+        expect(preview.summary.new).toBe(1);
+        service.commitBankImport('capital_one', preview.filename, preview.rows).subscribe({
+          next: result => {
+            expect(result.inserted).toBe(1);
+            expect(encStore.addTransaction).toHaveBeenCalledOnceWith(
+              jasmine.objectContaining({
+                type: 'expense',
+                source: 'import',
+                description: 'Coffee',
+                dedupe_key: preview.rows[0].dedupe_key,
+              })
+            );
+            http.expectNone(req => req.url.includes('/imports/'));
+            done();
+          },
+          error: done.fail,
+        });
+      },
+      error: done.fail,
+    });
   });
 });

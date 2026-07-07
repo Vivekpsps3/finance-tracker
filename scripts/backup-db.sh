@@ -15,13 +15,20 @@ fi
 
 backup_file="${backup_dir}/finance.db.${timestamp}.bak"
 
-cp -a "${db_file}" "${backup_file}"
+python3 - "${db_file}" "${backup_file}" <<'PY'
+import sqlite3
+import sys
 
-for suffix in wal shm journal; do
-  sidecar="${db_file}-${suffix}"
-  if [[ -f "${sidecar}" ]]; then
-    cp -a "${sidecar}" "${backup_file}-${suffix}"
-  fi
-done
+src_path, dest_path = sys.argv[1:3]
+src = sqlite3.connect(src_path)
+try:
+    dest = sqlite3.connect(dest_path)
+    try:
+        src.backup(dest)
+    finally:
+        dest.close()
+finally:
+    src.close()
+PY
 
 echo "Backed up ${db_file} to ${backup_file}"

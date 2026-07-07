@@ -6,7 +6,7 @@ Angular 19 standalone app under `frontend/src/app/`.
 
 - **Tailwind CSS 3** + `src/theme/tokens.css` (dark only v1)
 - **Shared UI** — `shared/ui/*`, selector prefix `ui-`
-- **State** — `FinanceService` (RxJS `BehaviorSubject`s for ledger, balance sheet, recurring cashflow); `PlanningService`; `AuthService`
+- **State** — `FinanceService` over `EncryptedStoreService` after vault unlock (RxJS `BehaviorSubject`s for ledger, balance sheet, recurring cashflow); `PlanningService`; `AuthService`
 - **Charts** — Chart.js via dynamic `import('chart.js/auto')` (dashboard/charts components and planning fan chart)
 
 ## Routes
@@ -14,6 +14,8 @@ Angular 19 standalone app under `frontend/src/app/`.
 | Path | Component |
 |------|-----------|
 | `/login` | Auth (bootstrap first admin, signup, login) — outside shell |
+| `/vault/setup` | Create encrypted finance vault — auth only, outside shell |
+| `/vault/unlock` | Unlock encrypted finance vault — auth only, outside shell |
 | `/` | Dashboard (lazy; current net worth, period trends) |
 | `/transactions` | Activity → Transactions (income, expenses, bank CSV import) |
 | `/calendar` | Activity → Calendar |
@@ -83,9 +85,15 @@ When adding history charts later, keep two concepts separate:
 
 ## Recurring cashflow pages
 
-- `/income`, `/fixed-expenses`, `/subscriptions` manage recurring rows via `FinanceService`.
+- `/income`, `/fixed-expenses`, `/subscriptions` manage encrypted recurring rows via `FinanceService`.
 - These do **not** change net worth. They feed cashflow summary and can influence planning spending inputs.
 - Prefer the dedicated pages over inventing parallel recurring models on the transactions table.
+
+## Bank CSV Import
+
+- Transactions page bank import runs in the browser via `utils/bank-import.util.ts`.
+- Supported slugs: `capital_one`, `chase`, `amex`, `citi`, `x_money`.
+- Preview uses encrypted transaction dedupe keys and commit writes encrypted transaction records through `/api/vault/records/upsert`; bank CSV contents are not sent to legacy `/api/imports/*` routes in normal vault mode.
 
 ## Build
 

@@ -1,13 +1,19 @@
 # Architecture (one page)
 
-Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** persistence, and app-native user accounts.
+Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** persistence, app-native user accounts, and a browser-owned encrypted finance vault.
+
+## Active API surface
+
+- Active browser finance storage is `/api/vault/*`: the backend stores ciphertext, sync revisions, and blind indexes only.
+- Active non-finance plaintext surfaces are auth/admin account management, health, and public market quote cache.
+- Retired plaintext finance routers still exist behind `ALLOW_LEGACY_FINANCE=1` for backend regression tests and old DB service coverage. Normal deployments return `410` and these routes are hidden from OpenAPI.
 
 ## Data planes (do not mix)
 
 | Plane | What it is | Writes | Reads for |
 |-------|------------|--------|-----------|
 | **Balance sheet** | per-user `assets`, `liabilities`, `holdings` + market prices | CRUD + Fidelity CSV (holdings per brokerage account) | **Net worth** (`GET /api/net-worth/`) |
-| **Transactions ledger** | per-user `transactions` (income/expense, `source=import` from bank CSV) | Manual CRUD + bank import preview/commit | Dashboard period charts, calendar, planning **inputs** (averages) |
+| **Transactions ledger** | encrypted per-user transactions (income/expense, `source=import` from browser-side bank CSV) | Browser CRUD + client CSV preview/commit | Dashboard period charts, calendar, planning **inputs** (averages) |
 | **Recurring cashflow** | per-user `job_incomes`, `fixed_expenses`, `subscriptions` | CRUD on those tables only | Income / fixed-expense / subscription pages; `GET /api/cashflow/summary`; planning spending inputs |
 | **Planning (speculative)** | `planning_assumption_profiles` (+ unused `planning_scenario_runs` table) | Profiles only; MC run results are **ephemeral** (not stored) | Monte Carlo UI at `/planning` |
 
@@ -25,13 +31,9 @@ Recurring cashflow (job income, rent/utilities-style fixed expenses, subscriptio
 Browser (:4200 dev proxy, or :8080 Docker web)
   -> login page / session cookie / CSRF token
   -> /api/*  ->  FastAPI app.py
-       → routers: health, auth (+ admin users/metrics/sql), imports,
-                  transactions, cashflow, income, fixed_expenses,
-                  subscriptions, assets, liabilities, market, holdings,
-                   net_worth, planning (/planning/v1)
-        → services/finance.py, cashflow.py, market_data.py
-       → services/planning/{snapshot,runner,tools_registry,assumptions}
-       → services/analytics/monte_carlo.py  (only MC tool wired)
+        → routers: health, auth/admin, vault, market
+        → encrypted_records ciphertext in SQLite
+        → browser decrypts and computes finance views/imports/planning
   → SQLite finance.db
 ```
 
@@ -52,7 +54,7 @@ Browser/domain proxy
 - All non-health finance APIs require a valid session. Mutating requests require `X-CSRF-Token`.
 - Optional legacy `API_KEY` / `FINANCE_API_KEY` middleware can also gate `/api/*` (except health) for non-browser clients.
 - `users`, `user_sessions`, and `audit_events` live in the same SQLite database as finance data.
-- Admin UI route: `/admin/users`. Admins create, disable, reset password, reset contents, delete, and manage users; view metrics; and run guarded SQLite maintenance SQL. Self-delete and deleting or disabling the final active admin are blocked.
+- Admin UI route: `/admin/users`. Admins create, disable, reset password, reset contents, delete, and manage users, and view metrics. The raw SQL console is disabled. Self-delete and deleting or disabling the final active admin are blocked.
 - User-owned finance tables include `user_id`; market quote cache and provider registries stay global.
 
 There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo module only.
@@ -67,8 +69,8 @@ There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo 
 
 ## Imports
 
-- **Banks:** registry in `import_registry.py` → `POST /api/imports/{slug}/preview|commit` (Capital One, Chase, Amex + extensible slugs). Legacy Capital One-specific paths still exist.
-- **Brokerage:** Fidelity positions CSV → replace holdings for accounts in file; `POST /api/imports/fidelity/*`.
+- **Banks:** browser-side parsers in `frontend/src/app/utils/bank-import.util.ts` preview and commit CSV rows into encrypted transaction records. Backend parsers remain for regression tests only.
+- **Brokerage:** server-side Fidelity plaintext import is retired in normal encrypted mode and will need a client-side replacement before use.
 
 **SimpleFIN later:** the user wants SimpleFIN eventually. **Plaid is not the intended integration** even if placeholder env vars exist. CSV only today.
 

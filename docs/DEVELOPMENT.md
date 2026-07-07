@@ -23,7 +23,8 @@ make dev       # API + UI
 | http://127.0.0.1:8000/docs | OpenAPI / Swagger |
 | http://127.0.0.1:8000/api/health | Health check |
 
-On first launch with an empty DB, open `/login` and create the first admin account.
+On first launch with an empty DB, open `/login`, create the first admin account,
+then create a vault at `/vault/setup`. Normal finance routes require vault unlock.
 
 ### Optional API key (non-browser clients)
 
@@ -62,12 +63,10 @@ backend/
   schemas.py       # Pydantic (finance)
   schemas_auth.py / schemas_planning.py
   auth.py / api_auth.py
-  routers/         # HTTP routes (auth, imports, transactions, cashflow,
-                   # income, fixed_expenses, subscriptions, assets,
-                   # liabilities, market, holdings, net_worth, taxes, planning)
-  services/        # finance, cashflow, market_data, taxes, planning/, analytics/
-  tax_rulesets/    # JSON tax bracket samples for planning payloads (not a tax-filing API)
-  import_parsers/  # bank + Fidelity CSV parsers (wired via import_registry.py)
+  routers/         # active HTTP routes (auth/admin, vault, health, market) plus
+                   # retired plaintext finance routers gated for regression tests
+  services/        # encrypted storage, market_data, legacy finance/cashflow/planning helpers
+  import_parsers/  # legacy bank + Fidelity CSV parsers; active bank import is client-side
   .env.example     # copy to .env (optional)
 ```
 

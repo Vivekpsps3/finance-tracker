@@ -50,7 +50,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
   selectedTransactions: Transaction[] = [];
   daysInMonth: CalendarDay[] = [];
   weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  focusedDayIndex = -1;
 
   private destroy$ = new Subject<void>();
 

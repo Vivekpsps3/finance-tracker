@@ -6,6 +6,9 @@ import { EncryptedStoreService } from '../crypto/encrypted-store.service';
 import { VaultService } from '../crypto/vault.service';
 import {
   MC_RUN_HTTP_TIMEOUT_MS,
+  MC_FAN_PATHS_PERSIST_MAX,
+  MC_N_PATHS_MAX,
+  MC_N_PATHS_MIN,
   PLANNING_DISCLAIMER,
   PlanningInputsPreview,
   PlanningProfile,
@@ -151,9 +154,10 @@ export class PlanningService {
   }
 
   private async clientMonteCarlo(body: PlanningRunCreate): Promise<PlanningRun> {
+    const startedAt = new Date().toISOString();
     const inputs = await this.clientInputs();
-    const nPaths = Math.min(Math.max((body as any).n_paths || 500, 100), 2000);
-    const years = Math.min(Math.max((body as any).horizon_years || 30, 1), 60);
+    const nPaths = Math.min(Math.max((body as any).n_paths || 500, MC_N_PATHS_MIN), MC_N_PATHS_MAX);
+    const horizonYears = Math.min(Math.max((body as any).horizon_years || 30, 1), 60);
     const seed = (body as any).seed ?? 42;
     let state = seed >>> 0;
     const rand = () => {
@@ -168,7 +172,7 @@ export class PlanningService {
     for (let p = 0; p < nPaths; p += 1) {
       const series = [start];
       let value = start;
-      for (let y = 1; y <= years; y += 1) {
+      for (let y = 1; y <= horizonYears; y += 1) {
         const u1 = Math.max(rand(), 1e-12);
         const u2 = rand();
         const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
@@ -178,31 +182,55 @@ export class PlanningService {
       }
       paths.push(series);
     }
-    const percentile_paths = [10, 25, 50, 75, 90].map(pct => {
+    const percentilesByYear: Record<string, number[]> = {};
+    for (const pct of [5, 10, 25, 50, 75, 90, 95]) {
       const values = [];
-      for (let y = 0; y <= years; y += 1) {
+      for (let y = 0; y <= horizonYears; y += 1) {
         const col = paths.map(p => p[y]).sort((a, b) => a - b);
         const idx = Math.min(col.length - 1, Math.floor((pct / 100) * (col.length - 1)));
         values.push(col[idx]);
       }
-      return { percentile: pct, values };
-    });
+      percentilesByYear[`p${pct}`] = values;
+    }
+    const years = Array.from({ length: horizonYears + 1 }, (_, i) => i);
+    const fanStep = Math.max(1, Math.ceil(paths.length / MC_FAN_PATHS_PERSIST_MAX));
+    const fanPaths = paths.filter((_, index) => index % fanStep === 0).slice(0, MC_FAN_PATHS_PERSIST_MAX);
+    const terminal = (key: string) => percentilesByYear[key]?.at(-1) ?? start;
     return {
-      id: 0,
+      id: null,
       tool_id: (body as any).tool_id || 'mc_net_worth_paths',
       status: 'completed',
+      input_snapshot_hash: inputs.snapshot_hash,
+      as_of: inputs.as_of,
       seed,
       n_paths: nPaths,
-      horizon_years: years,
+      horizon_years: horizonYears,
       disclaimer: PLANNING_DISCLAIMER,
       result_summary: {
         start_net_worth: start,
-        median_end: percentile_paths.find(p => p.percentile === 50)?.values.at(-1) ?? start,
+        annual_spending_start: inputs.implied_annual_spending,
+        annual_income_start: inputs.avg_monthly_income * 12,
+        annual_contribution_start: annualSavings,
+        terminal_p5: terminal('p5'),
+        terminal_p10: terminal('p10'),
+        terminal_p25: terminal('p25'),
+        terminal_p50: terminal('p50'),
+        terminal_p75: terminal('p75'),
+        terminal_p90: terminal('p90'),
+        terminal_p95: terminal('p95'),
+        seed,
+        n_paths: nPaths,
+        horizon_years: horizonYears,
       },
       result_artifacts: {
-        years: Array.from({ length: years + 1 }, (_, i) => i),
-        percentile_paths,
+        years,
+        percentiles_by_year: percentilesByYear,
+        fan_paths: fanPaths,
+        fan_paths_displayed: fanPaths.length,
+        n_paths_simulated: nPaths,
       },
-    } as unknown as PlanningRun;
+      started_at: startedAt,
+      finished_at: new Date().toISOString(),
+    };
   }
 }

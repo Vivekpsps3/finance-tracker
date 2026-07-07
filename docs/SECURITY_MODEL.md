@@ -1,6 +1,6 @@
 # Security model
 
-This app is moving toward server-blind user data storage: the browser owns
+This app uses server-blind user data storage for finance data: the browser owns
 finance plaintext, and the backend owns only ciphertext, auth, sync metadata,
 and account administration.
 
@@ -61,7 +61,11 @@ the operator controls the code delivered to browsers.
 ## Holdings price privacy
 
 Automated server-side quote lookup conflicts with encrypted holdings if symbols
-are private. One of these choices must be made before holdings migration:
+are private. Current vault-mode portfolio refresh uses manual/imported prices and
+does not batch-send holdings symbols to the backend. Explicit one-off quote
+lookup still discloses the typed symbol to the public market quote endpoint.
+
+Longer-term choices if stricter holdings privacy is required:
 
 1. Encrypt symbols and use manual/current imported prices.
 2. Disclose symbols to the backend for quote lookup with explicit UI disclosure.

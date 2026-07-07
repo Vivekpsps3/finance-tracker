@@ -9,7 +9,7 @@ make install   # Python venv + npm (first time only)
 make dev       # Backend :8000 + frontend :4200
 ```
 
-Open **http://localhost:4200** (dev proxy talks to the API). Create the first admin on `/login` when the database is empty.
+Open **http://localhost:4200** (dev proxy talks to the API). Create the first admin on `/login`, then create/unlock your vault. Finance plaintext stays in the browser; the backend stores encrypted records.
 
 | Command | What it does |
 |---------|----------------|
@@ -25,14 +25,14 @@ Details: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 ## Features
 
 - **Dashboard** — Current net worth, period-filtered insights/charts
-- **Transactions** — Income & expenses, bank import (Capital One, Chase, Amex CSV; preview + dedupe)
+- **Transactions** — Income & expenses, browser-side bank CSV import (Capital One, Chase, Amex, Citi, X Money; preview + dedupe)
 - **Income / fixed expenses / subscriptions** — Recurring cashflow configuration (does not change net worth)
 - **Balance sheet** — Manual assets & liabilities that drive net worth (`/balance-sheet`)
-- **Portfolio** — Holdings CRUD, Fidelity positions CSV import (per-account replace), refresh prices
+- **Portfolio** — Holdings CRUD and manual/imported prices; server-side Fidelity import is retired until it is moved client-side
 - **Investment insights** — Client-side growth / withdrawal-rate views from portfolio value
 - **Calendar** — Daily transaction summary
 - **Monte Carlo** (`/planning`) — Net worth fan chart, tunable assumptions from your ledger (speculative; does not change net worth or ledger)
-- **Auth / admin** — Session login, signup after first admin, `/admin/users` for admins
+- **Auth / vault / admin** — Session login, encrypted vault setup/unlock/recovery, signup after first admin, `/admin/users` for admins
 
 ## Tech stack
 
@@ -75,8 +75,8 @@ Optional: `backend/.env` from **`backend/.env.example`**
 
 Adding banks: **[docs/ADDING_A_BANK_IMPORT.md](docs/ADDING_A_BANK_IMPORT.md)**. See **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)** for table and formula details.
 
-- **Net worth** = manual assets + portfolio market value − liabilities (always current).
-- **Transactions** — income, expenses, and card imports for tracking; not part of net worth.
+- **Net worth** = manual assets + portfolio market value − liabilities (computed client-side after vault unlock).
+- **Transactions** — income, expenses, and browser-side card CSV imports for tracking; not part of net worth.
 - **Recurring cashflow** — job income, fixed expenses, subscriptions; cashflow views only.
 - **Planning** — speculative; does not mutate balance sheet or transactions.
 

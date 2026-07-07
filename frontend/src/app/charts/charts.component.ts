@@ -64,7 +64,6 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private viewReady = false;
   private chartCtor: ChartConstructor | null = null;
-  private paintInFlight: Promise<void> | null = null;
   chartDimmed = false;
 
   private txOverride: Transaction[] | null = null;
@@ -148,9 +147,7 @@ export class ChartsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.embedded && this.loading) {
       return;
     }
-    this.paintInFlight = this.paintCharts().finally(() => {
-      this.paintInFlight = null;
-    });
+    void this.paintCharts();
   }
 
   private computeDerived() {

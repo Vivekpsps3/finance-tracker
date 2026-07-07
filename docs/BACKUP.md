@@ -12,21 +12,28 @@ responsible for backups.
 
 ## Backup (recommended before upgrades or imports)
 
-**While the API is stopped** (avoids partial writes):
+Use the repository script. It uses SQLite's online backup API, so it is safer
+than copying `finance.db` and WAL sidecars while the API may be writing.
 
 ```bash
-cp data/finance.db "data/finance.db.bak-$(date +%Y%m%d-%H%M%S)"
+scripts/backup-db.sh
 ```
 
-For local dev, replace `data/finance.db` with `backend/finance.db`.
+Defaults:
 
-Optional: copy WAL sidecar if present:
+| Variable | Default |
+|----------|---------|
+| `FINANCE_DATA_DIR` | `./data` |
+| `FINANCE_BACKUP_DIR` | `$FINANCE_DATA_DIR/backups` |
+
+For local dev:
 
 ```bash
-cp -a data/finance.db data/finance.db-wal data/finance.db-shm backup-dir/ 2>/dev/null || true
+FINANCE_DATA_DIR=backend FINANCE_BACKUP_DIR=backend/backups scripts/backup-db.sh
 ```
 
-With the API running, SQLite online backup is possible but not scripted here; stopping `make dev` is simplest for a personal app.
+Stopping the API before backup is still fine, but no longer required by the
+script.
 
 ## Restore
 
@@ -57,7 +64,7 @@ cp /path/to/finance.db.bak-YYYYMMDD data/finance.db
 |---------|--------|
 | **`make reset-db`** | **Deletes** `backend/finance.db` (and only that path). All users, ledger, and planning data are gone. Use for a fresh schema on next start—not for preserving data. |
 | **`make reset-docker-db`** | **Deletes** `data/finance.db` for the Docker stack. |
-| **Backup (`cp` above)** | **Copies** the DB file so you can restore later. Always back up before risky imports or schema experiments. |
+| **Backup (`scripts/backup-db.sh`)** | Creates a consistent SQLite backup file so you can restore later. Always back up before risky imports or schema experiments. |
 
 There is no undo for `reset-db`. If you need an empty DB, prefer renaming the file (`mv finance.db finance.db.old`) instead of deleting when you might want the data back.
 

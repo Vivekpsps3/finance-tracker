@@ -84,11 +84,11 @@ Optional `brokerage_accounts` / `brokerages` group imported positions; nickname 
 
 ## Transactions ledger
 
-`transactions` — per-user `income` and `expense` (manual or `source=import` from bank CSV). Powers calendar, dashboard period views, and monthly expense/income totals on the Transactions page. **Does not** update net worth.
+Encrypted transaction records — per-user `income` and `expense` (manual or `source=import` from browser-side bank CSV). Powers calendar, dashboard period views, and monthly expense/income totals on the Transactions page. **Does not** update net worth.
 
 The user mostly transacts by card. Rent and utilities can be modeled as fixed expenses (below) rather than only as one-off transactions; neither path directly mutates net worth.
 
-Imports: see [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md). Built-in bank slugs today: `capital_one`, `chase`, `amex`, `citi`. Brokerage: Fidelity positions CSV.
+Imports: see [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md). Built-in browser-side bank slugs today: `capital_one`, `chase`, `amex`, `citi`, `x_money`. Brokerage Fidelity plaintext import is retired until moved client-side.
 
 SimpleFIN is the likely future aggregation path. Plaid placeholders may exist in env examples, but Plaid is not the intended integration for this user.
 

@@ -35,9 +35,24 @@ def test_legacy_finance_api_gone_when_not_explicitly_allowed(monkeypatch):
     monkeypatch.delenv("ALLOW_LEGACY_FINANCE", raising=False)
     monkeypatch.setenv("ALLOW_LEGACY_FINANCE", "0")
     client = authenticated_client(app, email="legacy-gone@example.com")
-    assert client.get("/api/assets/").status_code == 410
-    assert client.get("/api/net-worth/").status_code == 410
-    assert client.get("/api/transactions/").status_code == 410
+    retired_gets = [
+        "/api/assets/",
+        "/api/cashflow/summary?start_date=2026-01-01&end_date=2026-01-31",
+        "/api/fixed-expenses/",
+        "/api/holdings/",
+        "/api/imports/banks",
+        "/api/imports/brokerages",
+        "/api/income/",
+        "/api/liabilities/",
+        "/api/net-worth/",
+        "/api/planning/v1/inputs",
+        "/api/subscriptions/",
+        "/api/transactions/",
+    ]
+    for path in retired_gets:
+        res = client.get(path)
+        assert res.status_code == 410, path
+        assert "vault" in res.json()["detail"].lower()
 
 
 def test_vault_setup_and_record_roundtrip():

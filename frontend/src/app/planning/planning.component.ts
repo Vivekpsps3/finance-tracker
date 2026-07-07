@@ -14,6 +14,7 @@ import { ToastService } from '../services/toast.service';
 import {
   DEFAULT_MC_ASSUMPTIONS,
   MC_FAN_PATHS_PERSIST_MAX,
+  MC_N_PATHS_MIN,
   MC_N_PATHS_MAX,
   MC_TOOL_ID,
   PLANNING_DISCLAIMER,
@@ -72,7 +73,7 @@ export class PlanningComponent implements OnInit, OnDestroy {
   useLedgerStartingNetWorth = true;
   startingNetWorth: number | null = null;
 
-  readonly mcNPathsMin = 100;
+  readonly mcNPathsMin = MC_N_PATHS_MIN;
   readonly mcNPathsMax = MC_N_PATHS_MAX;
   readonly mcFanPathsPersistMax = MC_FAN_PATHS_PERSIST_MAX;
 

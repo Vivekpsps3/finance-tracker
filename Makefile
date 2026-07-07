@@ -79,8 +79,11 @@ test-backend:
 	else cd $(BACKEND_DIR) && python3 -m pytest -q; fi
 
 test-frontend:
-	cd $(FRONTEND_DIR) && npm test -- --watch=false --browsers=ChromeHeadless 2>/dev/null || \
-		(echo "Frontend tests need Chrome/ChromeHeadless (CHROME_BIN). Skipped or run: cd frontend && npm test")
+	@if [ "$(SKIP_FRONTEND_TESTS)" = "1" ]; then \
+		echo "Skipping frontend tests because SKIP_FRONTEND_TESTS=1"; \
+	else \
+		cd $(FRONTEND_DIR) && npm test -- --watch=false --browsers=ChromeHeadless; \
+	fi
 
 build: build-frontend
 
@@ -119,15 +122,14 @@ reset-docker-db:
 	@echo "Removed data/finance.db. Restart Docker stack to recreate an empty database."
 
 clean:
-	rm -rf $(BACKEND_DIR)/__pycache__ \
+	find $(BACKEND_DIR) -type d -name '__pycache__' -prune -exec rm -rf {} +
+	rm -rf .pytest_cache \
 		$(BACKEND_DIR)/.pytest_cache \
-		$(BACKEND_DIR)/import_parsers/__pycache__ \
-		$(BACKEND_DIR)/routers/__pycache__ \
-		$(BACKEND_DIR)/services/__pycache__ \
-		$(BACKEND_DIR)/tests/__pycache__ \
 		$(FRONTEND_DIR)/dist \
-		$(FRONTEND_DIR)/.angular/cache
-	find $(BACKEND_DIR) -name '*.bak' -delete 2>/dev/null || true
+		$(FRONTEND_DIR)/.angular/cache \
+		$(FRONTEND_DIR)/coverage \
+		$(FRONTEND_DIR)/playwright-report \
+		$(FRONTEND_DIR)/test-results
 	@echo "Cleaned build artifacts and caches (kept finance.db and node_modules)."
 
 check: test-backend test-frontend build-frontend

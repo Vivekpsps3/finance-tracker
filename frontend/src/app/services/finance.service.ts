@@ -5,6 +5,7 @@ import {
   Observable,
   forkJoin,
   from,
+  of,
   tap,
   timeout,
   catchError,
@@ -44,6 +45,11 @@ import {
   Transaction,
   TransactionCreate,
 } from '../models/transaction.model';
+import {
+  buildBankImportPreview,
+  commitBankImportRows,
+  listClientBankImports,
+} from '../utils/bank-import.util';
 
 export type DashboardLoadResult = [
   Transaction[],
@@ -836,10 +842,28 @@ export class FinanceService {
   }
 
   getImportBanks(): Observable<BankImportOption[]> {
+    if (this.encMode) {
+      return of(listClientBankImports());
+    }
     return this.http.get<BankImportOption[]>(apiUrl('/imports/banks'));
   }
 
   previewBankImport(bankSlug: string, file: File): Observable<ImportPreviewResult> {
+    if (this.encMode) {
+      return from(
+        (async () => {
+          const [content, transactions] = await Promise.all([
+            file.text(),
+            this.encStore.getTransactions(),
+          ]);
+          const existing = new Set(
+            transactions.map(tx => String((tx as any).dedupe_key || '')).filter(Boolean)
+          );
+          return buildBankImportPreview(bankSlug, file.name, content, existing);
+        })()
+      );
+    }
+
     const form = new FormData();
     form.append('file', file, file.name);
     return this.http.post<ImportPreviewResult>(
@@ -853,6 +877,12 @@ export class FinanceService {
     filename: string,
     rows: ImportPreviewRow[]
   ): Observable<ImportCommitResult> {
+    if (this.encMode) {
+      return from(commitBankImportRows(this.encStore, rows)).pipe(
+        tap(() => this.refreshAfterImport())
+      );
+    }
+
     return this.http
       .post<ImportCommitResult>(apiUrl(`/imports/${encodeURIComponent(bankSlug)}/commit`), {
         filename,
