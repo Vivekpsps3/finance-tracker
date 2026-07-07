@@ -5,7 +5,6 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: var(--space-10) var(--space-8);
-  margin-bottom: var(--space-8);
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
@@ -18,7 +17,6 @@
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle));
   border-radius: var(--radius-xl);
   padding: var(--space-8);
-  margin-bottom: var(--space-8);
   box-shadow: var(--shadow-card);
 }
 
@@ -62,7 +60,7 @@
   text-decoration: none;
   color: var(--text);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--surface-2);
   padding: var(--space-4);
   transition:
@@ -217,7 +215,7 @@
 .cashflow-strip > div {
   padding: var(--space-4);
   background: var(--surface-2);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--border-subtle);
 }
 
@@ -317,7 +315,37 @@
 }
 
 @media (max-width: 760px) {
+  .net-worth-card,
+  .onboarding-card {
+    padding: var(--space-5);
+  }
+
   .onboarding-card__header {
     flex-direction: column;
+  }
+
+  .onboarding-progress {
+    width: fit-content;
+  }
+
+  .net-worth-value {
+    font-size: clamp(2.35rem, 14vw, 3.2rem);
+  }
+
+  .net-worth-breakdown {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .filter-row,
+  .filter-native {
+    width: 100%;
+  }
+
+  .filter-row select,
+  .filter-row input[type='month'],
+  .filter-row input[type='number'],
+  .filter-row input[type='date'] {
+    width: 100%;
   }
 }

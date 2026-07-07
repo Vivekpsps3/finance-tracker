@@ -23,7 +23,7 @@
   align-items: center;
   gap: var(--space-2);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   padding: var(--space-2) var(--space-3);
   color: var(--text-secondary);
   background: var(--surface-2);
@@ -50,7 +50,7 @@
 
 .net-preview div {
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--surface-2);
   padding: var(--space-3);
 }
@@ -174,6 +174,22 @@
   .income-guidance {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .income-summary,
+  .income-guidance,
+  .tax-helper {
+    padding: var(--space-5);
+  }
+
+  .tax-helper__result {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tax-helper__actions ui-button,
+  .tax-helper__actions ::ng-deep .ui-btn {
+    width: 100%;
   }
 
   .net-preview {

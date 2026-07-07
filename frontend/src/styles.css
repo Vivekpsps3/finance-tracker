@@ -5,6 +5,14 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    min-height: 100%;
+    background: var(--bg);
+    color-scheme: dark;
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply font-sans antialiased;
     margin: 0;
@@ -12,6 +20,9 @@
     background: var(--bg);
     color: var(--text);
     line-height: 1.5;
+    min-height: 100%;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
   }
 
   a {
@@ -33,7 +44,8 @@
   }
 
   input,
-  select {
+  select,
+  textarea {
     width: 100%;
     padding: var(--space-3);
     background: var(--surface-2);
@@ -41,11 +53,28 @@
     border-radius: var(--radius-md);
     color: var(--text);
     font-size: var(--text-base);
+    font-family: inherit;
     box-sizing: border-box;
+    min-height: 44px;
+    transition:
+      background-color var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  input:hover,
+  select:hover,
+  textarea:hover {
+    border-color: var(--border-strong);
   }
 
   input:focus-visible,
   select:focus-visible,
+  textarea:focus-visible,
   button:focus-visible,
   a:focus-visible {
     outline: 2px solid var(--accent);
@@ -119,7 +148,8 @@
 .page {
   max-width: 1180px;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-8) max(var(--space-6), env(safe-area-inset-right)) var(--space-10)
+    max(var(--space-6), env(safe-area-inset-left));
   animation: page-enter 0.35s var(--ease-emphasized);
   display: flex;
   flex-direction: column;
@@ -329,7 +359,7 @@
   border: 1px solid var(--border);
   color: var(--text);
   padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
@@ -416,7 +446,9 @@
 
 @media (max-width: 768px) {
   .page {
-    padding: var(--space-4);
+    padding: var(--space-5) max(var(--space-4), env(safe-area-inset-right)) var(--space-8)
+      max(var(--space-4), env(safe-area-inset-left));
+    gap: var(--space-5);
   }
 
   .form-row {
@@ -433,5 +465,36 @@
   .header-actions {
     width: 100%;
     justify-content: stretch;
+  }
+
+  .header-actions ui-button,
+  .form-actions ui-button,
+  .table-actions--toolbar ui-button {
+    flex: 1 1 10rem;
+  }
+
+  .header-actions .ui-btn,
+  .form-actions .ui-btn,
+  .table-actions--toolbar .ui-btn {
+    width: 100%;
+  }
+
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: var(--space-2);
+  }
+
+  .modal-panel {
+    max-height: calc(100vh - var(--space-4));
+    overflow: auto;
+    border-radius: var(--radius-xl) var(--radius-xl) var(--radius-lg) var(--radius-lg);
+    padding: var(--space-5);
+  }
+
+  .toast-host {
+    right: var(--space-4);
+    bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    left: var(--space-4);
+    max-width: none;
   }
 }

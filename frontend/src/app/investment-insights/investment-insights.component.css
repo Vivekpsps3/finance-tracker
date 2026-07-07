@@ -37,7 +37,7 @@
 .projection-summary div,
 .insight-box {
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: var(--space-3);
   background: var(--surface-2);
   min-width: 10rem;
@@ -114,7 +114,7 @@
 
 .projection-chart-wrap {
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--surface-2);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
@@ -139,10 +139,15 @@
   .insights-hero {
     flex-direction: column;
     align-items: stretch;
+    padding: var(--space-5);
   }
 
   .hero-metrics {
     justify-content: flex-start;
+  }
+
+  .hero-metrics div {
+    flex: 1 1 100%;
   }
 }
 

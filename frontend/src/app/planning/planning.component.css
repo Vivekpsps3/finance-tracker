@@ -5,7 +5,7 @@
   padding: var(--space-4);
   margin-bottom: var(--space-5);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
   background: color-mix(in srgb, var(--surface-2) 78%, var(--accent) 8%);
 }
 
@@ -53,7 +53,7 @@
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .mc-summary-band,
@@ -79,7 +79,7 @@
   padding: var(--space-4);
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .tool-results-grid > div {
@@ -273,7 +273,7 @@
     linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent),
     var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
 }
 
 .mc-empty-state h2 {
@@ -346,7 +346,7 @@
 
 .planning-tabs button {
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   padding: 0.55rem 0.8rem;
   background: var(--surface-2);
   color: var(--text-secondary);
@@ -442,5 +442,21 @@
   .mc-metric strong,
   .mc-kpi strong {
     font-size: 1.1rem;
+  }
+
+  .mc-callout,
+  .mc-empty-state {
+    padding: var(--space-5);
+  }
+
+  .mc-seed-row {
+    grid-template-columns: 1fr;
+  }
+
+  .mc-row-action,
+  .mc-row-action ::ng-deep .ui-btn,
+  .mc-seed-row ui-button,
+  .mc-seed-row ::ng-deep .ui-btn {
+    width: 100%;
   }
 }

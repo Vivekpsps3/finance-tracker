@@ -8,7 +8,7 @@
   padding: var(--space-4);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
 }
 
 .confirm-panel {
@@ -35,4 +35,18 @@
   gap: var(--space-3);
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+@media (max-width: 520px) {
+  .confirm-backdrop {
+    align-items: flex-end;
+  }
+
+  .confirm-actions ui-button {
+    flex: 1 1 100%;
+  }
+
+  .confirm-actions ::ng-deep .ui-btn {
+    width: 100%;
+  }
 }

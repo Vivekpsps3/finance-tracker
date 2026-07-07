@@ -62,3 +62,18 @@
   width: 100%;
   margin-top: 0.25rem;
 }
+
+@media (max-width: 720px) {
+  .summary-card .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions ui-button,
+  .modal-actions ::ng-deep .ui-btn {
+    width: 100%;
+  }
+}

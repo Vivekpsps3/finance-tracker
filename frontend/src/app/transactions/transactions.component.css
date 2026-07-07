@@ -17,7 +17,6 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: var(--space-8);
-  margin-bottom: var(--space-6);
   box-shadow: var(--shadow-card);
 }
 
@@ -30,7 +29,6 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
-  margin-bottom: var(--space-6);
   box-shadow: var(--shadow-card);
 }
 
@@ -110,7 +108,7 @@
 .category-tools {
   margin: var(--space-3) 0 var(--space-4);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
   background: var(--surface-2);
 }
 
@@ -237,7 +235,7 @@
   overflow: auto;
   margin: var(--space-4) 0;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .import-preview-actions {
@@ -272,6 +270,23 @@
 }
 
 @media (max-width: 800px) {
+  .month-hero,
+  .import-guide-card {
+    padding: var(--space-5);
+  }
+
+  .month-summary-row,
+  .month-totals {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .month-picker,
+  .month-picker input {
+    width: 100%;
+  }
+
   .import-guide-card {
     flex-direction: column;
     align-items: stretch;
@@ -285,5 +300,19 @@
   .category-bulk-rename__row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .category-merge-action ui-button,
+  .category-bulk-rename__actions ui-button,
+  .import-preview-actions ui-button,
+  .load-more-row ui-button {
+    flex: 1 1 auto;
+  }
+
+  .category-merge-action ::ng-deep .ui-btn,
+  .category-bulk-rename__actions ::ng-deep .ui-btn,
+  .import-preview-actions ::ng-deep .ui-btn,
+  .load-more-row ::ng-deep .ui-btn {
+    width: 100%;
   }
 }

@@ -3,7 +3,9 @@
   display: grid;
   place-items: center;
   padding: var(--space-6);
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 38%),
+    var(--bg);
 }
 
 .login-panel {
@@ -22,6 +24,13 @@
 .brand-mark {
   width: 36px;
   height: 36px;
+}
+
+@media (max-width: 520px) {
+  .login-shell {
+    align-items: start;
+    padding: var(--space-8) var(--space-4);
+  }
 }
 
 h1 {

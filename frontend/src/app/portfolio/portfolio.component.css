@@ -86,7 +86,7 @@
 .account-section {
   margin-bottom: var(--space-6);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
   background: var(--card-bg);
   overflow: hidden;
 }
@@ -194,4 +194,34 @@ details.account-sub[open] > summary::before {
   font-size: 0.85rem;
   line-height: 1.5;
   color: var(--warning);
+}
+
+@media (max-width: 760px) {
+  .summary {
+    gap: var(--space-4);
+  }
+
+  .summary > div {
+    flex: 1 1 100%;
+  }
+
+  .symbol-check {
+    flex-direction: column;
+  }
+
+  .nickname-input {
+    width: 100%;
+  }
+
+  .section-header,
+  .account-sub summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .section-header .section-total,
+  .account-sub .sub-total {
+    margin-left: 0;
+    width: 100%;
+  }
 }

@@ -52,7 +52,7 @@
   gap: var(--space-2);
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-4);
   margin-bottom: var(--space-6);
   box-shadow: var(--shadow-lg);
@@ -71,7 +71,7 @@
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -142,12 +142,32 @@
 }
 
 @media (max-width: 640px) {
+  .calendar-toolbar {
+    align-items: stretch;
+  }
+
+  .calendar-toolbar ui-button,
+  .calendar-toolbar ::ng-deep .ui-btn {
+    width: 100%;
+  }
+
+  .calendar-toolbar ui-button:last-child {
+    margin-left: 0;
+  }
+
+  .calendar-month {
+    flex: 1 1 100%;
+    order: -1;
+  }
+
   .calendar-grid {
     gap: var(--space-1);
     padding: var(--space-2);
+    overflow-x: auto;
   }
 
   .day-btn {
     font-size: var(--text-sm);
+    min-width: 38px;
   }
 }
