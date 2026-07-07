@@ -63,3 +63,6 @@ Thumbs.db
 /tmp/
 .cache/
 inline/
+
+# Git worktrees
+.worktrees/
