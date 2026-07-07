@@ -54,6 +54,28 @@ def test_vault_setup_and_record_roundtrip():
     assert setup.json()["exists"] is True
     assert setup.json()["migration_status"] == "vault_ready"
 
+
+def test_vault_setup_accepts_browser_packed_recovery_wrap():
+    """Browser packs recovery as base64(salt).base64(iv||ciphertext)."""
+    client = authenticated_client(app, email="vault-packed@example.com")
+    # Real-ish payload shape from WebCrypto setup (may omit padding).
+    setup = client.post(
+        "/api/vault/setup",
+        json={
+            "kdf_algorithm": "PBKDF2",
+            "kdf_salt_b64": "r9qDiTPiAKP3Ouf3/61xzQ==",
+            "kdf_iterations": 310000,
+            "wrapped_dek_b64": "LqGH7LVNXPcZ5h9kpbk1wRSWCAV/DlqD0LQ5AHn4UlRh7/qKd6EllAwQH7GbW3qevfadFIKzgBQgo7TA",
+            "recovery_wrapped_dek_b64": (
+                "bPvdPISm7G3VfHBXCUT+JQ==."
+                "+JiKGYsPusAELZcxOlkK+0Ukn0FVo+urQM5/Xwb6/SU3a52qdE2YVWa3cZrX+6oOsHBY9LEC9Ca88n4o"
+            ),
+            "key_version": 1,
+        },
+    )
+    assert setup.status_code == 200, setup.text
+    assert setup.json()["exists"] is True
+
     upsert = client.post(
         "/api/vault/records/upsert",
         json={

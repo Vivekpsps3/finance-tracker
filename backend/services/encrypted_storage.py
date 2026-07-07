@@ -39,11 +39,44 @@ MAX_CIPHERTEXT_BYTES = 512_000
 MAX_BATCH = 200
 
 
-def _b64_len(value: str) -> int:
+def _b64_decode(value: str) -> bytes:
+    """Decode standard base64; tolerate missing padding from browser btoa/WebCrypto paths."""
+    raw = (value or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Invalid base64 payload")
+    # URL-safe variants occasionally appear from client encodings.
+    raw = raw.replace("-", "+").replace("_", "/")
+    pad = (-len(raw)) % 4
+    if pad:
+        raw = raw + ("=" * pad)
     try:
-        return len(base64.b64decode(value, validate=True))
+        return base64.b64decode(raw, validate=False)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
+
+
+def _b64_len(value: str) -> int:
+    return len(_b64_decode(value))
+
+
+def _validate_recovery_wrap(value: str) -> None:
+    """
+    Recovery material is browser-packed as: base64(salt) + '.' + base64(iv||ciphertext).
+    Backend stores it opaquely and must not require the whole string to be pure base64.
+    """
+    packed = (value or "").strip()
+    if "." not in packed:
+        # Allow pure base64 recovery wraps for older clients/tests.
+        if _b64_len(packed) < 32:
+            raise HTTPException(status_code=400, detail="Recovery wrap too short")
+        return
+    salt_b64, wrapped_b64 = packed.split(".", 1)
+    if not salt_b64 or not wrapped_b64:
+        raise HTTPException(status_code=400, detail="Invalid recovery wrap format")
+    if _b64_len(salt_b64) < 16:
+        raise HTTPException(status_code=400, detail="Recovery salt too short")
+    if _b64_len(wrapped_b64) < 32:
+        raise HTTPException(status_code=400, detail="Recovery wrap too short")
 
 
 def validate_collection(collection: str) -> str:
@@ -96,8 +129,9 @@ def create_vault(
         raise HTTPException(status_code=400, detail="Invalid KDF iterations")
     if _b64_len(kdf_salt_b64) < 16:
         raise HTTPException(status_code=400, detail="KDF salt too short")
-    if _b64_len(wrapped_dek_b64) < 32 or _b64_len(recovery_wrapped_dek_b64) < 32:
+    if _b64_len(wrapped_dek_b64) < 32:
         raise HTTPException(status_code=400, detail="Wrapped DEK too short")
+    _validate_recovery_wrap(recovery_wrapped_dek_b64)
     vault = UserVault(
         user_id=user_id,
         kdf_algorithm=kdf_algorithm,
@@ -141,8 +175,7 @@ def update_vault_wraps(
             raise HTTPException(status_code=400, detail="Wrapped DEK too short")
         vault.wrapped_dek_b64 = wrapped_dek_b64
     if recovery_wrapped_dek_b64 is not None:
-        if _b64_len(recovery_wrapped_dek_b64) < 32:
-            raise HTTPException(status_code=400, detail="Recovery wrap too short")
+        _validate_recovery_wrap(recovery_wrapped_dek_b64)
         vault.recovery_wrapped_dek_b64 = recovery_wrapped_dek_b64
     if key_version is not None:
         if key_version < vault.key_version:
