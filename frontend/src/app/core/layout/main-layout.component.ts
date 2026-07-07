@@ -15,12 +15,14 @@ export interface NavItem {
   shortLabel: string;
   icon: UiIconName;
   exact: boolean;
+  tooltip: string;
 }
 
 interface NavGroup {
   label: string;
   shortLabel: string;
   icon: UiIconName;
+  tooltip: string;
   adminOnly?: boolean;
   items: NavItem[];
 }
@@ -53,51 +55,138 @@ export class MainLayoutComponent implements OnInit {
       label: 'Overview',
       shortLabel: 'Home',
       icon: 'dashboard',
-      items: [{ path: '/', label: 'Dashboard', shortLabel: 'Dashboard', icon: 'dashboard', exact: true }],
+      tooltip: 'Current position, cashflow, spending, and portfolio summary.',
+      items: [
+        {
+          path: '/',
+          label: 'Dashboard',
+          shortLabel: 'Dashboard',
+          icon: 'dashboard',
+          exact: true,
+          tooltip: 'Open the main dashboard: current net worth, period trends, and setup status.',
+        },
+      ],
     },
     {
       label: 'Activity',
       shortLabel: 'Activity',
       icon: 'transactions',
+      tooltip: 'Review what already happened: transactions, imports, and calendar activity.',
       items: [
-        { path: '/transactions', label: 'Transactions', shortLabel: 'Txns', icon: 'transactions', exact: false },
-        { path: '/calendar', label: 'Calendar', shortLabel: 'Calendar', icon: 'calendar', exact: false },
+        {
+          path: '/transactions',
+          label: 'Transactions',
+          shortLabel: 'Txns',
+          icon: 'transactions',
+          exact: false,
+          tooltip: 'Import and review card or bank transactions. These do not change net worth.',
+        },
+        {
+          path: '/calendar',
+          label: 'Calendar',
+          shortLabel: 'Calendar',
+          icon: 'calendar',
+          exact: false,
+          tooltip: 'See transaction activity by day for the selected month.',
+        },
       ],
     },
     {
       label: 'Cashflow',
       shortLabel: 'Cash',
       icon: 'wallet',
+      tooltip: 'Model recurring money in and out: paychecks, bills, and subscriptions.',
       items: [
-        { path: '/income', label: 'Income', shortLabel: 'Income', icon: 'building', exact: false },
-        { path: '/fixed-expenses', label: 'Bills', shortLabel: 'Bills', icon: 'credit-card', exact: false },
-        { path: '/subscriptions', label: 'Subscriptions', shortLabel: 'Subs', icon: 'wallet', exact: false },
+        {
+          path: '/income',
+          label: 'Income',
+          shortLabel: 'Income',
+          icon: 'building',
+          exact: false,
+          tooltip: 'Add job income and realistic tax/deduction estimates for cashflow planning.',
+        },
+        {
+          path: '/fixed-expenses',
+          label: 'Bills',
+          shortLabel: 'Bills',
+          icon: 'credit-card',
+          exact: false,
+          tooltip: 'Track rent, mortgage, utilities, insurance, and other scheduled fixed bills.',
+        },
+        {
+          path: '/subscriptions',
+          label: 'Subscriptions',
+          shortLabel: 'Subs',
+          icon: 'wallet',
+          exact: false,
+          tooltip: 'Track recurring software, media, memberships, and services.',
+        },
       ],
     },
     {
       label: 'Net Worth',
       shortLabel: 'Worth',
       icon: 'scale',
+      tooltip: 'Maintain current assets, debts, and portfolio holdings that drive net worth.',
       items: [
-        { path: '/balance-sheet', label: 'Balance sheet', shortLabel: 'Balances', icon: 'scale', exact: false },
-        { path: '/portfolio', label: 'Portfolio', shortLabel: 'Portfolio', icon: 'portfolio', exact: false },
+        {
+          path: '/balance-sheet',
+          label: 'Balance sheet',
+          shortLabel: 'Balances',
+          icon: 'scale',
+          exact: false,
+          tooltip: 'Update manual assets and liabilities. This is the current balance-sheet truth.',
+        },
+        {
+          path: '/portfolio',
+          label: 'Portfolio',
+          shortLabel: 'Portfolio',
+          icon: 'portfolio',
+          exact: false,
+          tooltip: 'Add or import investment holdings that are valued inside net worth.',
+        },
       ],
     },
     {
       label: 'Planning',
       shortLabel: 'Plan',
       icon: 'trending',
+      tooltip: 'Explore future outcomes without mutating your real ledger or balance sheet.',
       items: [
-        { path: '/investment-insights', label: 'Investment insights', shortLabel: 'Insights', icon: 'trending', exact: false },
-        { path: '/planning', label: 'Monte Carlo', shortLabel: 'MC', icon: 'trending', exact: false },
+        {
+          path: '/investment-insights',
+          label: 'Investment insights',
+          shortLabel: 'Insights',
+          icon: 'trending',
+          exact: false,
+          tooltip: 'Run client-side investment growth and withdrawal-rate projections.',
+        },
+        {
+          path: '/planning',
+          label: 'Monte Carlo',
+          shortLabel: 'MC',
+          icon: 'trending',
+          exact: false,
+          tooltip: 'Run speculative net worth scenarios. Planning never writes ledger truth.',
+        },
       ],
     },
     {
       label: 'Admin',
       shortLabel: 'Admin',
       icon: 'building',
+      tooltip: 'Admin-only user, account, and system management.',
       adminOnly: true,
-      items: [{ path: '/admin/users', label: 'Users', shortLabel: 'Users', icon: 'building', exact: false }],
+      items: [
+        {
+          path: '/admin/users',
+          label: 'Users',
+          shortLabel: 'Users',
+          icon: 'building',
+          exact: false,
+          tooltip: 'Manage users, sessions, password resets, content resets, and admin metrics.',
+        },
+      ],
     },
   ];
 

@@ -16,6 +16,7 @@ export class UiButtonComponent {
   disabled = input(false);
   type = input<'button' | 'submit' | 'reset'>('button');
   ariaLabel = input<string | undefined>(undefined);
+  tooltip = input<string | undefined>(undefined);
 
   clicked = output<MouseEvent>();
 

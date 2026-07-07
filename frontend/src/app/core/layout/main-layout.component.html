@@ -2,7 +2,7 @@
 
 <nav class="navbar" aria-label="Main navigation">
   <div class="nav-content">
-    <a routerLink="/" class="logo" aria-label="Finance home">
+    <a routerLink="/" class="logo" aria-label="Finance home" title="Go to Overview dashboard">
       <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
         <rect width="32" height="32" rx="8" fill="var(--accent-glow)" stroke="var(--accent)" stroke-width="1"/>
         <path d="M8 22V10M14 22V6M20 22v-6M26 22H6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
@@ -16,7 +16,7 @@
           class="nav-tab"
           [class.active]="isActiveGroup(group)"
           [attr.aria-selected]="isActiveGroup(group)"
-          [attr.title]="group.label"
+          [attr.title]="group.tooltip"
           role="tab">
           <ui-icon [name]="group.icon" size="sm" />
           <span class="nav-link__label">{{ group.label }}</span>
@@ -26,11 +26,11 @@
     </div>
     <div class="account-menu">
       @if (user) {
-        <span class="account-email">{{ user.email }}</span>
+        <span class="account-email" [attr.title]="'Signed in as ' + user.email">{{ user.email }}</span>
       }
-      <ui-button variant="secondary" size="sm" (clicked)="openTutorial()">Tutorial</ui-button>
-      <ui-button variant="danger" size="sm" [disabled]="isResettingData" (clicked)="clearMyData()">Clear data</ui-button>
-      <ui-button variant="ghost" size="sm" (clicked)="logout()">Logout</ui-button>
+      <ui-button variant="secondary" size="sm" tooltip="Open the guided setup workflow and section explanations." (clicked)="openTutorial()">Guide</ui-button>
+      <ui-button variant="danger" size="sm" tooltip="Permanently delete your finance data while keeping your account." [disabled]="isResettingData" (clicked)="clearMyData()">Clear data</ui-button>
+      <ui-button variant="ghost" size="sm" tooltip="End this session and return to sign in." (clicked)="logout()">Logout</ui-button>
     </div>
   </div>
   <div class="subnav-content">
@@ -41,7 +41,7 @@
           class="subnav-link"
           [class.active]="isActiveItem(item)"
           [attr.aria-current]="isActiveItem(item) ? 'page' : null"
-          [attr.title]="item.label">
+          [attr.title]="item.tooltip">
           <ui-icon [name]="item.icon" size="sm" />
           <span class="nav-link__label">{{ item.label }}</span>
           <span class="nav-link__short">{{ item.shortLabel }}</span>
@@ -58,7 +58,7 @@
         <ui-icon name="spark" size="sm" />
         <strong class="api-banner__title">API unreachable</strong>
         <span class="api-banner__detail">Start the backend and dev server, then retry.</span>
-        <ui-button variant="secondary" size="sm" (clicked)="refreshApiStatus()">Retry</ui-button>
+        <ui-button variant="secondary" size="sm" tooltip="Check whether the FastAPI backend is reachable again." (clicked)="refreshApiStatus()">Retry</ui-button>
       </div>
     </ui-card>
   </div>
@@ -69,56 +69,96 @@
 </main>
 
 @if (showTutorial) {
-  <div class="tutorial-backdrop" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+  <div class="tutorial-backdrop" role="dialog" aria-modal="true" aria-labelledby="tutorial-title" title="Guided workflow: move from current truth to activity, scheduled cashflow, and planning.">
     <section class="tutorial-panel">
       <div class="tutorial-header">
         <div>
-          <p class="section-eyebrow">First-time setup</p>
-          <h2 id="tutorial-title">Build a complete American household finance picture</h2>
+          <p class="section-eyebrow" title="A suggested path for setting up the app without mixing data planes.">Guided setup</p>
+          <h2 id="tutorial-title">Set up the app by intent, not by table</h2>
           <p>
-            Work through these sections by intent: Activity reviews what happened, Cashflow captures what is scheduled,
-            Net Worth tracks what you own and owe, and Planning explores what could happen.
+            Start with current truth, then add activity, scheduled cashflow, and planning. Hover any step for the exact reason it exists.
           </p>
         </div>
-        <ui-button variant="ghost" size="sm" (clicked)="closeTutorial()">Close</ui-button>
+        <ui-button variant="ghost" size="sm" tooltip="Close this guide. You can reopen it from the top bar." (clicked)="closeTutorial()">Close</ui-button>
       </div>
 
-      <div class="tutorial-grid">
-        <article class="tutorial-step">
+      <div class="tutorial-map" aria-label="Navigation model" title="The top navigation is grouped by user intent, not implementation details.">
+        <div title="Overview is a read-only cockpit; use it after adding data elsewhere.">
+          <span>Overview</span>
+          <strong>See the picture</strong>
+        </div>
+        <div title="Activity is for past transactions and review; it does not update net worth.">
+          <span>Activity</span>
+          <strong>Review what happened</strong>
+        </div>
+        <div title="Cashflow is for recurring income and scheduled spending; it feeds summaries and planning.">
+          <span>Cashflow</span>
+          <strong>Model what repeats</strong>
+        </div>
+        <div title="Net Worth is the current balance sheet: assets plus portfolio minus liabilities.">
+          <span>Net Worth</span>
+          <strong>Maintain truth</strong>
+        </div>
+        <div title="Planning is speculative. It reads inputs but does not mutate real accounts or transactions.">
+          <span>Planning</span>
+          <strong>Explore what if</strong>
+        </div>
+      </div>
+
+      <div class="tutorial-grid" title="Recommended setup order. You can do these in any order, but this path avoids misleading dashboard numbers.">
+        <article class="tutorial-step tutorial-step--primary" title="Start here because net worth is based on current balances, not transaction history.">
           <span class="tutorial-step__number">1</span>
-          <h3>Start with net worth</h3>
-          <p>Add checking/savings cash, home equity or other assets, credit cards, loans, and mortgages in Balance sheet.</p>
-          <a routerLink="/balance-sheet" (click)="closeTutorial()">Open Balance sheet</a>
+          <p class="tutorial-step__group">Net Worth</p>
+          <h3>Enter current balances first</h3>
+          <p>Add cash, property, vehicles, loans, mortgages, and credit-card balances. This gives the dashboard a truthful starting point.</p>
+          <a routerLink="/balance-sheet" title="Open Balance sheet to add assets and liabilities." (click)="closeTutorial()">Open Balance sheet</a>
         </article>
-        <article class="tutorial-step">
+        <article class="tutorial-step" title="Portfolio holdings are part of net worth and should be tracked separately from manual cash/assets.">
           <span class="tutorial-step__number">2</span>
-          <h3>Import recent bank cards</h3>
-          <p>Export CSV files from Capital One, Chase, or Amex, preview duplicates, then import only the selected new rows.</p>
-          <a routerLink="/transactions" (click)="closeTutorial()">Import transactions</a>
+          <p class="tutorial-step__group">Net Worth</p>
+          <h3>Add investment holdings</h3>
+          <p>Import Fidelity positions or enter holdings manually. Avoid double-counting brokerage cash sweeps and manual cash assets.</p>
+          <a routerLink="/portfolio" title="Open Portfolio to add holdings or import Fidelity positions." (click)="closeTutorial()">Open Portfolio</a>
         </article>
-        <article class="tutorial-step">
+        <article class="tutorial-step" title="Transactions explain spending history; they intentionally do not change net worth.">
           <span class="tutorial-step__number">3</span>
-          <h3>Add paycheck reality</h3>
-          <p>Enter gross pay, bonuses, equity, pre-tax deductions, and an estimated U.S. tax withholding so cashflow feels real.</p>
-          <a routerLink="/income" (click)="closeTutorial()">Add income</a>
+          <p class="tutorial-step__group">Activity</p>
+          <h3>Import spending history</h3>
+          <p>Bring in card/bank CSVs, preview duplicates, then review categories. Use this to understand behavior, not to compute net worth.</p>
+          <a routerLink="/transactions" title="Open Transactions to import and review card/bank activity." (click)="closeTutorial()">Import transactions</a>
         </article>
-        <article class="tutorial-step">
+        <article class="tutorial-step" title="Income and bills make cashflow summaries realistic without mutating balances.">
           <span class="tutorial-step__number">4</span>
-          <h3>Separate bills from swipes</h3>
-          <p>Put rent, mortgage, utilities, insurance, debt minimums, and subscriptions in their recurring sections.</p>
-          <a routerLink="/fixed-expenses" (click)="closeTutorial()">Add bills</a>
+          <p class="tutorial-step__group">Cashflow</p>
+          <h3>Add recurring money</h3>
+          <p>Enter paychecks, taxes/deductions, rent, utilities, insurance, debt minimums, and subscriptions so forward-looking cashflow makes sense.</p>
+          <div class="tutorial-link-row">
+            <a routerLink="/income" title="Open Income to add jobs and paycheck assumptions." (click)="closeTutorial()">Income</a>
+            <a routerLink="/fixed-expenses" title="Open Bills to add rent, mortgage, utilities, insurance, and debt minimums." (click)="closeTutorial()">Bills</a>
+            <a routerLink="/subscriptions" title="Open Subscriptions to add recurring services and memberships." (click)="closeTutorial()">Subscriptions</a>
+          </div>
         </article>
-        <article class="tutorial-step">
+        <article class="tutorial-step" title="Use insights and Monte Carlo after the current data is roughly accurate.">
           <span class="tutorial-step__number">5</span>
-          <h3>Load investments</h3>
-          <p>Add holdings manually or import Fidelity positions. Watch for brokerage cash sweeps versus manual cash double counting.</p>
-          <a routerLink="/portfolio" (click)="closeTutorial()">Open Portfolio</a>
+          <p class="tutorial-step__group">Planning</p>
+          <h3>Explore scenarios last</h3>
+          <p>Use Investment insights and Monte Carlo after real balances, activity, and cashflow are in place. Planning is speculative and read-only.</p>
+          <div class="tutorial-link-row">
+            <a routerLink="/investment-insights" title="Open Investment insights for client-side growth and withdrawal projections." (click)="closeTutorial()">Insights</a>
+            <a routerLink="/planning" title="Open Monte Carlo for speculative net worth path simulations." (click)="closeTutorial()">Monte Carlo</a>
+          </div>
         </article>
       </div>
 
-      <div class="tutorial-callout">
-        <strong>Rule of thumb:</strong>
-        Activity answers "what happened?" Cashflow answers "what is scheduled?" Net Worth answers "what am I worth today?" Planning answers "what if?"
+      <div class="tutorial-callout" title="These boundaries keep calculations honest and prevent accidental double counting.">
+        <strong>Keep the planes separate:</strong>
+        Net Worth is current balances. Activity is transaction review. Cashflow is recurring scheduled money. Planning is what-if analysis.
+      </div>
+
+      <div class="tutorial-rules" aria-label="Important rules">
+        <span title="Transactions are spending history only; update balances separately when reality changes.">Transactions do not change net worth</span>
+        <span title="Planning reads assumptions and summaries but never writes assets, liabilities, holdings, or transactions.">Planning never mutates ledger truth</span>
+        <span title="Manual cash and brokerage cash sweep holdings can represent the same dollars; choose one representation per cash pool.">Avoid cash double counting</span>
       </div>
     </section>
   </div>
