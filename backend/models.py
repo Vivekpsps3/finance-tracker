@@ -231,6 +231,18 @@ class TickerQuote(Base):
     source = Column(String, default="sqlite_eod", nullable=False)
 
 
+class MarketResearchCache(Base):
+    """Public market research payload cache keyed by symbol and period."""
+
+    __tablename__ = "market_research_cache"
+    symbol = Column(String, primary_key=True, index=True)
+    period = Column(String, primary_key=True, default="10y", nullable=False)
+    payload_json = Column(Text, nullable=False)
+    source = Column(String, default="yfinance", nullable=False)
+    fetched_at = Column(DateTime, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+
+
 class Brokerage(Base):
     __tablename__ = "brokerages"
     id = Column(Integer, primary_key=True, index=True)

@@ -40,6 +40,7 @@ def run_sqlite_migrations(engine) -> None:
     _ensure_subscription_tables(inspector, engine)
     _ensure_planning_tables(inspector, engine)
     _migrate_planning_runs(inspector, engine)
+    _ensure_market_research_cache(inspector, engine)
 
 
 def _migrate_brokerage_accounts(inspector, engine) -> None:
@@ -243,3 +244,42 @@ def _migrate_planning_runs(inspector, engine) -> None:
     if "input_as_of" not in existing:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE planning_scenario_runs ADD COLUMN input_as_of VARCHAR"))
+
+
+def _ensure_market_research_cache(inspector, engine) -> None:
+    if inspector.has_table("market_research_cache"):
+        return
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS market_research_cache (
+                    symbol VARCHAR NOT NULL,
+                    period VARCHAR NOT NULL DEFAULT '10y',
+                    payload_json TEXT NOT NULL,
+                    source VARCHAR NOT NULL DEFAULT 'yfinance',
+                    fetched_at DATETIME NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    PRIMARY KEY (symbol, period)
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_market_research_cache_symbol "
+                "ON market_research_cache (symbol)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_market_research_cache_fetched_at "
+                "ON market_research_cache (fetched_at)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_market_research_cache_expires_at "
+                "ON market_research_cache (expires_at)"
+            )
+        )

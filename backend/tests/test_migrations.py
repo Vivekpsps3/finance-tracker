@@ -176,7 +176,7 @@ def test_vault_migration_is_idempotent_after_create_all():
         engine2 = create_engine(url, connect_args={"check_same_thread": False})
         with engine2.connect() as conn:
             version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "a1b2c3d4e5f6"
+        assert version == "d4e5f6a7b8c9"
         engine2.dispose()
 
 
@@ -206,3 +206,40 @@ def test_run_sqlite_migrations_adds_transaction_columns_on_legacy_table():
         assert "dedupe_key" in cols
         assert "import_batch_id" in cols
         engine.dispose()
+
+
+def test_market_research_cache_create_all_has_expected_columns():
+    from sqlalchemy import create_engine, inspect
+    from sqlalchemy.orm import sessionmaker
+
+    from models import Base, MarketResearchCache
+
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=engine)
+    inspector = inspect(engine)
+    columns = {c["name"] for c in inspector.get_columns("market_research_cache")}
+
+    assert MarketResearchCache.__tablename__ == "market_research_cache"
+    assert {
+        "symbol",
+        "period",
+        "payload_json",
+        "source",
+        "fetched_at",
+        "expires_at",
+    }.issubset(columns)
+
+
+def test_market_research_startup_migration_is_idempotent():
+    from sqlalchemy import create_engine, inspect
+
+    from models import Base
+
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=engine)
+
+    run_sqlite_migrations(engine)
+    run_sqlite_migrations(engine)
+
+    inspector = inspect(engine)
+    assert inspector.has_table("market_research_cache")
