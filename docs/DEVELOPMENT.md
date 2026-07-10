@@ -100,8 +100,8 @@ frontend/
 ```
 
 Feature folders include dashboard, transactions, income, fixed-expenses,
-subscriptions, assets-liabilities, portfolio, investment-insights, calendar,
-taxes, planning, admin.
+subscriptions, assets-liabilities, portfolio, investment-insights, stock-lab,
+calendar, planning, admin.
 
 ## Environment
 

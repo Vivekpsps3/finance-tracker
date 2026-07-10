@@ -60,6 +60,9 @@ Do not blur these data planes:
 - `backend/services/cashflow.py`: job income / fixed expense / subscription math.
 - `frontend/src/app/services/finance.service.ts`: frontend API contract.
 - `frontend/src/app/app.routes.ts`: routes.
+- `frontend/src/app/stock-lab/`: Stock Lab UI; `backend/services/market_data.py` +
+  `/api/market/research/*` for public ticker research; encrypted scenarios in
+  vault collection `stock_lab_scenarios`.
 
 ## Recent Direction
 
@@ -81,6 +84,9 @@ The user clarified:
   (WebCrypto AES-GCM + PBKDF2 vault), backend-owned ciphertext only via
   `/api/vault/*`. All users use the encrypted path; legacy finance endpoints
   always return 410. See `docs/SECURITY_MODEL.md`.
+- Stock Lab (`/stock-lab`) is shipping: speculative stock/ETF analysis with
+  public market research and encrypted scenario inputs; it must not mutate
+  holdings or net worth. Spec: `docs/superpowers/specs/2026-07-09-stock-lab-design.md`.
 
 ## Implementation Notes
 

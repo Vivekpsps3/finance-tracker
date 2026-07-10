@@ -1,6 +1,6 @@
 # Personal Finance Tracker
 
-Personal finance app: balance-sheet net worth (assets & liabilities), portfolio with cached/live prices, transactions and bank CSV import, recurring cashflow (income / fixed expenses / subscriptions), planning Monte Carlo, and app-native multi-user auth—Angular 19 + FastAPI + SQLite.
+Personal finance app: balance-sheet net worth (assets & liabilities), portfolio with cached/live prices, transactions and bank CSV import, recurring cashflow (income / fixed expenses / subscriptions), planning (Monte Carlo + Stock Lab), and app-native multi-user auth—Angular 19 + FastAPI + SQLite.
 
 ## Quick start
 
@@ -32,6 +32,7 @@ Details: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 - **Investment insights** — Client-side growth / withdrawal-rate views from portfolio value
 - **Calendar** — Daily transaction summary
 - **Monte Carlo** (`/planning`) — Net worth fan chart, tunable assumptions from your ledger (speculative; does not change net worth or ledger)
+- **Stock Lab** (`/stock-lab`) — Stock/ETF decision lab: returns, dividends, purchase scenarios, comparisons; encrypted saved scenarios; public market research (speculative; does not change net worth or holdings)
 - **Auth / vault / admin** — Session login, encrypted vault setup/unlock/recovery, signup after first admin, `/admin/users` for admins
 
 ## Tech stack

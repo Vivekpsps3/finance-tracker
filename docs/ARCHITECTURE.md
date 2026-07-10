@@ -15,7 +15,7 @@ Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** per
 | **Balance sheet** | per-user `assets`, `liabilities`, `holdings` + market prices | CRUD + Fidelity CSV (holdings per brokerage account) | **Net worth** (`GET /api/net-worth/`) |
 | **Transactions ledger** | encrypted per-user transactions (income/expense, `source=import` from browser-side bank CSV) | Browser CRUD + client CSV preview/commit | Dashboard period charts, calendar, planning **inputs** (averages) |
 | **Recurring cashflow** | per-user `job_incomes`, `fixed_expenses`, `subscriptions` | CRUD on those tables only | Income / fixed-expense / subscription pages; `GET /api/cashflow/summary`; planning spending inputs |
-| **Planning (speculative)** | `planning_assumption_profiles` (+ unused `planning_scenario_runs` table) | Profiles only; MC run results are **ephemeral** (not stored) | Monte Carlo UI at `/planning` |
+| **Planning (speculative)** | MC profiles + encrypted `stock_lab_scenarios`; public market research cache | MC profiles; Stock Lab scenarios via vault; market research by symbol | Monte Carlo `/planning`, Stock Lab `/stock-lab` |
 
 **Invariant:** Net worth is always balance-sheet based: manual assets + portfolio market value − liabilities. Transactions, recurring cashflow rows, and simulations **never** update net worth.
 
@@ -57,12 +57,12 @@ Browser/domain proxy
 - Admin UI route: `/admin/users`. Admins create, disable, reset password, reset contents, delete, and manage users, and view metrics. The raw SQL console is disabled. Self-delete and deleting or disabling the final active admin are blocked.
 - User-owned finance tables include `user_id`; market quote cache and provider registries stay global.
 
-There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo module only.
+There is **no** `routers/analytics.py`. Net-worth Monte Carlo still lives under `/api/planning/v1`; Stock Lab market research is under `/api/market/research/*`.
 
 ## Planning (as built)
 
-- **One tool:** `mc_net_worth_paths` — read-only ledger snapshot → MC paths (ephemeral; **not** written to `planning_scenario_runs`).
-- **Saved inputs:** `planning_assumption_profiles` only (named presets).
+- **Monte Carlo tool:** `mc_net_worth_paths` — read-only ledger snapshot → MC paths (ephemeral; **not** written to `planning_scenario_runs`).
+- **MC saved inputs:** `planning_assumption_profiles` (named presets).
 - API prefix: `/api/planning/v1` (`tools`, `inputs`, `profiles`, `POST /runs`).
 - Responses include a **speculative disclaimer** (Pydantic defaults in `schemas_planning.py`).
 - UI: `frontend/src/app/planning/` + `PlanningService`; route `/planning`.
@@ -80,7 +80,7 @@ There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo 
 - Shell: `MainLayoutComponent` (grouped nav by user intent: Overview, Activity, Cashflow, Net Worth, Planning; admin/user actions in the account menu); lazy feature routes in `app.routes.ts`; `authGuard` + `vaultGuard` protect the app shell; `adminGuard` for `/admin/users`.
 - Vault routes (auth only, outside shell): `/vault/setup`, `/vault/unlock`.
 - State: `FinanceService` / `PlanningService` use the encrypted client store after vault unlock; `VaultService` / `EncryptedStoreService`; `AuthService`.
-- Prices: holdings symbols stay client-side; use manual/imported prices (no per-user symbol disclosure). Public `/api/market` quote cache remains available for explicit lookups if needed.
+- Prices: holdings portfolio refresh stays client-side (manual/imported prices). Public `/api/market` quote and research endpoints are for explicit Stock Lab / typed lookups; Stock Lab may disclose selected owned symbols.
 - Server-blind storage: `/api/vault/*` stores wraps + ciphertext only; backend never decrypts. Legacy plaintext finance routes always return `410`.
 
 ## Where to read more
