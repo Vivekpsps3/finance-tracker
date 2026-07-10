@@ -122,3 +122,9 @@ Separate from net worth and the transaction ledger. Code: `backend/models.py`, `
 - **Does not** affect `GET /api/net-worth/`.
 - API: `/api/planning/v1/*` — all responses include speculative disclaimers.
 - Only tool wired: `mc_net_worth_paths`.
+
+### Stock Lab scenarios
+
+`stock_lab_scenarios` is an encrypted vault collection, not a plaintext SQL finance table. It stores saved speculative inputs such as primary symbol, comparison symbols, purchase budget, share count, target price, return assumptions, dividend assumptions, and projection horizon.
+
+Stock Lab scenarios do not mutate holdings, assets, liabilities, transactions, recurring cashflow, or net worth. Public ticker research is cached separately as symbol-level market data and must not include user budgets, share counts, scenario names, holdings IDs, or user IDs.

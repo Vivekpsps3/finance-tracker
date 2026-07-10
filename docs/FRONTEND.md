@@ -7,6 +7,7 @@ Angular 19 standalone app under `frontend/src/app/`.
 - **Tailwind CSS 3** + `src/theme/tokens.css` (dark only v1)
 - **Shared UI** — `shared/ui/*`, selector prefix `ui-`
 - **State** — `FinanceService` over `EncryptedStoreService` after vault unlock (RxJS `BehaviorSubject`s for ledger, balance sheet, recurring cashflow); `PlanningService`; `AuthService`
+- Stock Lab uses `MarketResearchService` for explicit ticker lookups and `EncryptedStoreService` for encrypted `stock_lab_scenarios`.
 - **Charts** — Chart.js via dynamic `import('chart.js/auto')` (dashboard/charts components and planning fan chart)
 
 ## Routes
@@ -26,6 +27,7 @@ Angular 19 standalone app under `frontend/src/app/`.
 | `/portfolio` | Net Worth → Portfolio (manual + Fidelity CSV import with account grouping) |
 | `/investment-insights` | Planning → Client-side portfolio growth / withdrawal-rate insights |
 | `/planning` | Planning → Monte Carlo net worth simulator (fan chart; save **named input presets** only—runs not stored) |
+| `/stock-lab` | Planning → Stock/ETF decision lab; encrypted saved scenarios + public market research |
 | `/admin/users` | Admin user management (admin role only) |
 | `/charts` | Redirects to `/` (legacy path) |
 

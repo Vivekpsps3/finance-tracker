@@ -5,7 +5,7 @@ Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** per
 ## Active API surface
 
 - Active browser finance storage is `/api/vault/*`: the backend stores ciphertext, sync revisions, and blind indexes only.
-- Active non-finance plaintext surfaces are auth/admin account management, health, and public market quote cache.
+- Active non-finance plaintext surfaces are auth/admin account management, health, and public market quote/research cache.
 - Retired plaintext finance routers still exist behind `ALLOW_LEGACY_FINANCE=1` for backend regression tests and old DB service coverage. Normal deployments return `410` and these routes are hidden from OpenAPI.
 
 ## Data planes (do not mix)
@@ -66,6 +66,7 @@ There is **no** `routers/analytics.py`. Planning currently uses the Monte Carlo 
 - API prefix: `/api/planning/v1` (`tools`, `inputs`, `profiles`, `POST /runs`).
 - Responses include a **speculative disclaimer** (Pydantic defaults in `schemas_planning.py`).
 - UI: `frontend/src/app/planning/` + `PlanningService`; route `/planning`.
+- **Stock Lab:** `/stock-lab` is a speculative stock/ETF planning page. It saves encrypted scenario inputs in the vault and uses `/api/market/research/*` for public ticker research. Ticker symbols, including selected owned symbols, are intentionally disclosed for this feature; purchase assumptions remain encrypted client data.
 
 ## Imports
 

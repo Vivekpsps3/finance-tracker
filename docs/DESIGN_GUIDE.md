@@ -52,6 +52,7 @@ Each major subpage should have page-level metrics at the top:
 - Investment insights: portfolio value, growth assumptions, projected value, withdrawal-rate income (client-side; speculative).
 - Calendar: monthly spending, income, net cashflow, active days.
 - Planning: scenario success rate, median ending value, risk bands, assumptions.
+- Stock Lab: primary ticker price, price return, total return, dividend income, purchase scenario value, scorecard warnings, and comparison tickers.
 
 Tables are acceptable for detail, but a page is incomplete if it only exposes a
 table when a summary or graph would answer the natural question faster.

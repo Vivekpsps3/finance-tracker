@@ -64,6 +64,7 @@ Automated server-side quote lookup conflicts with encrypted holdings if symbols
 are private. Current vault-mode portfolio refresh uses manual/imported prices and
 does not batch-send holdings symbols to the backend. Explicit one-off quote
 lookup still discloses the typed symbol to the public market quote endpoint.
+Stock Lab is an explicit ticker-disclosure feature: when the user opens or refreshes Stock Lab, typed symbols and selected owned symbols may be sent to `/api/market/research/*` and yfinance. Saved scenario inputs remain encrypted; backend market cache must store only public symbol-level data.
 
 Longer-term choices if stricter holdings privacy is required:
 
