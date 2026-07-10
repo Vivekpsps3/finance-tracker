@@ -124,8 +124,18 @@ export class StockLabComponent implements OnInit, OnDestroy {
   }
 
   async loadScenarios(): Promise<void> {
-    this.scenarios = await this.scenariosSvc.list();
-    if (this.scenarios.length && this.scenario.id === 0) this.scenario = { ...this.scenarios[0] };
+    try {
+      this.scenarios = await this.scenariosSvc.list();
+      // Hydrate draft with first saved scenario; re-fetch market so research matches symbols.
+      if (this.scenarios.length && this.scenario.id === 0) {
+        this.scenario = { ...this.scenarios[0] };
+        this.loadMarketData(false);
+      }
+    } catch (err: unknown) {
+      const message = this.errorMessage(err, 'Could not load scenarios.');
+      this.error = message;
+      this.toast.error(message);
+    }
     this.cdr.markForCheck();
   }
 
@@ -137,6 +147,10 @@ export class StockLabComponent implements OnInit, OnDestroy {
       this.scenario = { ...saved };
       await this.loadScenarios();
       this.toast.success('Stock Lab scenario saved.');
+    } catch (err: unknown) {
+      const message = this.errorMessage(err, 'Could not save scenario.');
+      this.error = message;
+      this.toast.error(message);
     } finally {
       this.saving = false;
       this.cdr.markForCheck();
@@ -145,19 +159,46 @@ export class StockLabComponent implements OnInit, OnDestroy {
 
   async deleteScenario(): Promise<void> {
     if (!this.scenario.id) return;
-    await this.scenariosSvc.delete(this.scenario.id);
-    this.scenario = this.scenariosSvc.createDefaultScenario('VOO');
-    await this.loadScenarios();
-    this.loadMarketData(false);
+    this.saving = true;
+    this.cdr.markForCheck();
+    try {
+      await this.scenariosSvc.delete(this.scenario.id);
+      this.scenario = this.scenariosSvc.createDefaultScenario('VOO');
+      await this.loadScenarios();
+      this.loadMarketData(false);
+      this.toast.success('Stock Lab scenario deleted.');
+    } catch (err: unknown) {
+      const message = this.errorMessage(err, 'Could not delete scenario.');
+      this.error = message;
+      this.toast.error(message);
+    } finally {
+      this.saving = false;
+      this.cdr.markForCheck();
+    }
   }
 
   selectScenario(id: string): void {
+    // Empty value = "Current draft": keep in-memory draft intentionally (no reset, no market reload).
+    if (!id) return;
     const parsed = Number(id);
     const found = this.scenarios.find(row => row.id === parsed);
     if (found) {
       this.scenario = { ...found };
       this.loadMarketData(false);
+      return;
     }
+    this.error = 'Selected scenario is no longer available.';
+    this.cdr.markForCheck();
+  }
+
+  setIncludeOwnedSymbols(include: boolean): void {
+    this.scenario = { ...this.scenario, include_owned_symbols: include };
+    this.loadMarketData(false);
+  }
+
+  private errorMessage(err: unknown, fallback: string): string {
+    const anyErr = err as { error?: { detail?: string }; message?: string } | null;
+    return anyErr?.error?.detail || anyErr?.message || fallback;
   }
 
   setPrimarySymbol(symbol: string): void {

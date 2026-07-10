@@ -41,7 +41,7 @@
       @for (symbol of scenario.comparison_symbols; track symbol) { <button class="stock-chip" type="button" (click)="removeComparisonSymbol(symbol)">{{ symbol }} ×</button> }
     </div>
     <div class="stock-owned-row">
-      <label><input type="checkbox" [(ngModel)]="scenario.include_owned_symbols" /> Include selected owned symbols</label>
+      <label><input type="checkbox" [ngModel]="scenario.include_owned_symbols" (ngModelChange)="setIncludeOwnedSymbols($event)" /> Include selected owned symbols</label>
       @for (symbol of ownedSymbols(); track symbol) { <button class="stock-chip" type="button" (click)="addOwnedSymbol(symbol)">{{ symbol }}</button> }
     </div>
   </ui-card>
