@@ -31,6 +31,7 @@ ALLOWED_COLLECTIONS = frozenset(
         "net_worth_snapshots",
         "planning_profiles",
         "planning_runs",
+        "stock_lab_scenarios",
     }
 )
 

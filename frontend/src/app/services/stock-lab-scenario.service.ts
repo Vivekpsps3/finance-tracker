@@ -8,10 +8,11 @@ export class StockLabScenarioService {
 
   createDefaultScenario(symbol = 'VOO'): StockLabScenario {
     const now = new Date().toISOString();
+    const primary = symbol.trim().toUpperCase();
     return {
       id: 0,
-      name: `${symbol.toUpperCase()} scenario`,
-      primary_symbol: symbol.toUpperCase().trim(),
+      name: `${primary} scenario`,
+      primary_symbol: primary,
       comparison_symbols: [],
       include_owned_symbols: true,
       selected_owned_symbols: [],

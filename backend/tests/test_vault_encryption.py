@@ -165,3 +165,44 @@ def test_vault_setup_accepts_browser_packed_recovery_wrap():
     assert setup.status_code == 200, setup.text
     assert setup.json()["exists"] is True
     assert setup.json()["migrated"] is True
+
+
+def test_vault_accepts_stock_lab_scenarios_collection():
+    client = authenticated_client(app, email="stock-lab-vault@example.com")
+    setup = client.post(
+        "/api/vault/setup",
+        json={
+            "kdf_algorithm": "PBKDF2",
+            "kdf_salt_b64": _b64(16),
+            "kdf_iterations": 310000,
+            "wrapped_dek_b64": _b64(48),
+            "recovery_wrapped_dek_b64": _b64(48),
+            "key_version": 1,
+        },
+    )
+    assert setup.status_code == 200, setup.text
+
+    upsert = client.post(
+        "/api/vault/records/upsert",
+        json={
+            "records": [
+                {
+                    "collection": "stock_lab_scenarios",
+                    "client_id": "scenario-001",
+                    "ciphertext_b64": _b64(64),
+                    "schema_version": 1,
+                    "key_version": 1,
+                }
+            ]
+        },
+    )
+    assert upsert.status_code == 200, upsert.text
+    assert upsert.json()[0]["client_id"] == "scenario-001"
+
+    listed = client.get("/api/vault/records?collection=stock_lab_scenarios")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+
+    counts = client.get("/api/vault/counts")
+    assert counts.status_code == 200
+    assert counts.json()["counts"]["stock_lab_scenarios"] == 1

@@ -32,9 +32,10 @@ describe('StockLabScenarioService', () => {
   });
 
   it('creates a default scenario with stable planning defaults', () => {
-    const scenario = service.createDefaultScenario('voo');
+    const scenario = service.createDefaultScenario('  voo  ');
 
     expect(scenario.primary_symbol).toBe('VOO');
+    expect(scenario.name).toBe('VOO scenario');
     expect(scenario.projection_years).toBe(10);
     expect(scenario.base_growth_rate).toBe(0.08);
     expect(scenario.reinvest_dividends).toBeTrue();
