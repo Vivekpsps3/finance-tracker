@@ -9,6 +9,7 @@ import {
   Subscription,
   Transaction,
 } from '../models/transaction.model';
+import { StockLabScenario } from '../models/stock-lab.model';
 import {
   computeCashflowSummary,
   computeNetWorth,
@@ -31,7 +32,8 @@ type CollectionName =
   | 'bank_accounts'
   | 'brokerage_accounts'
   | 'import_batches'
-  | 'planning_profiles';
+  | 'planning_profiles'
+  | 'stock_lab_scenarios';
 
 interface StoredEnvelope<T> {
   id: number;
@@ -56,6 +58,7 @@ export class EncryptedStoreService {
     brokerage_accounts: new Map(),
     import_batches: new Map(),
     planning_profiles: new Map(),
+    stock_lab_scenarios: new Map(),
   };
 
   constructor(private vault: VaultService) {}
@@ -352,5 +355,30 @@ export class EncryptedStoreService {
 
   async deletePlanningProfile(id: number): Promise<void> {
     return this.remove('planning_profiles', id);
+  }
+
+  async getStockLabScenarios(): Promise<StockLabScenario[]> {
+    await this.ensureLoaded();
+    return this.list<StockLabScenario>('stock_lab_scenarios').sort((a, b) =>
+      b.updated_at.localeCompare(a.updated_at)
+    );
+  }
+
+  async saveStockLabScenario(body: StockLabScenario, id?: number): Promise<StockLabScenario> {
+    const current = id
+      ? (await this.getStockLabScenarios()).find(row => row.id === id)
+      : undefined;
+    const now = new Date().toISOString();
+    return this.upsert('stock_lab_scenarios', {
+      ...current,
+      ...body,
+      id: id ?? body.id,
+      created_at: current?.created_at ?? body.created_at ?? now,
+      updated_at: now,
+    });
+  }
+
+  async deleteStockLabScenario(id: number): Promise<void> {
+    return this.remove('stock_lab_scenarios', id);
   }
 }
