@@ -164,6 +164,14 @@ export class MainLayoutComponent implements OnInit {
           tooltip: 'Run client-side investment growth and withdrawal-rate projections.',
         },
         {
+          path: '/stock-lab',
+          label: 'Stock Lab',
+          shortLabel: 'Stocks',
+          icon: 'trending',
+          exact: false,
+          tooltip: 'Analyze hypothetical stock and ETF ownership without changing real holdings.',
+        },
+        {
           path: '/planning',
           label: 'Monte Carlo',
           shortLabel: 'MC',

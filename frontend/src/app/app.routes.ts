@@ -71,6 +71,12 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'stock-lab',
+        title: 'Stock Lab · Finance',
+        loadComponent: () =>
+          import('./stock-lab/stock-lab.component').then(m => m.StockLabComponent),
+      },
+      {
         path: 'balance-sheet',
         title: 'Balance sheet · Finance',
         loadComponent: () =>

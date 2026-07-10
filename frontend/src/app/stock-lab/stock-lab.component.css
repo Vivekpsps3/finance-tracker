@@ -1,0 +1,18 @@
+.stock-lab-page { display: grid; gap: 18px; }
+.stock-disclosure, .stock-error { border: 1px solid var(--border); background: var(--card-bg); border-radius: 14px; padding: 12px 14px; display: flex; gap: 10px; color: var(--text-secondary); }
+.stock-error { border-color: var(--danger); color: var(--danger); }
+.stock-controls-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stock-controls-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stock-field { display: grid; gap: 6px; color: var(--text-secondary); font-size: .85rem; }
+.stock-field input, .stock-field select, .stock-inline-input { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; }
+.stock-actions-row, .stock-owned-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.comparison-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stock-name { min-height: 36px; color: var(--text-secondary); }
+.stock-price { display: block; font-size: 1.45rem; margin: 8px 0; }
+.stock-chip { border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 999px; padding: 7px 10px; cursor: pointer; }
+.stock-main-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: 14px; }
+.metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.metric-grid div, .scorecard-row { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px; display: grid; gap: 4px; }
+.metric-grid span, .scorecard-row span, .scorecard-row small { color: var(--text-secondary); }
+.scorecard-list { display: grid; gap: 10px; }
+@media (max-width: 900px) { .stock-controls-grid, .comparison-strip, .stock-main-grid, .metric-grid { grid-template-columns: 1fr; } }

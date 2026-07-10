@@ -1,0 +1,106 @@
+<div class="page stock-lab-page">
+  <ui-page-header
+    title="Stock Lab"
+    subtitle="Analyze hypothetical stock and ETF ownership with price returns, total returns, dividends, purchase planning, and comparison tickers."
+  />
+
+  <div class="stock-disclosure"><ui-icon name="spark" size="sm" /><span>{{ disclosure }}</span></div>
+  @if (error) { <p class="stock-error" role="alert">{{ error }}</p> }
+
+  <ui-card title="Command center">
+    <div class="stock-controls-grid">
+      <label class="stock-field"><span>Primary ticker</span><input [ngModel]="scenario.primary_symbol" (ngModelChange)="setPrimarySymbol($event)" maxlength="10" /></label>
+      <label class="stock-field"><span>History period</span><select [(ngModel)]="period"><option value="1y">1y</option><option value="2y">2y</option><option value="5y">5y</option><option value="10y">10y</option><option value="max">Max</option></select></label>
+      <label class="stock-field"><span>Scenario</span><select [value]="scenario.id || ''" (change)="selectScenario($any($event.target).value)"><option value="">Current draft</option>@for (saved of scenarios; track saved.id) { <option [value]="saved.id">{{ saved.name }}</option> }</select></label>
+      <label class="stock-field"><span>Scenario name</span><input [(ngModel)]="scenario.name" maxlength="120" /></label>
+    </div>
+    <div class="stock-actions-row">
+      <ui-button variant="primary" (clicked)="loadMarketData(false)" [disabled]="loading">Analyze</ui-button>
+      <ui-button variant="secondary" (clicked)="loadMarketData(true)" [disabled]="loading">Refresh market data</ui-button>
+      <ui-button variant="secondary" (clicked)="saveScenario()" [disabled]="saving">Save encrypted scenario</ui-button>
+      <ui-button variant="ghost" (clicked)="deleteScenario()" [disabled]="!scenario.id">Delete scenario</ui-button>
+    </div>
+  </ui-card>
+
+  <section class="comparison-strip" aria-label="Ticker comparison">
+    @if (loading) { <ui-skeleton height="120px" /> }
+    @for (item of research; track item.symbol) {
+      <ui-card [title]="item.symbol">
+        <p class="stock-name">{{ item.profile?.name || 'Unavailable' }}</p>
+        <strong class="stock-price">{{ formatMoney(item.quote?.current_price) }}</strong>
+        <p>1Y price / total: {{ formatPct(calculateReturnPeriods(item).at(2)?.price_return_pct) }} / {{ formatPct(calculateReturnPeriods(item).at(2)?.total_return_pct) }}</p>
+        <small>{{ item.cache_status }} · {{ item.fetched_at | date:'short' }}</small>
+      </ui-card>
+    }
+  </section>
+
+  <ui-card title="Comparison tickers">
+    <div class="stock-actions-row">
+      <input class="stock-inline-input" [(ngModel)]="newComparisonSymbol" aria-label="Add ticker" maxlength="10" />
+      <ui-button variant="secondary" (clicked)="addComparisonSymbol()">Add comparison</ui-button>
+      @for (symbol of scenario.comparison_symbols; track symbol) { <button class="stock-chip" type="button" (click)="removeComparisonSymbol(symbol)">{{ symbol }} ×</button> }
+    </div>
+    <div class="stock-owned-row">
+      <label><input type="checkbox" [(ngModel)]="scenario.include_owned_symbols" /> Include selected owned symbols</label>
+      @for (symbol of ownedSymbols(); track symbol) { <button class="stock-chip" type="button" (click)="addOwnedSymbol(symbol)">{{ symbol }}</button> }
+    </div>
+  </ui-card>
+
+  @if (primaryResearch; as primary) {
+    <section class="stock-main-grid">
+      <ui-card title="Headline snapshot">
+        <div class="metric-grid">
+          <div><span>Current price</span><strong>{{ formatMoney(primary.quote?.current_price) }}</strong></div>
+          <div><span>Previous close</span><strong>{{ formatMoney(primary.quote?.previous_close) }}</strong></div>
+          <div><span>52W high</span><strong>{{ formatMoney(primary.quote?.fifty_two_week_high) }}</strong></div>
+          <div><span>52W low</span><strong>{{ formatMoney(primary.quote?.fifty_two_week_low) }}</strong></div>
+          <div><span>Owned exposure</span><strong>{{ ownedExposurePct(primary.symbol) | number:'1.1-1' }}%</strong></div>
+          <div><span>Trailing dividend</span><strong>{{ formatMoney(trailingDividend) }}</strong></div>
+        </div>
+      </ui-card>
+
+      <ui-card title="Analysis scorecard">
+        <div class="scorecard-list">
+          @for (item of scorecard; track item.label) { <div class="scorecard-row"><span>{{ item.label }}</span><strong>{{ item.score }}</strong><small>{{ item.note }}</small></div> }
+        </div>
+      </ui-card>
+    </section>
+
+    <ui-card title="Return matrix">
+      <ui-data-table ariaLabel="Stock return matrix">
+        <thead><tr><th>Period</th><th>Start</th><th>End</th><th>Price return</th><th>Dividend return</th><th>Total return</th><th>Annualized total</th></tr></thead>
+        <tbody>
+          @for (row of returnRows; track row.key) {
+            <tr><td>{{ row.label }}</td><td>{{ formatMoney(row.start_price) }}</td><td>{{ formatMoney(row.end_price) }}</td><td>{{ formatMoney(row.price_return) }} · {{ formatPct(row.price_return_pct) }}</td><td>{{ formatMoney(row.dividend_return) }} · {{ formatPct(row.dividend_return_pct) }}</td><td>{{ formatMoney(row.total_return) }} · {{ formatPct(row.total_return_pct) }}</td><td>{{ formatPct(row.annualized_total_return_pct) }}</td></tr>
+          }
+        </tbody>
+      </ui-data-table>
+    </ui-card>
+
+    <section class="stock-main-grid">
+      <ui-card title="Purchase planner">
+        <div class="stock-controls-grid compact">
+          <label class="stock-field"><span>Purchase mode</span><select [(ngModel)]="scenario.purchase_mode"><option value="budget">Budget</option><option value="shares">Shares</option><option value="target_price">Target price</option></select></label>
+          <label class="stock-field"><span>Shares</span><input type="number" [(ngModel)]="scenario.shares" /></label>
+          <label class="stock-field"><span>Budget</span><input type="number" [(ngModel)]="scenario.budget" /></label>
+          <label class="stock-field"><span>Target price</span><input type="number" [(ngModel)]="scenario.target_price" /></label>
+          <label class="stock-field"><span>Years</span><input type="number" [(ngModel)]="scenario.projection_years" /></label>
+          <label class="stock-field"><span>Base growth</span><input type="number" step="0.005" [(ngModel)]="scenario.base_growth_rate" /></label>
+          <label class="stock-field"><span>Dividend growth</span><input type="number" step="0.005" [(ngModel)]="scenario.dividend_growth_rate" /></label>
+          <label class="stock-field"><span>Inflation</span><input type="number" step="0.005" [(ngModel)]="scenario.inflation_rate" /></label>
+        </div>
+        @if (purchasePlan; as plan) { <div class="metric-grid"><div><span>Shares</span><strong>{{ plan.shares | number:'1.2-4' }}</strong></div><div><span>Cash required</span><strong>{{ formatMoney(plan.cash_required) }}</strong></div><div><span>Projected value</span><strong>{{ formatMoney(plan.projected_nominal_value) }}</strong></div><div><span>Today's dollars</span><strong>{{ formatMoney(plan.projected_real_value) }}</strong></div><div><span>Annual dividend</span><strong>{{ formatMoney(plan.annual_dividend_income) }}</strong></div></div> }
+      </ui-card>
+
+      <ui-card title="Dividends and provider detail">
+        <p>Cadence: <strong>{{ dividendCadence }}</strong></p>
+        <p>Forward yield: <strong>{{ formatPct(primary.quote?.dividend_yield) }}</strong></p>
+        <p>Sector: <strong>{{ primary.profile?.sector || 'Unavailable' }}</strong></p>
+        <p>Industry: <strong>{{ primary.profile?.industry || 'Unavailable' }}</strong></p>
+        <p>Trailing PE: <strong>{{ primary.quote?.trailing_pe || 'Unavailable' }}</strong></p>
+      </ui-card>
+    </section>
+  } @else if (!loading) {
+    <ui-card><ui-empty-state title="No market research loaded" message="Enter a ticker and run Analyze to start Stock Lab." /></ui-card>
+  }
+</div>
