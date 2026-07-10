@@ -34,9 +34,11 @@ def _client_key(request: Request) -> str:
 
 
 def _is_limited(request: Request) -> bool:
+    path = request.url.path.rstrip("/")
+    if path.startswith("/api/market/research"):
+        return True
     if request.method != "POST":
         return False
-    path = request.url.path.rstrip("/")
     if path == "/api/planning/v1/runs":
         return True
     if path.startswith("/api/imports/") and ("/preview" in path or "/commit" in path):
