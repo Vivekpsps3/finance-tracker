@@ -180,6 +180,77 @@ def test_vault_migration_is_idempotent_after_create_all():
         engine2.dispose()
 
 
+def test_passwordless_migration_recovers_partial_sqlite_state():
+    with tempfile.TemporaryDirectory() as tmp:
+        url = f"sqlite:///{Path(tmp) / 'partial_passwordless.db'}"
+        engine = create_engine(url, connect_args={"check_same_thread": False})
+        with engine.begin() as conn:
+            conn.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
+            conn.execute(text("INSERT INTO alembic_version VALUES ('d4e5f6a7b8c9')"))
+            conn.execute(text("""
+                CREATE TABLE users (
+                    id INTEGER PRIMARY KEY, email VARCHAR NOT NULL,
+                    username VARCHAR, auth_public_key_b64 TEXT,
+                    auth_algorithm VARCHAR, auth_key_version INTEGER,
+                    auth_kdf_salt_b64 VARCHAR, auth_kdf_iterations INTEGER,
+                    auth_wrapped_private_key_b64 TEXT,
+                    auth_recovery_wrapped_private_key_b64 TEXT,
+                    passwordless_enrolled_at DATETIME
+                )
+            """))
+            conn.execute(text("INSERT INTO users (id, email) VALUES (1, 'owner@example.com')"))
+            conn.execute(text("""
+                CREATE TABLE user_sessions (
+                    id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL,
+                    token_hash VARCHAR NOT NULL
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE auth_challenges (
+                    id INTEGER PRIMARY KEY, challenge_id VARCHAR NOT NULL UNIQUE,
+                    user_id INTEGER NOT NULL, challenge_hash VARCHAR NOT NULL UNIQUE,
+                    expires_at DATETIME NOT NULL, consumed_at DATETIME,
+                    created_at DATETIME NOT NULL
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE auth_enrollments (
+                    id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL,
+                    token_hash VARCHAR NOT NULL UNIQUE, expires_at DATETIME NOT NULL,
+                    consumed_at DATETIME, created_by_user_id INTEGER,
+                    created_at DATETIME NOT NULL
+                )
+            """))
+        engine.dispose()
+
+        here = _backend_dir()
+        cfg = Config(str(here / "alembic.ini"))
+        cfg.set_main_option("script_location", str(here / "alembic"))
+        cfg.set_main_option("sqlalchemy.url", url)
+        prev_db_url = os.environ.get("DATABASE_URL")
+        os.environ["DATABASE_URL"] = url
+        try:
+            command.upgrade(cfg, "head")
+            command.upgrade(cfg, "head")
+        finally:
+            if prev_db_url is None:
+                os.environ.pop("DATABASE_URL", None)
+            else:
+                os.environ["DATABASE_URL"] = prev_db_url
+
+        engine = create_engine(url, connect_args={"check_same_thread": False})
+        inspector = inspect(engine)
+        assert "migration_only" in {column["name"] for column in inspector.get_columns("user_sessions")}
+        assert any(
+            constraint["name"] == "uq_users_username"
+            for constraint in inspector.get_unique_constraints("users")
+        )
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT email FROM users WHERE id = 1")).scalar_one() == "owner@example.com"
+            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "e8a4c7d2f910"
+        engine.dispose()
+
+
 def test_run_sqlite_migrations_adds_transaction_columns_on_legacy_table():
     with tempfile.TemporaryDirectory() as tmp:
         url = f"sqlite:///{Path(tmp) / 'legacy.db'}"

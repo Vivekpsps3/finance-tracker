@@ -14,42 +14,66 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table("users") as batch:
-        batch.add_column(sa.Column("username", sa.String(), nullable=True))
-        batch.add_column(sa.Column("auth_public_key_b64", sa.Text(), nullable=True))
-        batch.add_column(sa.Column("auth_algorithm", sa.String(), nullable=True))
-        batch.add_column(sa.Column("auth_key_version", sa.Integer(), nullable=True))
-        batch.add_column(sa.Column("auth_kdf_salt_b64", sa.String(), nullable=True))
-        batch.add_column(sa.Column("auth_kdf_iterations", sa.Integer(), nullable=True))
-        batch.add_column(sa.Column("auth_wrapped_private_key_b64", sa.Text(), nullable=True))
-        batch.add_column(sa.Column("auth_recovery_wrapped_private_key_b64", sa.Text(), nullable=True))
-        batch.add_column(sa.Column("passwordless_enrolled_at", sa.DateTime(), nullable=True))
-    if sa.inspect(op.get_bind()).has_table("user_sessions"):
-        with op.batch_alter_table("user_sessions") as batch:
-            batch.add_column(sa.Column("migration_only", sa.Boolean(), nullable=False, server_default=sa.false()))
-        batch.create_unique_constraint("uq_users_username", ["username"])
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
+    passwordless_columns = (
+        sa.Column("username", sa.String(), nullable=True),
+        sa.Column("auth_public_key_b64", sa.Text(), nullable=True),
+        sa.Column("auth_algorithm", sa.String(), nullable=True),
+        sa.Column("auth_key_version", sa.Integer(), nullable=True),
+        sa.Column("auth_kdf_salt_b64", sa.String(), nullable=True),
+        sa.Column("auth_kdf_iterations", sa.Integer(), nullable=True),
+        sa.Column("auth_wrapped_private_key_b64", sa.Text(), nullable=True),
+        sa.Column("auth_recovery_wrapped_private_key_b64", sa.Text(), nullable=True),
+        sa.Column("passwordless_enrolled_at", sa.DateTime(), nullable=True),
+    )
+    for column in passwordless_columns:
+        if column.name not in user_columns:
+            op.add_column("users", column)
+
+    if inspector.has_table("user_sessions"):
+        session_columns = {column["name"] for column in inspector.get_columns("user_sessions")}
+        if "migration_only" not in session_columns:
+            op.add_column(
+                "user_sessions",
+                sa.Column("migration_only", sa.Boolean(), nullable=False, server_default=sa.false()),
+            )
+
+    unique_constraints = {constraint["name"] for constraint in sa.inspect(bind).get_unique_constraints("users")}
+    if "uq_users_username" not in unique_constraints:
+        with op.batch_alter_table("users") as batch:
+            batch.create_unique_constraint("uq_users_username", ["username"])
+
     op.execute("UPDATE users SET username = lower(email) WHERE username IS NULL")
-    op.create_table(
-        "auth_challenges",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("challenge_id", sa.String(), nullable=False, unique=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("challenge_hash", sa.String(), nullable=False, unique=True),
-        sa.Column("expires_at", sa.DateTime(), nullable=False),
-        sa.Column("consumed_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-    )
-    op.create_index("ix_auth_challenges_user_id", "auth_challenges", ["user_id"])
-    op.create_table(
-        "auth_enrollments",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("token_hash", sa.String(), nullable=False, unique=True),
-        sa.Column("expires_at", sa.DateTime(), nullable=False),
-        sa.Column("consumed_at", sa.DateTime(), nullable=True),
-        sa.Column("created_by_user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-    )
+
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("auth_challenges"):
+        op.create_table(
+            "auth_challenges",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("challenge_id", sa.String(), nullable=False, unique=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+            sa.Column("challenge_hash", sa.String(), nullable=False, unique=True),
+            sa.Column("expires_at", sa.DateTime(), nullable=False),
+            sa.Column("consumed_at", sa.DateTime(), nullable=True),
+            sa.Column("created_at", sa.DateTime(), nullable=False),
+        )
+    challenge_indexes = {index["name"] for index in sa.inspect(bind).get_indexes("auth_challenges")}
+    if "ix_auth_challenges_user_id" not in challenge_indexes:
+        op.create_index("ix_auth_challenges_user_id", "auth_challenges", ["user_id"])
+
+    if not sa.inspect(bind).has_table("auth_enrollments"):
+        op.create_table(
+            "auth_enrollments",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+            sa.Column("token_hash", sa.String(), nullable=False, unique=True),
+            sa.Column("expires_at", sa.DateTime(), nullable=False),
+            sa.Column("consumed_at", sa.DateTime(), nullable=True),
+            sa.Column("created_by_user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+            sa.Column("created_at", sa.DateTime(), nullable=False),
+        )
 
 
 def downgrade():
