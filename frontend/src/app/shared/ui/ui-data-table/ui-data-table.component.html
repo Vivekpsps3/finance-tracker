@@ -2,9 +2,9 @@
   <table
     class="ui-data-table__table"
     [attr.aria-label]="ariaLabel()"
-    [attr.aria-describedby]="caption() ? 'ui-table-caption' : null">
+    [attr.aria-describedby]="caption() ? captionId : null">
     @if (caption()) {
-      <caption id="ui-table-caption" class="ui-data-table__caption">{{ caption() }}</caption>
+      <caption [attr.id]="captionId" class="ui-data-table__caption">{{ caption() }}</caption>
     }
     <ng-content />
   </table>

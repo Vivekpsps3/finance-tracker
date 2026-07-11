@@ -36,15 +36,15 @@
       </label>
       <div class="month-totals">
         <div class="month-total month-total--expense">
-          <span class="month-total__label">Expenses</span>
+          <span class="month-total__label">{{ hasMore ? 'Loaded expenses' : 'Expenses' }}</span>
           <strong class="money">${{ monthExpenseTotal | number: '1.2-2' }}</strong>
         </div>
         <div class="month-total month-total--income">
-          <span class="month-total__label">Income</span>
+          <span class="month-total__label">{{ hasMore ? 'Loaded income' : 'Income' }}</span>
           <strong class="money">${{ monthIncomeTotal | number: '1.2-2' }}</strong>
         </div>
         <div class="month-total month-total--net">
-          <span class="month-total__label">Net cashflow</span>
+          <span class="month-total__label">{{ hasMore ? 'Loaded net' : 'Net cashflow' }}</span>
           <strong class="money">${{ monthIncomeTotal - monthExpenseTotal | number: '1.2-2' }}</strong>
         </div>
       </div>
@@ -154,7 +154,7 @@
     </div>
 
     @if (hasMore && filteredTransactions.length > 0) {
-      <p class="list-hint">Monthly totals and table reflect loaded rows. Load more for older history.</p>
+      <p class="list-hint" role="status">Loaded subtotal only. Monthly totals and this table use currently loaded rows. Load more for older history.</p>
     }
 
     <div class="tx-table-wrap" *ngIf="filteredTransactions.length > 0; else empty">
@@ -228,7 +228,7 @@
         <strong>How to import without surprises</strong>
         <ol>
           <li>In your bank website, export posted transactions as CSV. Avoid PDF statements.</li>
-          <li>Select the matching bank here. Supported importers currently cover Capital One, Chase, and Amex.</li>
+          <li>Select the matching bank here. Supported importers: {{ supportedImporterNames }}.</li>
           <li>Upload the CSV and use Preview import. Nothing is saved until you confirm selected rows.</li>
           <li>Review duplicate badges, transfers, card payments, refunds, and account labels before importing.</li>
         </ol>
@@ -250,6 +250,9 @@
           <p class="file-name">{{ importFile.name }}</p>
         }
       </div>
+      @if (importError) {
+        <p class="import-error" role="alert">{{ importError }}</p>
+      }
       <div class="form-actions">
         <ui-button variant="primary" (clicked)="runImportPreview()" [disabled]="!importFile || importParsing">
           Preview import
@@ -260,10 +263,15 @@
       <p class="import-summary">
         {{ importPreview?.summary?.new }} new,
         {{ importPreview?.summary?.duplicate }} duplicate
-        ({{ importPreview?.summary?.total_parsed }} parsed)
+        ({{ importPreview?.summary?.total_parsed }} parsed).
+        Selected {{ selectedImportCount }} · ${{ selectedImportExpenseTotal | number: '1.2-2' }}.
       </p>
+      @if (importError) {
+        <p class="import-error" role="alert">{{ importError }}</p>
+      }
       <div class="import-preview-actions">
         <ui-button variant="secondary" size="sm" (clicked)="selectAllNewImportRows()">Select all new</ui-button>
+        <ui-button variant="ghost" size="sm" (clicked)="clearImportSelection()">Clear selection</ui-button>
       </div>
       <div class="import-table-scroll">
         <ui-data-table ariaLabel="Import preview">

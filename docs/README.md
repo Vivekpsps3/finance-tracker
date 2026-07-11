@@ -16,11 +16,10 @@
 
 Project overview: [../README.md](../README.md).
 
-## Historical notes (not current architecture)
+## Grader analytics
 
-| Doc | Status |
-|-----|--------|
-| [AI_HANDOFF_2026-06-27.md](./AI_HANDOFF_2026-06-27.md) | Historical session handoff; may describe endpoints or UI that later changed |
-| [SPACEX_REVAMP_PROGRESS.md](./SPACEX_REVAMP_PROGRESS.md) | Historical theming progress checklist; not product truth |
+| Doc | Purpose |
+|-----|---------|
+| [grader/analytics/README.md](./grader/analytics/README.md) | Reusable repository review package and baseline scorecard |
 
-Prefer ARCHITECTURE, DATA_MODEL, FRONTEND, and AGENTS.md over historical notes.
+Prefer ARCHITECTURE, DATA_MODEL, FRONTEND, SECURITY_MODEL, and AGENTS.md for product truth.

@@ -269,7 +269,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   get showOnboardingChecklist(): boolean {
-    return this.onboardingCompleteCount < 5;
+    return this.onboardingCompleteCount < 6;
   }
 
   isOnboardingStepDone(label: string): boolean {

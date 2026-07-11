@@ -217,6 +217,19 @@
   font-size: var(--text-sm);
 }
 
+.import-error {
+  color: var(--danger, #f87171);
+  font-size: var(--text-sm);
+  margin: 0.5rem 0;
+}
+
+.import-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
 .import-instructions {
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   border-radius: var(--radius-lg);

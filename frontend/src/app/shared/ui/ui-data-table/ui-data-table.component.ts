@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
+let nextTableCaptionId = 0;
+
 @Component({
   selector: 'ui-data-table',
   standalone: true,
@@ -11,4 +13,5 @@ export class UiDataTableComponent {
   stickyHeader = input(false);
   caption = input<string | undefined>(undefined);
   ariaLabel = input<string | undefined>(undefined);
+  readonly captionId = `ui-table-caption-${++nextTableCaptionId}`;
 }

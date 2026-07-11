@@ -76,6 +76,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   importSelected = new Set<string>();
   importParsing = false;
   importCommitting = false;
+  importError = '';
   saving = false;
   loading = false;
   newTx: TransactionCreate = this.emptyTx();
@@ -305,6 +306,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       return;
     }
     this.importParsing = true;
+    this.importError = '';
     this.financeService
       .previewBankImport(this.selectedImportBankSlug, this.importFile)
       .pipe(takeUntil(this.destroy$))
@@ -321,8 +323,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
           }
           this.cdr.markForCheck();
         },
-        error: () => {
+        error: (err: any) => {
           this.importParsing = false;
+          this.importError = this.importFailureMessage(err, 'Could not parse this CSV. Check the bank selection and file format.');
           this.cdr.markForCheck();
         },
       });
@@ -352,6 +355,26 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  clearImportSelection() {
+    this.importSelected.clear();
+    this.cdr.markForCheck();
+  }
+
+  get selectedImportCount(): number {
+    return this.importSelected.size;
+  }
+
+  get selectedImportExpenseTotal(): number {
+    if (!this.importPreview) return 0;
+    return this.importPreview.rows
+      .filter(row => this.importSelected.has(row.dedupe_key))
+      .reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+  }
+
+  get supportedImporterNames(): string {
+    return this.importBanks.map(bank => bank.name).join(', ') || 'the listed banks';
+  }
+
   commitImport() {
     if (!this.importPreview || !this.importFile) return;
     const rows = this.importPreview.rows.filter(r => this.importSelected.has(r.dedupe_key));
@@ -360,6 +383,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       return;
     }
     this.importCommitting = true;
+    this.importError = '';
     this.financeService
       .commitBankImport(this.selectedImportBankSlug, this.importPreview.filename, rows)
       .pipe(takeUntil(this.destroy$))
@@ -370,11 +394,17 @@ export class TransactionsComponent implements OnInit, OnDestroy {
           this.toastService.success(`Imported ${res.inserted} transaction(s)`);
           this.cdr.markForCheck();
         },
-        error: () => {
+        error: (err: any) => {
           this.importCommitting = false;
+          this.importError = this.importFailureMessage(err, 'Import failed. Your preview is still open; no selected rows were lost.');
           this.cdr.markForCheck();
         },
       });
+  }
+
+  private importFailureMessage(err: any, fallback: string): string {
+    const detail = err?.error?.detail ?? err?.message;
+    return typeof detail === 'string' && detail.trim() ? detail : fallback;
   }
 
   openAddModal() {

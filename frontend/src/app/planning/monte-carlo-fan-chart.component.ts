@@ -80,8 +80,12 @@ type McDisplayRow = {
             }
           </dl>
         } @else {
-          <span class="mc-chart-hover__hint">Hover the fan — median & percentiles always shown, plus the nearest sample path</span>
+          <span class="mc-chart-hover__hint">Hover, tap, or use Previous/Next year — median and percentiles always shown</span>
         }
+      </div>
+      <div class="mc-year-controls" role="group" aria-label="Inspect simulation year">
+        <button type="button" class="mc-year-btn" (click)="selectAdjacentYear(-1)" [disabled]="!canStepYear(-1)">Previous year</button>
+        <button type="button" class="mc-year-btn" (click)="selectAdjacentYear(1)" [disabled]="!canStepYear(1)">Next year</button>
       </div>
       <div class="mc-chart-wrap">
         @if (tooltipVisible && hoverSnapshot) {
@@ -103,7 +107,13 @@ type McDisplayRow = {
             }
           </div>
         }
-        <canvas #canvas aria-label="Monte Carlo net worth fan chart"></canvas>
+        <canvas
+          #canvas
+          role="img"
+          tabindex="0"
+          aria-label="Monte Carlo net worth fan chart. Use Previous year and Next year controls, or arrow keys, to inspect values."
+          (keydown)="onCanvasKeydown($event)"
+          (click)="onCanvasClick($event)"></canvas>
       </div>
     </div>
   `,
@@ -113,6 +123,26 @@ type McDisplayRow = {
         display: flex;
         flex-direction: column;
         gap: var(--space-2, 0.5rem);
+      }
+      .mc-year-controls {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .mc-year-btn {
+        appearance: none;
+        border: 1px solid var(--border, #333);
+        background: var(--surface-2, #16161a);
+        color: var(--text-primary, #f5f5f5);
+        border-radius: 0.5rem;
+        min-height: 2.5rem;
+        padding: 0.4rem 0.75rem;
+        cursor: pointer;
+        font: inherit;
+      }
+      .mc-year-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
       }
       .mc-chart-hover {
         font-size: var(--text-sm, 0.875rem);
@@ -269,6 +299,66 @@ export class MonteCarloFanChartComponent implements AfterViewInit, OnChanges, On
   ngOnDestroy(): void {
     this.unbindCanvasHover();
     this.chart?.destroy();
+  }
+
+  canStepYear(delta: number): boolean {
+    const years = this.data?.years;
+    if (!years?.length) return false;
+    const current = this.hoverSnapshot?.dataIndex ?? 0;
+    const next = current + delta;
+    return next >= 0 && next < years.length;
+  }
+
+  selectAdjacentYear(delta: number): void {
+    const years = this.data?.years;
+    if (!years?.length) return;
+    const current = this.hoverSnapshot?.dataIndex ?? 0;
+    const next = Math.min(years.length - 1, Math.max(0, current + delta));
+    this.selectYearIndex(next);
+  }
+
+  onCanvasKeydown(event: KeyboardEvent): void {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.selectAdjacentYear(-1);
+    } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.selectAdjacentYear(1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      this.selectYearIndex(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      const last = (this.data?.years?.length ?? 1) - 1;
+      this.selectYearIndex(last);
+    }
+  }
+
+  onCanvasClick(event: MouseEvent): void {
+    this.syncHoverFromPointer(event);
+  }
+
+  private selectYearIndex(dataIndex: number): void {
+    const snapshot = this.snapshotAtIndex(dataIndex);
+    if (!snapshot) return;
+    this.hoverSnapshot = snapshot;
+    this.displayRows = this.buildDisplayRows(snapshot);
+    this.tooltipVisible = false;
+    this.cdr.markForCheck();
+  }
+
+  private snapshotAtIndex(dataIndex: number): McHoverSnapshot | null {
+    const d = this.data;
+    if (!d?.years?.length || dataIndex < 0 || dataIndex >= d.years.length) return null;
+    const percentiles = this.percentileRowsAt(d.percentiles, dataIndex);
+    if (!percentiles.length) return null;
+    return {
+      year: d.years[dataIndex] ?? 0,
+      yearLabel: this.yearLabelAt(dataIndex, d.years),
+      dataIndex,
+      percentiles,
+      samplePath: null,
+    };
   }
 
   private async ensureChart(): Promise<void> {
