@@ -93,6 +93,7 @@ describe('PlanningService', () => {
         next: run => {
           expect(run.id).toBeNull();
           expect(run.input_snapshot_hash).toContain('client-');
+          expect(run.result_summary.spend_assumption_source).toBe('active-recurring-schedules');
           expect(run.as_of).toMatch(/^\d{4}-\d{2}-\d{2}$/);
           expect(run.started_at).toBeTruthy();
           expect(run.finished_at).toBeTruthy();

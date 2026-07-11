@@ -86,24 +86,25 @@
     @if (filteredTransactions.length || periodJobNetIncomeTotal || periodFixedExpenseTotal || (netWorth && netWorth.total_assets > 0)) {
       <div class="insight-tiles">
         <div class="insight-tile">
-          <span class="insight-tile__label" title="Includes imported income plus active job-income assumptions for this period.">Total income</span>
+          <span class="insight-tile__label" title="Observed imported income plus scheduled job-income assumptions. This is an outlook, not actual-only income.">Combined outlook income</span>
           <span class="insight-tile__value money">${{ periodIncomeTotal | number:'1.2-2' }}</span>
           @if (periodJobNetIncomeTotal) {
             <small>${{ periodJobNetIncomeTotal | number:'1.2-2' }} planned job net</small>
           }
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label" title="Includes imported expenses plus fixed expenses and subscriptions for this period.">Total expenses</span>
+          <span class="insight-tile__label" title="Observed imported expenses plus scheduled bills and subscriptions. This is an outlook, not actual-only spending.">Combined outlook expenses</span>
           <span class="insight-tile__value money negative">${{ periodExpenseTotal | number:'1.2-2' }}</span>
           @if (periodFixedExpenseTotal) {
             <small>${{ periodFixedExpenseTotal | number:'1.2-2' }} fixed + subscriptions</small>
           }
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label">Net cashflow</span>
+          <span class="insight-tile__label" title="Observed activity plus scheduled assumptions. Review the observed and scheduled amounts below before using this as a forecast.">Combined outlook cashflow</span>
           <span class="insight-tile__value money" [class.negative]="periodNetCashflow < 0">
             {{ periodNetCashflow >= 0 ? '+' : '−' }}${{ abs(periodNetCashflow) | number:'1.2-2' }}
           </span>
+          <small>Observed ${{ periodObservedNetCashflow | number:'1.2-2' }} · scheduled ${{ periodScheduledNetCashflow | number:'1.2-2' }}</small>
         </div>
         <div class="insight-tile">
           <span class="insight-tile__label" title="Net cashflow divided by total income for the selected period.">Savings rate</span>

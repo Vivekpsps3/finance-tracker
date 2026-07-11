@@ -9,15 +9,16 @@
       </svg>
       <span class="logo-text">Finance</span>
     </a>
-    <div class="nav-tabs" role="tablist" aria-label="Finance sections">
+    <div class="nav-tabs" aria-label="Finance sections">
       @for (group of visibleNavGroups; track group.label) {
         <a
           [routerLink]="group.items[0].path"
           class="nav-tab"
           [class.active]="isActiveGroup(group)"
-          [attr.aria-selected]="isActiveGroup(group)"
+          [attr.aria-current]="isActiveGroup(group) ? 'page' : null"
+          [attr.aria-label]="group.label"
           [attr.title]="group.tooltip"
-          role="tab">
+          >
           <ui-icon [name]="group.icon" size="sm" />
           <span class="nav-link__label">{{ group.label }}</span>
           <span class="nav-link__short">{{ group.shortLabel }}</span>
@@ -53,6 +54,7 @@
           class="subnav-link"
           [class.active]="isActiveItem(item)"
           [attr.aria-current]="isActiveItem(item) ? 'page' : null"
+          [attr.aria-label]="item.label"
           [attr.title]="item.tooltip">
           <ui-icon [name]="item.icon" size="sm" />
           <span class="nav-link__label">{{ item.label }}</span>

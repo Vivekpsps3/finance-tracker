@@ -41,17 +41,29 @@ export class LoginComponent {
     this.cdr.markForCheck();
     if (this.setupMode) {
       this.auth.bootstrapPasswordless(this.username, this.displayName, this.password).then(
-        () => this.router.navigate(['/']),
-        err => { this.error = err instanceof Error ? err.message : 'Setup failed'; this.loading = false; this.cdr.markForCheck(); }
+        () => {
+          this.loading = false;
+          this.cdr.markForCheck();
+          return this.router.navigate(['/']);
+        },
+        err => {
+          this.error = this.errorMessage(err);
+          this.loading = false;
+          this.cdr.markForCheck();
+        }
       );
       return;
     }
     const request = this.legacyMode ? this.auth.login(this.email, this.password) : null;
     if (!request) {
       this.auth.loginWithVault(this.username, this.password).then(
-        () => this.router.navigate(['/']),
+        () => {
+          this.loading = false;
+          this.cdr.markForCheck();
+          return this.router.navigate(['/']);
+        },
         err => {
-          this.error = err instanceof Error ? err.message : 'Vault authentication failed';
+          this.error = this.errorMessage(err);
           this.loading = false;
           this.cdr.markForCheck();
         }
@@ -100,10 +112,13 @@ export class LoginComponent {
   }
 
   get passwordHint(): string {
-    return this.needsDisplayName ? 'Use at least 12 characters.' : this.legacyMode ? '' : 'Your vault passphrase unlocks this browser-held signing key.';
+    if (this.needsDisplayName) return 'Use at least 12 characters. This passphrase signs you in and unlocks your vault on any browser.';
+    if (this.legacyMode) return 'Use your old password only to migrate this account once.';
+    return 'Username and vault passphrase work on any browser. Recovery key is only needed if you forget the passphrase.';
   }
 
   private errorMessage(err: any): string {
+    if (err instanceof Error && err.message) return err.message;
     const detail = err?.error?.detail;
     if (typeof detail === 'string') return detail;
     if (Array.isArray(detail) && detail.length) {

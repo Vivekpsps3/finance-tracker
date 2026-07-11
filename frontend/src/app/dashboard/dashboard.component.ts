@@ -71,6 +71,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   periodTransactionExpenseTotal = 0;
   periodJobNetIncomeTotal = 0;
   periodFixedExpenseTotal = 0;
+  periodObservedNetCashflow = 0;
+  periodScheduledNetCashflow = 0;
   periodNetCashflow = 0;
   periodSavingsRate: number | null = null;
   averageDailySpend = 0;
@@ -167,6 +169,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.periodTransactionExpenseTotal = this.cashflowSummary.transaction_expenses;
       this.periodJobNetIncomeTotal = this.cashflowSummary.planned_income;
       this.periodFixedExpenseTotal = this.cashflowSummary.fixed_expenses + this.cashflowSummary.subscriptions;
+      this.periodObservedNetCashflow = this.cashflowSummary.observed_net_cashflow;
+      this.periodScheduledNetCashflow = this.cashflowSummary.scheduled_net_cashflow;
       this.periodIncomeTotal = this.cashflowSummary.total_income;
       this.periodExpenseTotal = this.cashflowSummary.total_expenses;
       this.periodNetCashflow = this.cashflowSummary.net_cashflow;
@@ -175,6 +179,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } else {
       this.periodJobNetIncomeTotal = 0;
       this.periodFixedExpenseTotal = 0;
+      this.periodObservedNetCashflow = this.periodTransactionIncomeTotal - this.periodTransactionExpenseTotal;
+      this.periodScheduledNetCashflow = 0;
       this.periodIncomeTotal = this.periodTransactionIncomeTotal;
       this.periodExpenseTotal = this.periodTransactionExpenseTotal;
       this.periodNetCashflow = this.periodIncomeTotal - this.periodExpenseTotal;

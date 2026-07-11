@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, firstValueFrom, map, of, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { apiUrl } from '../core/api-url';
 import { AuthUser, LoginResponse, MeResponse } from './auth.models';
@@ -125,31 +125,70 @@ export class AuthService {
 
   async loginWithVault(username: string, vaultPassphrase: string): Promise<AuthUser> {
     const normalized = username.trim().toLowerCase();
-    const lookup = await this.http.post<{ vault: import('../crypto/vault.service').VaultStatus; auth: WrappedSigningKey }>(
-      apiUrl('/auth/passwordless/lookup'), { username: normalized }, { withCredentials: true }
-    ).toPromise();
-    if (!lookup) throw new Error('Unable to retrieve vault authentication material');
-    this.vault.loadPublicStatus(lookup.vault);
+    const lookup = await firstValueFrom(
+      this.http.post<{ vault: import('../crypto/vault.service').VaultStatus; auth: WrappedSigningKey }>(
+        apiUrl('/auth/passwordless/lookup'),
+        { username: normalized },
+        { withCredentials: true }
+      )
+    );
+    if (!lookup?.vault?.wrapped_dek_b64 || !lookup?.auth?.wrapped_private_key_b64) {
+      throw new Error('Unable to retrieve vault authentication material');
+    }
+    // Lookup returns public wraps only; mark the vault as present so unlock works on a new browser.
+    this.vault.loadPublicStatus({
+      exists: true,
+      migration_status: lookup.vault.migration_status ?? 'complete',
+      migrated: lookup.vault.migrated ?? true,
+      kdf_algorithm: lookup.vault.kdf_algorithm ?? 'PBKDF2',
+      kdf_salt_b64: lookup.vault.kdf_salt_b64,
+      kdf_iterations: lookup.vault.kdf_iterations,
+      wrapped_dek_b64: lookup.vault.wrapped_dek_b64,
+      recovery_wrapped_dek_b64: lookup.vault.recovery_wrapped_dek_b64,
+      key_version: lookup.vault.key_version ?? 1,
+    });
     this.vault.loadAuthWrap(lookup.auth);
-    const challenge = await this.http.post<{ challenge_id: string; challenge: string; message: string }>(
-      apiUrl('/auth/passwordless/challenge'), { username: normalized }, { withCredentials: true }
-    ).toPromise();
-    if (!challenge) throw new Error('Unable to request vault authentication challenge');
-    const signature_b64 = await signChallenge(vaultPassphrase, lookup.auth, challenge.message);
-    const response = await this.http.post<LoginResponse>(apiUrl('/auth/passwordless/verify'), {
-      username: normalized,
-      challenge_id: challenge.challenge_id,
-      challenge: challenge.challenge,
-      message: challenge.message,
-      signature_b64,
-    }, { withCredentials: true }).toPromise();
-    if (!response) throw new Error('Unable to complete vault authentication');
+    const challenge = await firstValueFrom(
+      this.http.post<{ challenge_id: string; challenge: string; message: string }>(
+        apiUrl('/auth/passwordless/challenge'),
+        { username: normalized },
+        { withCredentials: true }
+      )
+    );
+    if (!challenge?.challenge_id || !challenge?.message) {
+      throw new Error('Unable to request vault authentication challenge');
+    }
+    let signature_b64: string;
+    try {
+      signature_b64 = await signChallenge(vaultPassphrase, lookup.auth, challenge.message);
+    } catch {
+      throw new Error('Incorrect vault passphrase, or this account is not enrolled for vault sign-in.');
+    }
+    let response: LoginResponse;
+    try {
+      response = await firstValueFrom(
+        this.http.post<LoginResponse>(
+          apiUrl('/auth/passwordless/verify'),
+          {
+            username: normalized,
+            challenge_id: challenge.challenge_id,
+            challenge: challenge.challenge,
+            message: challenge.message,
+            signature_b64,
+          },
+          { withCredentials: true }
+        )
+      );
+    } catch (err: any) {
+      const detail = err?.error?.detail;
+      throw new Error(typeof detail === 'string' ? detail : 'Vault authentication failed');
+    }
     this.checkedSession = true;
     this.finance.clearSessionState();
     this.userSubject.next(response.user);
     try {
       await this.vault.unlock(vaultPassphrase);
-    } catch (error) {
+    } catch {
       this.clearLocalSession();
       throw new Error('Vault authentication succeeded, but this passphrase cannot unlock the vault.');
     }

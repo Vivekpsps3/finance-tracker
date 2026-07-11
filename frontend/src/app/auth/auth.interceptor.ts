@@ -12,7 +12,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authReq = req.clone({ withCredentials: true, headers });
   return next(authReq).pipe(
     catchError((err: HttpErrorResponse) => {
-      if (err.status === 401 && !req.url.includes('/auth/login') && !req.url.includes('/health')) {
+      const isAuthAttempt =
+        req.url.includes('/auth/login') ||
+        req.url.includes('/auth/passwordless') ||
+        req.url.includes('/auth/bootstrap') ||
+        req.url.includes('/auth/invitations') ||
+        req.url.includes('/health');
+      if (err.status === 401 && !isAuthAttempt) {
         auth.clearLocalSession();
         router.navigate(['/login']);
       }

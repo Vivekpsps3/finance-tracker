@@ -15,10 +15,10 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
         title="Create your vault"
         subtitle="Your finance data is encrypted in the browser. The server only stores ciphertext." />
       <ui-card title="Vault passphrase">
-        <p class="muted">
-          Choose a strong vault passphrase. It is separate from your login password. If you lose both the
-          passphrase and recovery key, your finance data cannot be recovered.
-        </p>
+          <p class="muted">
+           Choose a strong vault passphrase. It unlocks this browser's encrypted vault. If you lose both the
+           passphrase and recovery key, your finance data cannot be recovered by you or an administrator.
+         </p>
         <label>
           Vault passphrase
           <input type="password" [(ngModel)]="passphrase" autocomplete="new-password" minlength="12" />
@@ -28,14 +28,25 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
           <input type="password" [(ngModel)]="confirm" autocomplete="new-password" minlength="12" />
         </label>
         @if (error) {
-          <p class="error">{{ error }}</p>
+          <p class="error" role="alert">{{ error }}</p>
         }
         @if (recoveryKey) {
           <div class="recovery">
             <strong>Save this recovery key now</strong>
-            <code>{{ recoveryKey }}</code>
-            <p class="muted">It will not be shown again. Store it offline.</p>
-            <ui-button (clicked)="continueAfterRecovery()">I saved my recovery key</ui-button>
+             <code>{{ recoveryKey }}</code>
+             <p class="muted">It will not be shown again. Store it offline.</p>
+            <div class="form-actions">
+              <ui-button variant="secondary" (clicked)="copyRecoveryKey()">Copy recovery key</ui-button>
+              <ui-button variant="secondary" (clicked)="downloadRecoveryKey()">Download recovery key</ui-button>
+            </div>
+            @if (recoveryAction) {
+              <p class="muted" role="status">{{ recoveryAction }}</p>
+            }
+            <label class="acknowledgement">
+              <input type="checkbox" [(ngModel)]="recoveryAcknowledged" />
+              <span>I saved this key somewhere I can access without this app.</span>
+            </label>
+            <ui-button [disabled]="!recoveryAcknowledged" (clicked)="continueAfterRecovery()">Continue</ui-button>
           </div>
         } @else {
           <div class="form-actions">
@@ -79,6 +90,8 @@ export class VaultSetupComponent implements OnInit {
   error = '';
   busy = false;
   recoveryKey = '';
+  recoveryAcknowledged = false;
+  recoveryAction = '';
 
   constructor(
     private vault: VaultService,
@@ -116,5 +129,25 @@ export class VaultSetupComponent implements OnInit {
   async continueAfterRecovery(): Promise<void> {
     await this.vault.refreshStatus();
     await this.router.navigateByUrl('/');
+  }
+
+  async copyRecoveryKey(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.recoveryKey);
+      this.recoveryAction = 'Recovery key copied. Paste it into an offline password manager or document.';
+    } catch {
+      this.recoveryAction = 'Copy is unavailable in this browser. Select the key and store it offline.';
+    }
+  }
+
+  downloadRecoveryKey(): void {
+    const blob = new Blob([`Finance recovery key\n\n${this.recoveryKey}\n`], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'finance-recovery-key.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+    this.recoveryAction = 'Recovery key download created. Store the file offline.';
   }
 }

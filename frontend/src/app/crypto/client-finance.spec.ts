@@ -242,6 +242,13 @@ describe('client-finance', () => {
     expect(summary.total_expenses).toBe(1100);
     expect(summary.net_cashflow).toBeCloseTo(2955.44, 2);
     expect(summary.savings_rate).toBeCloseTo(72.87, 1);
+    expect(summary.observed_income).toBe(1000);
+    expect(summary.observed_expenses).toBe(100);
+    expect(summary.observed_net_cashflow).toBe(900);
+    expect(summary.scheduled_income).toBeCloseTo(3055.44, 2);
+    expect(summary.scheduled_expenses).toBe(1000);
+    expect(summary.scheduled_net_cashflow).toBeCloseTo(2055.44, 2);
+    expect(summary.combined_outlook_net_cashflow).toBeCloseTo(2955.44, 2);
   });
 
   it('counts only active recurring records occurring inside their effective date range', () => {

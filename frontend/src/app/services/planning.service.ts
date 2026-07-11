@@ -151,7 +151,7 @@ export class PlanningService {
       recurring_annual_spending: implied_annual_spending,
       annual_fixed_expenses: annualFixed,
       annual_subscriptions: annualSubs,
-      annual_spending_source: 'encrypted-client',
+      annual_spending_source: 'active-recurring-schedules',
     };
   }
 
@@ -255,7 +255,9 @@ export class PlanningService {
       result_summary: {
         start_net_worth: start,
         annual_spending_start: annualSpending,
+        spend_assumption_source: inputs.annual_spending_source,
         annual_income_start: annualIncome,
+        net_cashflow_source: 'active-job-income-and-recurring-schedules',
         annual_contribution_start: annualContribution,
         terminal_p5: terminal('p5'),
         terminal_p10: terminal('p10'),

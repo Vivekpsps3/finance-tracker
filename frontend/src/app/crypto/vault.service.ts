@@ -80,8 +80,19 @@ export class VaultService {
     return status;
   }
 
-  loadPublicStatus(status: VaultStatus): void {
-    this.statusSubject.next(status);
+  loadPublicStatus(status: VaultStatus | Omit<VaultStatus, 'exists' | 'migration_status' | 'migrated'> & Partial<VaultStatus>): void {
+    const hasWraps = !!(status.kdf_salt_b64 && status.wrapped_dek_b64 && status.kdf_iterations);
+    this.statusSubject.next({
+      exists: status.exists ?? hasWraps,
+      migration_status: status.migration_status ?? (hasWraps ? 'complete' : 'none'),
+      migrated: status.migrated ?? hasWraps,
+      kdf_algorithm: status.kdf_algorithm ?? null,
+      kdf_salt_b64: status.kdf_salt_b64 ?? null,
+      kdf_iterations: status.kdf_iterations ?? null,
+      wrapped_dek_b64: status.wrapped_dek_b64 ?? null,
+      recovery_wrapped_dek_b64: status.recovery_wrapped_dek_b64 ?? null,
+      key_version: status.key_version ?? null,
+    });
   }
 
   loadAuthWrap(wrap: WrappedSigningKey): void {

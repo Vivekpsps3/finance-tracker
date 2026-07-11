@@ -167,6 +167,12 @@ export function computeCashflowSummary(
   const roundedIncome = Math.round(planned_income * 100) / 100;
   const roundedFixed = Math.round(fixed_total * 100) / 100;
   const roundedSubscriptions = Math.round(sub_total * 100) / 100;
+  const observed_income = Math.round(transaction_income * 100) / 100;
+  const observed_expenses = Math.round(transaction_expenses * 100) / 100;
+  const observed_net_cashflow = Math.round((observed_income - observed_expenses) * 100) / 100;
+  const scheduled_income = roundedIncome;
+  const scheduled_expenses = Math.round((roundedFixed + roundedSubscriptions) * 100) / 100;
+  const scheduled_net_cashflow = Math.round((scheduled_income - scheduled_expenses) * 100) / 100;
   const total_income = Math.round((transaction_income + roundedIncome) * 100) / 100;
   const total_expenses = Math.round((transaction_expenses + roundedFixed + roundedSubscriptions) * 100) / 100;
   const net_cashflow = Math.round((total_income - total_expenses) * 100) / 100;
@@ -178,6 +184,13 @@ export function computeCashflowSummary(
     planned_income: roundedIncome,
     fixed_expenses: roundedFixed,
     subscriptions: roundedSubscriptions,
+    observed_income,
+    observed_expenses,
+    observed_net_cashflow,
+    scheduled_income,
+    scheduled_expenses,
+    scheduled_net_cashflow,
+    combined_outlook_net_cashflow: net_cashflow,
     total_income,
     total_expenses,
     net_cashflow,

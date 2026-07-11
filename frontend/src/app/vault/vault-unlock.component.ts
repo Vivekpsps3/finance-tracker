@@ -31,7 +31,7 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
           </label>
         }
         @if (error) {
-          <p class="error">{{ error }}</p>
+          <p class="error" role="alert">{{ error }}</p>
         }
         <div class="form-actions">
           <ui-button [disabled]="busy" (clicked)="unlock()">Unlock</ui-button>

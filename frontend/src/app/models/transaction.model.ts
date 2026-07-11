@@ -187,6 +187,16 @@ export interface CashflowSummary {
   planned_income: number;
   fixed_expenses: number;
   subscriptions: number;
+  /** Imported or manually entered activity that occurred in the selected period. */
+  observed_income: number;
+  observed_expenses: number;
+  observed_net_cashflow: number;
+  /** Active recurring schedules projected into the selected period. */
+  scheduled_income: number;
+  scheduled_expenses: number;
+  scheduled_net_cashflow: number;
+  /** Blended observed activity and scheduled assumptions; not an actual-only total. */
+  combined_outlook_net_cashflow: number;
   total_income: number;
   total_expenses: number;
   net_cashflow: number;

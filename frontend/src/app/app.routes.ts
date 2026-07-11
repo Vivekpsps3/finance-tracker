@@ -104,6 +104,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./admin/users/admin-users.component').then(m => m.AdminUsersComponent),
       },
+      {
+        path: '**',
+        title: 'Page not found · Finance',
+        loadComponent: () => import('./not-found/not-found.component').then(m => m.NotFoundComponent),
+      },
     ],
   },
   { path: 'charts', redirectTo: '', pathMatch: 'full' },

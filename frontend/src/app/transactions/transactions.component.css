@@ -192,9 +192,15 @@
   min-width: 640px;
 }
 
-.tx-table-wrap th.sortable {
+.tx-table-wrap th.sortable button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
   cursor: pointer;
-  user-select: none;
+  font: inherit;
+  padding: 0;
+  text-align: inherit;
 }
 
 .import-panel {

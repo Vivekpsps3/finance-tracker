@@ -161,12 +161,18 @@
       <ui-data-table ariaLabel="Transactions history">
         <thead>
           <tr>
-            <th scope="col" (click)="toggleSort('date')" class="sortable">Date {{ sortIcon('date') }}</th>
+            <th scope="col" [attr.aria-sort]="sortColumn === 'date' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'" class="sortable">
+              <button type="button" (click)="toggleSort('date')">Date {{ sortIcon('date') }}</button>
+            </th>
             <th scope="col">Type</th>
             <th scope="col">Account</th>
-            <th scope="col" (click)="toggleSort('category')" class="sortable">Category {{ sortIcon('category') }}</th>
+            <th scope="col" [attr.aria-sort]="sortColumn === 'category' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'" class="sortable">
+              <button type="button" (click)="toggleSort('category')">Category {{ sortIcon('category') }}</button>
+            </th>
             <th scope="col">Description</th>
-            <th scope="col" (click)="toggleSort('amount')" class="sortable amount-col">Amount {{ sortIcon('amount') }}</th>
+            <th scope="col" [attr.aria-sort]="sortColumn === 'amount' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'" class="sortable amount-col">
+              <button type="button" (click)="toggleSort('amount')">Amount {{ sortIcon('amount') }}</button>
+            </th>
             <th scope="col">Actions</th>
           </tr>
         </thead>
