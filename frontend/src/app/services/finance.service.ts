@@ -100,6 +100,10 @@ export class FinanceService {
     return this.vault.usesEncryptedStore;
   }
 
+  get canRefreshHoldingPrices(): boolean {
+    return !this.encMode;
+  }
+
   /**
    * One coordinated fetch for dashboard + embedded charts (deduped via shareReplay).
    */

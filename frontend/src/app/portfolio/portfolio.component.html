@@ -1,21 +1,26 @@
 <div class="page">
   <ui-page-header title="Portfolio" subtitle="Holdings, live prices, and unrealized gains">
     <div uiPageActions class="header-actions">
-      <ui-button
-        variant="secondary"
-        [disabled]="refreshingPrices || holdings.length === 0"
-        ariaLabel="Refresh all share prices"
-        (clicked)="refreshAllPrices()"
-      >
-        @if (refreshingPrices) {
-          <span class="spinner-inline" aria-hidden="true"></span>
-        }
-        Refresh prices
-      </ui-button>
+      @if (canRefreshPrices) {
+        <ui-button
+          variant="secondary"
+          [disabled]="refreshingPrices || holdings.length === 0"
+          ariaLabel="Refresh all share prices"
+          (clicked)="refreshAllPrices()"
+        >
+          @if (refreshingPrices) {
+            <span class="spinner-inline" aria-hidden="true"></span>
+          }
+          Refresh prices
+        </ui-button>
+      }
       <ui-button variant="primary" (clicked)="openAddModal()">Add Holding</ui-button>
       <ui-button variant="secondary" (clicked)="openFidelityImportModal()">Import from Fidelity</ui-button>
     </div>
   </ui-page-header>
+  @if (!canRefreshPrices) {
+    <p class="refresh-note">Prices are manual or imported. Automatic refresh stays off so your held symbols remain private.</p>
+  }
   <p class="refresh-note" *ngIf="lastPortfolioRefresh">Last price refresh: {{ lastPortfolioRefresh }}</p>
 
   @if (holdings.length > 0) {
@@ -52,9 +57,11 @@
           class="search-input"
           aria-label="Search holdings"
         />
-        <ui-button variant="secondary" size="sm" (clicked)="refreshAllPrices()" [disabled]="refreshingPrices || holdings.length === 0">
-          Refresh prices
-        </ui-button>
+        @if (canRefreshPrices) {
+          <ui-button variant="secondary" size="sm" (clicked)="refreshAllPrices()" [disabled]="refreshingPrices || holdings.length === 0">
+            Refresh prices
+          </ui-button>
+        }
         <ui-button variant="secondary" size="sm" (clicked)="exportToCsv()">Export CSV</ui-button>
     </div>
     <p class="text-sm text-secondary holdings-tip">
@@ -153,7 +160,9 @@
                           }
                         </td>
                         <td class="actions actions--row">
-                          <ui-button variant="ghost" size="sm" [ariaLabel]="'Refresh price for ' + h.symbol" (clicked)="refreshHoldingPrice(h)">↻</ui-button>
+                          @if (canRefreshPrices) {
+                            <ui-button variant="ghost" size="sm" [ariaLabel]="'Refresh price for ' + h.symbol" (clicked)="refreshHoldingPrice(h)">↻</ui-button>
+                          }
                           <ui-button variant="ghost" size="sm" [ariaLabel]="'Edit ' + h.symbol" (clicked)="editHolding(h)">Edit</ui-button>
                           <ui-button variant="danger" size="sm" [ariaLabel]="'Delete ' + h.symbol" (clicked)="deleteHolding(h)">Delete</ui-button>
                         </td>
@@ -217,7 +226,9 @@
                       }
                     </td>
                     <td class="actions actions--row">
-                      <ui-button variant="ghost" size="sm" [ariaLabel]="'Refresh price for ' + h.symbol" (clicked)="refreshHoldingPrice(h)">↻</ui-button>
+                      @if (canRefreshPrices) {
+                        <ui-button variant="ghost" size="sm" [ariaLabel]="'Refresh price for ' + h.symbol" (clicked)="refreshHoldingPrice(h)">↻</ui-button>
+                      }
                       <ui-button variant="ghost" size="sm" [ariaLabel]="'Edit ' + h.symbol" (clicked)="editHolding(h)">Edit</ui-button>
                       <ui-button variant="danger" size="sm" [ariaLabel]="'Delete ' + h.symbol" (clicked)="deleteHolding(h)">Delete</ui-button>
                     </td>

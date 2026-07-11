@@ -77,11 +77,21 @@ type ChartConstructor = new (
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InvestmentInsightsComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('projectionChart') projectionChartCanvas?: ElementRef<HTMLCanvasElement>;
+  private _projectionChartCanvas?: ElementRef<HTMLCanvasElement>;
+
+  @ViewChild('projectionChart')
+  set projectionChartCanvas(canvas: ElementRef<HTMLCanvasElement> | undefined) {
+    this._projectionChartCanvas = canvas;
+    if (canvas) void this.renderProjectionChart();
+  }
+
+  get projectionChartCanvas(): ElementRef<HTMLCanvasElement> | undefined {
+    return this._projectionChartCanvas;
+  }
 
   netWorth: NetWorth | null = null;
   holdings: Holding[] = [];
-  annualGrowthRate = 10;
+  annualGrowthRate = 7;
   withdrawalRate = 4;
   inflationRate = 3;
   monthlyContribution = 0;
@@ -280,7 +290,7 @@ export class InvestmentInsightsComponent implements OnInit, AfterViewInit, OnDes
   }
 
   resetAssumptions(): void {
-    this.annualGrowthRate = 10;
+    this.annualGrowthRate = 7;
     this.withdrawalRate = 4;
     this.inflationRate = 3;
     this.monthlyContribution = 0;
@@ -304,7 +314,7 @@ export class InvestmentInsightsComponent implements OnInit, AfterViewInit, OnDes
   }
 
   private normalizeAssumptions(): void {
-    this.annualGrowthRate = this.clampNumber(this.annualGrowthRate, -20, 30, 10);
+    this.annualGrowthRate = this.clampNumber(this.annualGrowthRate, -20, 30, 7);
     this.withdrawalRate = this.clampNumber(this.withdrawalRate, 0, 12, 4);
     this.inflationRate = this.clampNumber(this.inflationRate, 0, 15, 3);
     this.monthlyContribution = this.clampNumber(this.monthlyContribution, 0, 1_000_000, 0);

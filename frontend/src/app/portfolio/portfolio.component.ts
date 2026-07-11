@@ -142,6 +142,7 @@ export class PortfolioComponent implements OnInit, OnDestroy {
   }
 
   refreshAllPrices() {
+    if (!this.financeService.canRefreshHoldingPrices) return;
     this.refreshingPrices = true;
     this.financeService.refreshAllHoldingPrices().pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
@@ -156,9 +157,14 @@ export class PortfolioComponent implements OnInit, OnDestroy {
   }
 
   refreshHoldingPrice(h: Holding) {
+    if (!this.financeService.canRefreshHoldingPrices) return;
     this.financeService.refreshHoldingPrice(h.id).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => this.toastService.success(`${h.symbol} price refreshed`),
     });
+  }
+
+  get canRefreshPrices(): boolean {
+    return this.financeService.canRefreshHoldingPrices;
   }
 
   checkSharePrice() {

@@ -97,6 +97,12 @@ describe('FinanceService', () => {
     service.netWorth$.subscribe(n => expect(n?.total).toBe(400));
   });
 
+  it('does not offer holding price refresh when using the encrypted store', () => {
+    vault.usesEncryptedStore = true;
+
+    expect(service.canRefreshHoldingPrices).toBeFalse();
+  });
+
   it('imports bank CSV through encrypted records without legacy import API calls', done => {
     vault.usesEncryptedStore = true;
     encStore.getTransactions.and.resolveTo([]);
