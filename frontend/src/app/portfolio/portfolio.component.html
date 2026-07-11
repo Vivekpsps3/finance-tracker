@@ -257,15 +257,14 @@
   </ui-card>
 </div>
 
-<div class="modal-backdrop" *ngIf="showModal" role="dialog" aria-modal="true" aria-labelledby="holding-modal-title">
-  <div class="modal-panel form-card">
-    <h3 id="holding-modal-title">{{ editingId ? 'Edit Holding' : 'Add Holding' }}</h3>
+<ui-dialog [open]="showModal" labelledBy="holding-modal-title" (closed)="closeModal()">
+    <h3 id="holding-modal-title">{{ editingId ? 'Edit holding' : 'Add holding' }}</h3>
     <form (ngSubmit)="addOrUpdateHolding()" #holdingForm="ngForm">
       <div class="form-row">
         <div class="form-group symbol-row">
           <label for="h-symbol">Symbol</label>
           <div class="symbol-check">
-            <input id="h-symbol" type="text" [(ngModel)]="newHolding.symbol" name="symbol" required pattern="[A-Za-z0-9.\-]+" />
+            <input id="h-symbol" type="text" [(ngModel)]="newHolding.symbol" name="symbol" required pattern="[A-Za-z0-9.\-]+" data-dialog-initial-focus />
             <ui-button variant="secondary" (clicked)="checkSharePrice()" [disabled]="checkingPrice">
               @if (checkingPrice) {
                 <span class="spinner-inline" aria-hidden="true"></span>
@@ -309,12 +308,10 @@
         <ui-button variant="secondary" (clicked)="closeModal()">Cancel</ui-button>
       </div>
     </form>
-  </div>
-</div>
+</ui-dialog>
 
 <!-- Fidelity Import Modal -->
-<div class="modal-backdrop" *ngIf="showFidelityImportModal" role="dialog" aria-modal="true" aria-labelledby="fidelity-import-modal-title">
-  <div class="modal-panel form-card import-panel">
+<ui-dialog [open]="showFidelityImportModal" labelledBy="fidelity-import-modal-title" panelClass="ui-dialog-panel--wide" (closed)="closeFidelityImportModal()">
     <h3 id="fidelity-import-modal-title">Import from Fidelity (replaces positions)</h3>
 
     <p class="import-warning">
@@ -380,5 +377,4 @@
         <ui-button variant="secondary" (clicked)="closeFidelityImportModal()">Cancel</ui-button>
       </div>
     }
-  </div>
-</div>
+</ui-dialog>

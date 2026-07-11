@@ -27,6 +27,7 @@ import {
   UiPageHeaderComponent,
   UiSelectComponent,
   UiSelectOption,
+  UiDialogComponent,
 } from '../shared/ui';
 
 @Component({
@@ -43,6 +44,7 @@ import {
     UiIconComponent,
     UiSelectComponent,
     UiBadgeComponent,
+    UiDialogComponent,
   ],
   templateUrl: './fixed-expenses.component.html',
   styleUrl: './fixed-expenses.component.css',

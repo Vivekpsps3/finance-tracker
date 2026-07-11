@@ -23,6 +23,7 @@ import {
   UiPageHeaderComponent,
   UiSelectComponent,
   UiSelectOption,
+  UiDialogComponent,
 } from '../shared/ui';
 
 @Component({
@@ -39,6 +40,7 @@ import {
     UiIconComponent,
     UiSelectComponent,
     UiBadgeComponent,
+    UiDialogComponent,
   ],
   templateUrl: './income.component.html',
   styleUrl: './income.component.css',

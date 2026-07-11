@@ -50,14 +50,12 @@
     }
   </ui-card>
 
-  @if (showModal) {
-    <div class="modal-backdrop" role="presentation" (click)="closeModal()"></div>
-    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="subscription-modal-title">
+  <ui-dialog [open]="showModal" labelledBy="subscription-modal-title" (closed)="closeModal()">
       <h2 id="subscription-modal-title">{{ editingId ? 'Edit subscription' : 'Add subscription' }}</h2>
       <form (ngSubmit)="saveSubscription()" class="form-grid">
         <label>
           <span>Name</span>
-          <input name="name" [(ngModel)]="form.name" required />
+          <input name="name" [(ngModel)]="form.name" required data-dialog-initial-focus />
         </label>
         <label>
           <span>Category</span>
@@ -98,6 +96,5 @@
           </ui-button>
         </div>
       </form>
-    </section>
-  }
+  </ui-dialog>
 </div>

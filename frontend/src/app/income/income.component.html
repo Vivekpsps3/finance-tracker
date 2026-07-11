@@ -101,15 +101,13 @@
   </ui-card>
 </div>
 
-@if (showModal) {
-  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="income-modal-title">
-    <div class="modal-panel form-card income-panel">
+<ui-dialog [open]="showModal" labelledBy="income-modal-title" panelClass="ui-dialog-panel--wide" (closed)="closeModal()">
       <h3 id="income-modal-title">{{ editingId ? 'Edit income' : 'Add income' }}</h3>
       <form (ngSubmit)="saveIncome()" #incomeForm="ngForm">
         <div class="form-row">
           <label class="form-group">
             <span>Employer</span>
-            <input name="employer" [(ngModel)]="form.employer" required />
+            <input name="employer" [(ngModel)]="form.employer" required data-dialog-initial-focus />
           </label>
           <label class="form-group">
             <span>Role</span>
@@ -237,6 +235,4 @@
           <ui-button variant="secondary" (clicked)="closeModal()">Cancel</ui-button>
         </div>
       </form>
-    </div>
-  </div>
-}
+</ui-dialog>

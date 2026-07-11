@@ -27,6 +27,7 @@ import {
   UiSelectComponent,
   UiSelectOption,
   UiDataTableComponent,
+  UiDialogComponent,
   UiIconComponent,
 } from '../shared/ui';
 import { FormatCategoryPipe } from '../shared/pipes/format-category.pipe';
@@ -43,6 +44,7 @@ import { FormatCategoryPipe } from '../shared/pipes/format-category.pipe';
     UiEmptyStateComponent,
     UiSelectComponent,
     UiDataTableComponent,
+    UiDialogComponent,
     UiIconComponent,
     FormatCategoryPipe,
   ],

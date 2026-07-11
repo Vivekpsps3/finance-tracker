@@ -16,6 +16,7 @@ import {
   UiPageHeaderComponent,
   UiSelectComponent,
   UiSelectOption,
+  UiDialogComponent,
 } from '../shared/ui';
 
 @Component({
@@ -31,6 +32,7 @@ import {
     UiIconComponent,
     UiSelectComponent,
     UiBadgeComponent,
+    UiDialogComponent,
   ],
   templateUrl: './subscriptions.component.html',
   styleUrl: './subscriptions.component.css',

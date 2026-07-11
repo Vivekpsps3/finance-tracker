@@ -31,6 +31,7 @@ import {
   UiSelectComponent,
   UiSelectOption,
   UiDataTableComponent,
+  UiDialogComponent,
 } from '../shared/ui';
 
 @Component({
@@ -47,6 +48,7 @@ import {
     UiIconComponent,
     UiSelectComponent,
     UiDataTableComponent,
+    UiDialogComponent,
   ],
   templateUrl: './transactions.component.html',
   styleUrl: './transactions.component.css',

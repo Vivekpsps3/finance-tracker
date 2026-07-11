@@ -190,8 +190,24 @@ export class MainLayoutComponent implements OnInit {
     });
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => this.cdr.markForCheck());
+      .subscribe(() => {
+        this.cdr.markForCheck();
+        this.focusMainContent();
+      });
     this.refreshApiStatus();
+  }
+
+  private focusMainContent(): void {
+    queueMicrotask(() => {
+      const main = document.getElementById('main-content');
+      if (!main) return;
+      const heading = main.querySelector<HTMLElement>('h1, h2, .ui-page-header h1, .ui-page-header h2');
+      const target = heading ?? main;
+      if (!target.hasAttribute('tabindex')) {
+        target.tabIndex = -1;
+      }
+      target.focus({ preventScroll: true });
+    });
   }
 
   get isAdmin(): boolean {

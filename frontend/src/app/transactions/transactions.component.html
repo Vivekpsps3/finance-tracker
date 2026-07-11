@@ -219,8 +219,7 @@
   </ui-card>
 </div>
 
-<div class="modal-backdrop" *ngIf="showImportModal" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
-  <div class="modal-panel form-card import-panel">
+<ui-dialog [open]="showImportModal" labelledBy="import-modal-title" panelClass="ui-dialog-panel--wide" (closed)="closeImportModal()">
     <h3 id="import-modal-title">Import bank statement</h3>
 
     @if (importStep === 'upload') {
@@ -318,17 +317,15 @@
         <ui-button variant="secondary" (clicked)="closeImportModal()">Cancel</ui-button>
       </div>
     }
-  </div>
-</div>
+</ui-dialog>
 
-<div class="modal-backdrop" *ngIf="showModal" role="dialog" aria-modal="true" aria-labelledby="tx-modal-title">
-  <div class="modal-panel form-card">
+<ui-dialog [open]="showModal" labelledBy="tx-modal-title" (closed)="closeModal()">
     <h3 id="tx-modal-title">{{ editingTxId ? 'Edit transaction' : 'Add transaction' }}</h3>
     <form (ngSubmit)="saveTransaction()" #txForm="ngForm">
       <div class="form-row">
         <div class="form-group">
           <label for="tx-date">Date</label>
-          <input id="tx-date" type="date" [(ngModel)]="newTx.date" name="date" required />
+          <input id="tx-date" type="date" [(ngModel)]="newTx.date" name="date" required data-dialog-initial-focus />
         </div>
         <div class="form-group">
           <label for="tx-type">Type</label>
@@ -357,5 +354,4 @@
         <ui-button variant="secondary" (clicked)="closeModal()">Cancel</ui-button>
       </div>
     </form>
-  </div>
-</div>
+</ui-dialog>

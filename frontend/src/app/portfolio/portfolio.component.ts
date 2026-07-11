@@ -37,6 +37,7 @@ import {
   UiEmptyStateComponent,
   UiPageHeaderComponent,
   UiDataTableComponent,
+  UiDialogComponent,
 } from '../shared/ui';
 
 @Component({
@@ -52,6 +53,7 @@ import {
     UiBadgeComponent,
     UiEmptyStateComponent,
     UiDataTableComponent,
+    UiDialogComponent,
   ],
   templateUrl: './portfolio.component.html',
   styleUrl: './portfolio.component.css',
