@@ -6,6 +6,7 @@ import {
   hmacBlindIndex,
   randomBytes,
   randomClientId,
+  recordAad,
   rewrapDekWithPassphrase,
   unlockWithPassphrase,
   unlockWithRecoveryKey,
@@ -33,6 +34,20 @@ describe('vault-crypto', () => {
     expect(ct.length).toBeGreaterThan(20);
     const plain = await decryptJson<typeof payload>(dek, ct);
     expect(plain).toEqual(payload);
+  });
+
+  it('rejects ciphertext when its record identity changes', async () => {
+    const dek = await generateDataKey();
+    const payload = { amount: 12.34 };
+    const aad = recordAad('assets', 'asset-001', 1, 1);
+    const ct = await encryptJson(dek, payload, aad);
+
+    await expectAsync(
+      decryptJson<typeof payload>(dek, ct, recordAad('liabilities', 'asset-001', 1, 1))
+    ).toBeRejected();
+    await expectAsync(
+      decryptJson<typeof payload>(dek, ct, recordAad('assets', 'asset-002', 1, 1))
+    ).toBeRejected();
   });
 
   it('creates a vault and unlocks with passphrase', async () => {

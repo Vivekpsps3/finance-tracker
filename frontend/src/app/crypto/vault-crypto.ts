@@ -8,6 +8,15 @@ const textDecoder = new TextDecoder();
 
 export const DEFAULT_PBKDF2_ITERATIONS = 310_000;
 
+export function recordAad(
+  collection: string,
+  clientId: string,
+  schemaVersion: number,
+  keyVersion: number
+): Uint8Array {
+  return textEncoder.encode(JSON.stringify([collection, clientId, schemaVersion, keyVersion]));
+}
+
 function bufToB64(buf: ArrayBuffer | Uint8Array): string {
   const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
   let binary = '';
@@ -157,21 +166,37 @@ export async function rewrapDekWithPassphrase(
 }
 
 /** Encrypt JSON-serializable payload. Output base64(iv || ciphertext). */
-export async function encryptJson(dek: CryptoKey, value: unknown): Promise<string> {
+export async function encryptJson(
+  dek: CryptoKey,
+  value: unknown,
+  additionalData?: BufferSource
+): Promise<string> {
   const iv = randomBytes(12);
   const plain = textEncoder.encode(JSON.stringify(value));
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, dek, plain);
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, ...(additionalData ? { additionalData } : {}) },
+    dek,
+    plain
+  );
   const out = new Uint8Array(iv.length + ct.byteLength);
   out.set(iv, 0);
   out.set(new Uint8Array(ct), iv.length);
   return bufToB64(out);
 }
 
-export async function decryptJson<T>(dek: CryptoKey, ciphertextB64: string): Promise<T> {
+export async function decryptJson<T>(
+  dek: CryptoKey,
+  ciphertextB64: string,
+  additionalData?: BufferSource
+): Promise<T> {
   const packed = b64ToBuf(ciphertextB64);
   const iv = packed.slice(0, 12);
   const ct = packed.slice(12);
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, dek, ct);
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv, ...(additionalData ? { additionalData } : {}) },
+    dek,
+    ct
+  );
   return JSON.parse(textDecoder.decode(plain)) as T;
 }
 

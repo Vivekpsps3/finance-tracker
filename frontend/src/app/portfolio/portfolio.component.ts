@@ -164,7 +164,7 @@ export class PortfolioComponent implements OnInit, OnDestroy {
   }
 
   get canRefreshPrices(): boolean {
-    return this.financeService.canRefreshHoldingPrices;
+    return true;
   }
 
   checkSharePrice() {

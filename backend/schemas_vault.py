@@ -56,6 +56,7 @@ class EncryptedRecordBatchUpsert(BaseModel):
 class EncryptedRecordDeleteItem(BaseModel):
     collection: str
     client_id: str
+    expected_revision: int
 
 
 class EncryptedRecordBatchDelete(BaseModel):

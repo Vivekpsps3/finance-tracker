@@ -21,6 +21,9 @@
   @if (!canRefreshPrices) {
     <p class="refresh-note">Prices are manual or imported. Automatic refresh stays off so your held symbols remain private.</p>
   }
+  @if (canRefreshPrices) {
+    <p class="refresh-note">Refreshing prices sends ticker symbols to the market quote service; holding details remain encrypted.</p>
+  }
   <p class="refresh-note" *ngIf="lastPortfolioRefresh">Last price refresh: {{ lastPortfolioRefresh }}</p>
 
   @if (holdings.length > 0) {

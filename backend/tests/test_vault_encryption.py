@@ -167,6 +167,62 @@ def test_vault_setup_accepts_browser_packed_recovery_wrap():
     assert setup.json()["migrated"] is True
 
 
+def test_vault_rejects_malformed_base64():
+    client = authenticated_client(app, email="vault-invalid-base64@example.com")
+    setup = client.post(
+        "/api/vault/setup",
+        json={
+            "kdf_algorithm": "PBKDF2",
+            "kdf_salt_b64": _b64(16) + "!",
+            "kdf_iterations": 310000,
+            "wrapped_dek_b64": _b64(48),
+            "recovery_wrapped_dek_b64": _b64(48),
+            "key_version": 1,
+        },
+    )
+    assert setup.status_code == 400
+    assert setup.json()["detail"] == "Invalid base64 payload"
+
+
+def test_vault_rejects_stale_record_delete():
+    client = authenticated_client(app, email="vault-stale-delete@example.com")
+    setup = client.post(
+        "/api/vault/setup",
+        json={
+            "kdf_algorithm": "PBKDF2",
+            "kdf_salt_b64": _b64(16),
+            "kdf_iterations": 310000,
+            "wrapped_dek_b64": _b64(48),
+            "recovery_wrapped_dek_b64": _b64(48),
+            "key_version": 1,
+        },
+    )
+    assert setup.status_code == 200, setup.text
+    upsert = client.post(
+        "/api/vault/records/upsert",
+        json={
+            "records": [
+                {
+                    "collection": "assets",
+                    "client_id": "asset-001",
+                    "ciphertext_b64": _b64(64),
+                }
+            ]
+        },
+    )
+    assert upsert.status_code == 200, upsert.text
+
+    stale_delete = client.post(
+        "/api/vault/records/delete",
+        json={
+            "records": [
+                {"collection": "assets", "client_id": "asset-001", "expected_revision": 0}
+            ]
+        },
+    )
+    assert stale_delete.status_code == 409
+
+
 def test_vault_accepts_stock_lab_scenarios_collection():
     client = authenticated_client(app, email="stock-lab-vault@example.com")
     setup = client.post(

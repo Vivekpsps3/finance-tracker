@@ -39,8 +39,11 @@ interface StoredEnvelope<T> {
   id: number;
   client_id: string;
   revision: number;
+  schema_version: number;
   data: T;
 }
+
+const CURRENT_RECORD_SCHEMA_VERSION = 2;
 
 @Injectable({ providedIn: 'root' })
 export class EncryptedStoreService {
@@ -77,19 +80,27 @@ export class EncryptedStoreService {
     let maxId = 0;
     for (const row of rows) {
       if (!this.bags[row.collection]) continue;
-      const data = await this.vault.decryptPayload<any>(row.ciphertext_b64);
+      const data = await this.vault.decryptPayload<any>(
+        row.ciphertext_b64,
+        row.collection,
+        row.client_id,
+        row.schema_version,
+        row.key_version
+      );
       const id = Number(data.id) || this.allocateId();
       maxId = Math.max(maxId, id);
       const envelope: StoredEnvelope<any> = {
         id,
         client_id: row.client_id,
         revision: row.revision,
+        schema_version: row.schema_version,
         data: { ...data, id },
       };
       this.bags[row.collection].set(row.client_id, envelope);
     }
-    this.nextId = maxId + 1;
     this.loaded = true;
+    this.nextId = maxId + 1;
+    await this.rewriteLegacyRecords();
   }
 
   private allocateId(): number {
@@ -116,7 +127,9 @@ export class EncryptedStoreService {
     const id = existing?.id ?? this.allocateId();
     const cid = existing?.client_id ?? clientId ?? randomClientId(collection.slice(0, 3));
     const data = { ...payload, id };
-    const ciphertext = await this.vault.encryptPayload(data);
+    const schemaVersion = CURRENT_RECORD_SCHEMA_VERSION;
+    const keyVersion = 1;
+    const ciphertext = await this.vault.encryptPayload(data, collection, cid, schemaVersion, keyVersion);
     const indexes =
       collection === 'transactions' && (data as any).dedupe_key
         ? [
@@ -132,6 +145,8 @@ export class EncryptedStoreService {
           collection,
           client_id: cid,
           ciphertext_b64: ciphertext,
+          schema_version: schemaVersion,
+          key_version: keyVersion,
           expected_revision: existing?.revision ?? null,
           indexes,
         },
@@ -142,9 +157,22 @@ export class EncryptedStoreService {
       id,
       client_id: cid,
       revision: row.revision,
+      schema_version: schemaVersion,
       data,
     });
     return data;
+  }
+
+  private async rewriteLegacyRecords(): Promise<void> {
+    for (const collection of Object.keys(this.bags) as CollectionName[]) {
+      for (const envelope of this.bags[collection].values()) {
+        // Version 1 records did not authenticate their server-owned identity.
+        // Rewrite them once with version 2 AAD after successful local decryption.
+        if (envelope.schema_version < CURRENT_RECORD_SCHEMA_VERSION) {
+          await this.upsert(collection, envelope.data, envelope.client_id);
+        }
+      }
+    }
   }
 
   private async remove(collection: CollectionName, id: number): Promise<void> {
@@ -152,7 +180,9 @@ export class EncryptedStoreService {
     const found = Array.from(this.bags[collection].values()).find(v => v.id === id);
     if (!found) return;
     await firstValueFrom(
-      this.vault.deleteRecords([{ collection, client_id: found.client_id }])
+      this.vault.deleteRecords([
+        { collection, client_id: found.client_id, expected_revision: found.revision },
+      ])
     );
     this.bags[collection].delete(found.client_id);
   }
@@ -233,6 +263,17 @@ export class EncryptedStoreService {
     const current = (await this.getHoldings()).find(a => a.id === id);
     if (!current) throw new Error('Holding not found');
     return enrichHolding(await this.upsert('holdings', { ...current, ...body, id }));
+  }
+
+  async updateHoldingPrice(
+    id: number,
+    quote: { price: number; price_source: string; price_as_of?: string | null }
+  ): Promise<Holding> {
+    return this.updateHolding(id, {
+      current_price: quote.price,
+      price_source: quote.price_source,
+      price_as_of: quote.price_as_of ?? null,
+    });
   }
 
   async deleteHolding(id: number): Promise<void> {

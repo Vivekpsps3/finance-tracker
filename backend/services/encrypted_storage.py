@@ -51,9 +51,12 @@ def _b64_decode(value: str) -> bytes:
     if pad:
         raw = raw + ("=" * pad)
     try:
-        return base64.b64decode(raw, validate=False)
+        decoded = base64.b64decode(raw, validate=True)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
+    if not decoded:
+        raise HTTPException(status_code=400, detail="Invalid base64 payload")
+    return decoded
 
 
 def _b64_len(value: str) -> int:
@@ -277,22 +280,41 @@ def upsert_records(db: Session, user_id: int, items: list[dict[str, Any]]) -> li
     return out
 
 
-def delete_records(db: Session, user_id: int, items: list[dict[str, str]]) -> int:
+def delete_records(db: Session, user_id: int, items: list[dict[str, Any]]) -> int:
     if len(items) > MAX_BATCH:
         raise HTTPException(status_code=400, detail=f"Batch too large (max {MAX_BATCH})")
     deleted = 0
     for item in items:
         collection = validate_collection(str(item.get("collection", "")))
         client_id = validate_client_id(str(item.get("client_id", "")))
-        deleted += (
+        expected_revision = int(item["expected_revision"])
+        deleted_count = (
             db.query(EncryptedRecord)
             .filter(
                 EncryptedRecord.user_id == user_id,
                 EncryptedRecord.collection == collection,
                 EncryptedRecord.client_id == client_id,
+                EncryptedRecord.revision == expected_revision,
             )
             .delete(synchronize_session=False)
         )
+        if not deleted_count:
+            existing = (
+                db.query(EncryptedRecord.id)
+                .filter(
+                    EncryptedRecord.user_id == user_id,
+                    EncryptedRecord.collection == collection,
+                    EncryptedRecord.client_id == client_id,
+                )
+                .one_or_none()
+            )
+            if existing:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Revision conflict for {collection}/{client_id}",
+                )
+            continue
+        deleted += deleted_count
         db.query(EncryptedRecordIndex).filter(
             EncryptedRecordIndex.user_id == user_id,
             EncryptedRecordIndex.collection == collection,

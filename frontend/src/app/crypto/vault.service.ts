@@ -7,6 +7,7 @@ import {
   decryptJson,
   encryptJson,
   hmacBlindIndex,
+  recordAad,
   rewrapDekWithPassphrase,
   unlockWithPassphrase,
   unlockWithRecoveryKey,
@@ -127,12 +128,32 @@ export class VaultService {
     return this.dek;
   }
 
-  async encryptPayload(value: unknown): Promise<string> {
-    return encryptJson(this.requireDek(), value);
+  async encryptPayload(
+    value: unknown,
+    collection: string,
+    clientId: string,
+    schemaVersion: number,
+    keyVersion: number
+  ): Promise<string> {
+    return encryptJson(
+      this.requireDek(),
+      value,
+      schemaVersion >= 2 ? recordAad(collection, clientId, schemaVersion, keyVersion) : undefined
+    );
   }
 
-  async decryptPayload<T>(ciphertextB64: string): Promise<T> {
-    return decryptJson<T>(this.requireDek(), ciphertextB64);
+  async decryptPayload<T>(
+    ciphertextB64: string,
+    collection: string,
+    clientId: string,
+    schemaVersion: number,
+    keyVersion: number
+  ): Promise<T> {
+    return decryptJson<T>(
+      this.requireDek(),
+      ciphertextB64,
+      schemaVersion >= 2 ? recordAad(collection, clientId, schemaVersion, keyVersion) : undefined
+    );
   }
 
   async blindIndex(value: string): Promise<string> {
@@ -158,7 +179,9 @@ export class VaultService {
     return this.http.post<EncryptedRecordDto[]>(apiUrl('/vault/records/upsert'), { records });
   }
 
-  deleteRecords(records: Array<{ collection: string; client_id: string }>): Observable<{ deleted: number }> {
+  deleteRecords(
+    records: Array<{ collection: string; client_id: string; expected_revision: number }>
+  ): Observable<{ deleted: number }> {
     return this.http.post<{ deleted: number }>(apiUrl('/vault/records/delete'), { records });
   }
 

@@ -12,6 +12,7 @@ import {
   throwError,
   shareReplay,
   take,
+  firstValueFrom,
 } from 'rxjs';
 import { apiUrl } from '../core/api-url';
 import { EncryptedStoreService } from '../crypto/encrypted-store.service';
@@ -101,7 +102,7 @@ export class FinanceService {
   }
 
   get canRefreshHoldingPrices(): boolean {
-    return !this.encMode;
+    return true;
   }
 
   /**
@@ -591,8 +592,29 @@ export class FinanceService {
 
   refreshAllHoldingPrices(): Observable<Holding[]> {
     if (this.encMode) {
-      // Server-blind: no per-user symbol disclosure for quote refresh.
-      return this.getHoldings(false);
+      return from((async () => {
+        const holdings = await this.encStore.getHoldings();
+        const quotes = new Map<string, MarketPriceQuote>();
+        for (const symbol of [...new Set(holdings.map(h => h.symbol.trim().toUpperCase()))]) {
+          if (!symbol) continue;
+          try {
+            const quote = await firstValueFrom(this.lookupSharePrice(symbol, true));
+            if (quote.valid) quotes.set(symbol, quote);
+          } catch {
+            // Preserve the prior encrypted price when the public quote lookup fails.
+          }
+        }
+        await Promise.all(
+          holdings.map(async holding => {
+            const quote = quotes.get(holding.symbol.trim().toUpperCase());
+            if (quote) await this.encStore.updateHoldingPrice(holding.id, quote);
+          })
+        );
+        const refreshed = await this.encStore.getHoldings();
+        this._holdings.next(refreshed);
+        this.refreshDerivedMetrics();
+        return refreshed;
+      })());
     }
 
     this.isLoading.next(true);
