@@ -187,9 +187,41 @@ describe('FinanceService', () => {
     });
   });
 
-  it('does not expose Fidelity import endpoints in encrypted mode', () => {
+  it('imports Fidelity positions client-side in encrypted mode', done => {
     vault.usesEncryptedStore = true;
-    service.getBrokerageImports().subscribe(options => expect(options).toEqual([]));
-    http.expectNone(r => r.url.includes('/imports/fidelity') || r.url.includes('/imports/brokerages'));
+    encStore.getBrokerageAccounts = jasmine.createSpy().and.resolveTo([]);
+    encStore.upsertBrokerageAccount = jasmine.createSpy().and.callFake(async (body: any) => ({ id: 1, ...body }));
+    encStore.getHoldings.and.resolveTo([]);
+    encStore.deleteHolding = jasmine.createSpy().and.resolveTo(undefined);
+    encStore.addHolding = jasmine.createSpy().and.callFake(async (body: any) => ({ id: 5, ...body }));
+    encStore.getNetWorth.and.resolveTo({
+      other_assets: 0,
+      portfolio: 0,
+      liabilities: 0,
+      total_assets: 0,
+      total: 0,
+    });
+
+    const csv = [
+      'Account Number,Account Name,Symbol,Quantity,Average Cost Basis',
+      'Z111,Individual,VOO,2,500',
+    ].join('\n');
+    const file = new File([csv], 'fidelity.csv', { type: 'text/csv' });
+
+    service.previewFidelityImport(file).subscribe({
+      next: preview => {
+        expect(preview.summary.positions).toBe(1);
+        service.commitFidelityImport(preview.filename, preview.rows).subscribe({
+          next: result => {
+            expect(result.inserted).toBe(1);
+            expect(encStore.addHolding).toHaveBeenCalled();
+            http.expectNone(r => r.url.includes('/imports/fidelity') || r.url.includes('/imports/brokerages'));
+            done();
+          },
+          error: done.fail,
+        });
+      },
+      error: done.fail,
+    });
   });
 });

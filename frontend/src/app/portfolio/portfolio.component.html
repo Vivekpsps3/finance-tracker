@@ -251,6 +251,9 @@
       @if (!loading) {
         <ui-empty-state message="No holdings yet.">
           <ui-button variant="primary" (clicked)="openAddModal()">Add your first</ui-button>
+          @if (canImportFidelity) {
+            <ui-button variant="secondary" (clicked)="openFidelityImportModal()">Import from Fidelity</ui-button>
+          }
         </ui-empty-state>
       }
     </ng-template>

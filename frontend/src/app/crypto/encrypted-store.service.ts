@@ -295,7 +295,30 @@ export class EncryptedStoreService {
 
   async getHoldings(): Promise<Holding[]> {
     await this.ensureLoaded();
-    return this.list<Holding>('holdings').map(enrichHolding);
+    const accounts = this.list<{
+      id: number;
+      broker_name?: string;
+      account_mask?: string;
+      nickname?: string | null;
+      label?: string | null;
+    }>('brokerage_accounts');
+    const labels = new Map(
+      accounts.map(acc => [
+        acc.id,
+        acc.nickname?.trim() ||
+          acc.label?.trim() ||
+          `${acc.broker_name || 'Fidelity'} ···${acc.account_mask || ''}`.trim(),
+      ])
+    );
+    return this.list<Holding>('holdings').map(h =>
+      enrichHolding({
+        ...h,
+        account_display:
+          (h.brokerage_account_id != null ? labels.get(h.brokerage_account_id) : null) ||
+          h.account_display ||
+          null,
+      })
+    );
   }
 
   async addHolding(body: any): Promise<Holding> {
@@ -326,6 +349,63 @@ export class EncryptedStoreService {
 
   async deleteHolding(id: number): Promise<void> {
     return this.remove('holdings', id);
+  }
+
+  async getBrokerageAccounts(): Promise<
+    Array<{
+      id: number;
+      broker_slug: string;
+      broker_name: string;
+      account_mask: string;
+      account_name?: string;
+      nickname?: string | null;
+      label?: string | null;
+    }>
+  > {
+    await this.ensureLoaded();
+    return this.list('brokerage_accounts');
+  }
+
+  async upsertBrokerageAccount(body: {
+    id?: number;
+    broker_slug: string;
+    broker_name: string;
+    account_mask: string;
+    account_name?: string;
+    nickname?: string | null;
+    label?: string | null;
+  }): Promise<{
+    id: number;
+    broker_slug: string;
+    broker_name: string;
+    account_mask: string;
+    account_name?: string;
+    nickname?: string | null;
+    label?: string | null;
+  }> {
+    const row = await this.upsert('brokerage_accounts', body);
+    return { ...row, id: Number(row.id) };
+  }
+
+  async setBrokerageAccountNickname(accountId: number, nickname: string | null) {
+    const accounts = await this.getBrokerageAccounts();
+    const current = accounts.find(a => a.id === accountId);
+    if (!current) throw new Error('Brokerage account not found');
+    const nextNickname = nickname?.trim() || null;
+    const label =
+      nextNickname ||
+      current.label ||
+      `${current.broker_name || 'Fidelity'} ···${current.account_mask}`;
+    const updated = await this.upsertBrokerageAccount({
+      ...current,
+      nickname: nextNickname,
+      label,
+    });
+    const holdings = await this.getHoldings();
+    for (const holding of holdings.filter(h => h.brokerage_account_id === accountId)) {
+      await this.updateHolding(holding.id, { account_display: label });
+    }
+    return updated;
   }
 
   async getJobIncomes(): Promise<JobIncome[]> {

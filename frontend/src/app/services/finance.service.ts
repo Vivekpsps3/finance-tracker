@@ -53,6 +53,11 @@ import {
   commitBankImportRows,
   listClientBankImports,
 } from '../utils/bank-import.util';
+import {
+  buildFidelityImportPreview,
+  commitFidelityImportRows,
+  listClientBrokerageImports,
+} from '../utils/fidelity-import.util';
 
 export type DashboardLoadResult = [
   Transaction[],
@@ -108,7 +113,7 @@ export class FinanceService {
   }
 
   get canImportFidelity(): boolean {
-    return !this.encMode;
+    return true;
   }
 
   /**
@@ -960,11 +965,18 @@ export class FinanceService {
 
   // Fidelity portfolio import (replaces positions per account)
   getBrokerageImports(): Observable<FidelityImportOption[]> {
-    if (this.encMode) return of([]);
+    if (this.encMode) {
+      return of(listClientBrokerageImports());
+    }
     return this.http.get<FidelityImportOption[]>(apiUrl('/imports/brokerages'));
   }
 
   previewFidelityImport(file: File): Observable<FidelityPreviewResult> {
+    if (this.encMode) {
+      return from(
+        file.text().then(content => buildFidelityImportPreview(file.name, content))
+      );
+    }
     const form = new FormData();
     form.append('file', file, file.name);
     return this.http.post<FidelityPreviewResult>(
@@ -977,6 +989,15 @@ export class FinanceService {
     filename: string,
     rows: FidelityPreviewRow[]
   ): Observable<FidelityCommitResult> {
+    if (this.encMode) {
+      return from(commitFidelityImportRows(this.encStore, rows)).pipe(
+        tap(() => {
+          this.invalidateDashboardCache();
+          this.getHoldings().pipe(take(1)).subscribe();
+          this.getNetWorth().pipe(take(1)).subscribe();
+        })
+      );
+    }
     return this.http
       .post<FidelityCommitResult>(apiUrl('/imports/fidelity/commit'), {
         filename,
@@ -989,7 +1010,6 @@ export class FinanceService {
       })
       .pipe(
         tap(() => {
-          // refresh holdings and net worth (current only)
           this.invalidateDashboardCache();
           this.getHoldings().pipe(take(1)).subscribe();
           this.getNetWorth().pipe(take(1)).subscribe();
@@ -998,6 +1018,15 @@ export class FinanceService {
   }
 
   setAccountNickname(accountId: number, nickname: string | null): Observable<any> {
+    if (this.encMode) {
+      return from(this.encStore.setBrokerageAccountNickname(accountId, nickname)).pipe(
+        tap(() => {
+          this.invalidateDashboardCache();
+          this.getHoldings().pipe(take(1)).subscribe();
+          this.getNetWorth().pipe(take(1)).subscribe();
+        })
+      );
+    }
     return this.http.put(apiUrl(`/imports/brokerage-accounts/${accountId}/nickname`), {
       nickname: nickname || null,
     }).pipe(
