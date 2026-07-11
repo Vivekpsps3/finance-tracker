@@ -93,3 +93,23 @@ class MigrationStatusResponse(BaseModel):
     error_message: str | None = None
     verified_at: str | None = None
     completed_at: str | None = None
+
+
+class MigrationRecordIdentity(BaseModel):
+    collection: str
+    client_id: str
+
+
+class MigrationCompleteRequest(BaseModel):
+    counts: dict[str, int]
+    records: list[MigrationRecordIdentity]
+
+
+class LegacyMigrationRecord(BaseModel):
+    collection: str
+    data: dict[str, Any]
+
+
+class LegacyMigrationExportResponse(BaseModel):
+    counts: dict[str, int]
+    records: list[LegacyMigrationRecord]

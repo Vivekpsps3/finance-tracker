@@ -74,12 +74,43 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     display_name = Column(String, nullable=False)
     role = Column(Enum(UserRole), default=UserRole.user, nullable=False)
-    password_hash = Column(String, nullable=False)
+    password_hash = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     must_change_password = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
     last_login_at = Column(DateTime, nullable=True)
+    username = Column(String, unique=True, index=True, nullable=True)
+    auth_public_key_b64 = Column(Text, nullable=True)
+    auth_algorithm = Column(String, nullable=True)
+    auth_key_version = Column(Integer, nullable=True)
+    auth_kdf_salt_b64 = Column(String, nullable=True)
+    auth_kdf_iterations = Column(Integer, nullable=True)
+    auth_wrapped_private_key_b64 = Column(Text, nullable=True)
+    auth_recovery_wrapped_private_key_b64 = Column(Text, nullable=True)
+    passwordless_enrolled_at = Column(DateTime, nullable=True)
+
+
+class AuthChallenge(Base):
+    __tablename__ = "auth_challenges"
+    id = Column(Integer, primary_key=True, index=True)
+    challenge_id = Column(String, unique=True, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    challenge_hash = Column(String, unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    consumed_at = Column(DateTime, nullable=True, index=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+class AuthEnrollment(Base):
+    __tablename__ = "auth_enrollments"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String, unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    consumed_at = Column(DateTime, nullable=True, index=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
 
 class UserSession(Base):
@@ -92,6 +123,7 @@ class UserSession(Base):
     expires_at = Column(DateTime, nullable=False, index=True)
     last_seen_at = Column(DateTime, default=utc_now, nullable=False)
     revoked_at = Column(DateTime, nullable=True, index=True)
+    migration_only = Column(Boolean, default=False, nullable=False)
     user_agent = Column(String, nullable=True)
     ip_address = Column(String, nullable=True)
 

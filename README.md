@@ -28,12 +28,12 @@ Details: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 - **Transactions** — Income & expenses, browser-side bank CSV import (Capital One, Chase, Amex, Citi, X Money; preview + dedupe)
 - **Income / fixed expenses / subscriptions** — Recurring cashflow configuration (does not change net worth)
 - **Balance sheet** — Manual assets & liabilities that drive net worth (`/balance-sheet`)
-- **Portfolio** — Holdings CRUD and manual/imported prices; server-side Fidelity import is retired until it is moved client-side
+- **Portfolio** — Encrypted holdings CRUD and manual/imported prices; an explicit price refresh sends ticker symbols to the market-data backend/yfinance, not the remaining holding details
 - **Investment insights** — Client-side growth / withdrawal-rate views from portfolio value
 - **Calendar** — Daily transaction summary
 - **Monte Carlo** (`/planning`) — Net worth fan chart, tunable assumptions from your ledger (speculative; does not change net worth or ledger)
 - **Stock Lab** (`/stock-lab`) — Stock/ETF decision lab: returns, dividends, purchase scenarios, comparisons; encrypted saved scenarios; public market research (speculative; does not change net worth or holdings)
-- **Auth / vault / admin** — Session login, encrypted vault setup/unlock/recovery, signup after first admin, `/admin/users` for admins
+- **Auth / vault / admin** — Username plus vault-passphrase challenge login, browser-owned encrypted vault setup/unlock/recovery, invitation enrollment, `/admin/users` for admins
 
 ## Tech stack
 
@@ -103,7 +103,7 @@ Open http://127.0.0.1:8080. The `web` container serves Angular and proxies
 
 ## Production checklist
 
-See **[docs/DEPLOY.md](docs/DEPLOY.md)**. In short: TLS in front of the web container, create first admin at `/login`, set `CORS_ORIGINS` and `SESSION_COOKIE_SECURE=1`, back up the SQLite file.
+See **[docs/DEPLOY.md](docs/DEPLOY.md)**. In short: TLS in front of the web container, create the first admin and retain its recovery key, set `CORS_ORIGINS` and `SESSION_COOKIE_SECURE=1`, back up the SQLite file.
 
 ## Troubleshooting
 

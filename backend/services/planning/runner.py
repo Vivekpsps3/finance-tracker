@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from threading import BoundedSemaphore
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, Tuple
 
@@ -12,6 +13,8 @@ from sqlalchemy.orm import Session
 from schemas_planning import ProfilePayload
 from services.analytics import monte_carlo
 from services.planning.tools_registry import get_tool
+
+_RUN_SLOTS = BoundedSemaphore(max(1, int(os.getenv("MC_MAX_CONCURRENT_RUNS", "2"))))
 
 
 def execute_tool(
@@ -33,6 +36,9 @@ def execute_tool(
 
     if tool_id == "mc_net_worth_paths":
         timeout_sec = float(os.getenv("MC_RUN_TIMEOUT_SEC", "120"))
+        if not _RUN_SLOTS.acquire(blocking=False):
+            raise HTTPException(status_code=429, detail="Monte Carlo simulation capacity is busy")
+        release_slot = True
 
         def _run_mc() -> Tuple[Dict[str, Any], Dict[str, Any]]:
             return monte_carlo.mc_net_worth_paths(
@@ -43,15 +49,26 @@ def execute_tool(
                 seed=seed,
             )
 
-        with ThreadPoolExecutor(max_workers=1) as pool:
+        try:
+            pool = ThreadPoolExecutor(max_workers=1)
             future = pool.submit(_run_mc)
             try:
-                return future.result(timeout=timeout_sec)
+                result = future.result(timeout=timeout_sec)
             except FuturesTimeoutError:
                 future.cancel()
+                # A running thread cannot be forcibly stopped; retain its slot until it exits.
+                future.add_done_callback(lambda _: _RUN_SLOTS.release())
+                release_slot = False
+                pool.shutdown(wait=False, cancel_futures=True)
                 raise HTTPException(
                     status_code=504,
                     detail=f"Monte Carlo simulation timed out after {int(timeout_sec)}s",
                 )
+            else:
+                pool.shutdown(wait=True)
+                return result
+        finally:
+            if release_slot:
+                _RUN_SLOTS.release()
 
     raise HTTPException(status_code=500, detail=f"Tool not wired: {tool_id}")

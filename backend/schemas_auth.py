@@ -3,6 +3,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from schemas_vault import VaultCreateRequest
+
 UserRoleValue = Literal["admin", "user"]
 
 
@@ -22,6 +24,7 @@ class UserPublic(EmailMixin):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    username: Optional[str] = None
     display_name: str
     role: UserRoleValue
     is_active: bool
@@ -40,6 +43,52 @@ class LoginResponse(BaseModel):
     csrf_token: str
 
 
+class AuthPrivateKeyWrap(BaseModel):
+    kdf_salt_b64: str = Field(..., min_length=16, max_length=4096)
+    kdf_iterations: int = Field(310000, ge=100000, le=10000000)
+    wrapped_private_key_b64: str = Field(..., min_length=16, max_length=8192)
+    recovery_wrapped_private_key_b64: str = Field(..., min_length=16, max_length=8192)
+
+
+class PasswordlessEnrollRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_.-]+$")
+    public_key_b64: str = Field(..., min_length=16, max_length=4096)
+    auth: AuthPrivateKeyWrap
+
+
+class InvitationEnrollRequest(BaseModel):
+    public_key_b64: str = Field(..., min_length=16, max_length=4096)
+    vault: VaultCreateRequest
+    auth: AuthPrivateKeyWrap
+
+
+class PasswordlessBootstrapRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_.-]+$")
+    display_name: str = Field(..., min_length=1, max_length=160)
+    public_key_b64: str = Field(..., min_length=16, max_length=4096)
+    vault: VaultCreateRequest
+    auth: AuthPrivateKeyWrap
+
+
+class PasswordlessChallengeRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64)
+
+
+class PasswordlessChallengeResponse(BaseModel):
+    challenge_id: str
+    challenge: str
+    message: str
+    expires_at: datetime
+
+
+class PasswordlessVerifyRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64)
+    challenge_id: str = Field(..., min_length=16, max_length=128)
+    challenge: str = Field(..., min_length=32, max_length=256)
+    message: str = Field(..., min_length=1, max_length=2048)
+    signature_b64: str = Field(..., min_length=16, max_length=256)
+
+
 class MeResponse(BaseModel):
     user: UserPublic
     csrf_token: Optional[str] = None
@@ -50,11 +99,14 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=12, max_length=256)
 
 
-class AdminUserCreate(EmailMixin):
+class AdminUserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_.-]+$")
     display_name: str = Field(..., min_length=1, max_length=160)
     role: UserRoleValue = "user"
-    password: str = Field(..., min_length=12, max_length=256)
-    must_change_password: bool = True
+
+
+class AdminInvitationResponse(UserPublic):
+    enrollment_token: str
 
 
 class AdminUserUpdate(BaseModel):

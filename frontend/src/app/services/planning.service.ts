@@ -15,6 +15,8 @@ import {
   PlanningProfileCreate,
   PlanningRun,
   PlanningRunCreate,
+  DEFAULT_MC_ASSUMPTIONS,
+  ProfilePayload,
 } from '../models/planning.model';
 
 @Injectable({ providedIn: 'root' })
@@ -128,9 +130,9 @@ export class PlanningService {
     const fixed = await this.encStore.getFixedExpenses();
     const subs = await this.encStore.getSubscriptions();
     const txs = await this.encStore.getTransactions();
-    const monthlyIncome = incomes.reduce((s, j) => s + (Number(j.monthly_net) || 0), 0);
-    const annualFixed = fixed.reduce((s, f) => s + (Number(f.annual_amount) || 0), 0);
-    const annualSubs = subs.reduce((s, f) => s + (Number(f.annual_amount) || 0), 0);
+    const monthlyIncome = incomes.filter(row => row.is_active).reduce((s, j) => s + (Number(j.monthly_net) || 0), 0);
+    const annualFixed = fixed.filter(row => row.is_active).reduce((s, f) => s + (Number(f.annual_amount) || 0), 0);
+    const annualSubs = subs.filter(row => row.is_active).reduce((s, f) => s + (Number(f.annual_amount) || 0), 0);
     const monthlyExpense = (annualFixed + annualSubs) / 12;
     const implied_annual_spending = annualFixed + annualSubs;
     const implied_annual_savings = monthlyIncome * 12 - implied_annual_spending;
@@ -156,18 +158,27 @@ export class PlanningService {
   private async clientMonteCarlo(body: PlanningRunCreate): Promise<PlanningRun> {
     const startedAt = new Date().toISOString();
     const inputs = await this.clientInputs();
-    const nPaths = Math.min(Math.max((body as any).n_paths || 500, MC_N_PATHS_MIN), MC_N_PATHS_MAX);
-    const horizonYears = Math.min(Math.max((body as any).horizon_years || 30, 1), 60);
+    const nPaths = Math.min(Math.max((body as any).n_paths ?? 500, MC_N_PATHS_MIN), MC_N_PATHS_MAX);
+    const horizonYears = Math.min(Math.max((body as any).horizon_years ?? 30, 1), 60);
     const seed = (body as any).seed ?? 42;
+    const overrides = (body.overrides || {}) as Partial<ProfilePayload>;
+    const profile: ProfilePayload = {
+      ...DEFAULT_MC_ASSUMPTIONS,
+      ...overrides,
+      extra_contributions: { ...DEFAULT_MC_ASSUMPTIONS.extra_contributions, ...(overrides.extra_contributions || {}) },
+      checkpoints: overrides.checkpoints ?? DEFAULT_MC_ASSUMPTIONS.checkpoints,
+      annual_cashflow_events: overrides.annual_cashflow_events ?? DEFAULT_MC_ASSUMPTIONS.annual_cashflow_events,
+    };
     let state = seed >>> 0;
     const rand = () => {
       state = (1664525 * state + 1013904223) >>> 0;
       return state / 0xffffffff;
     };
-    const start = Number(inputs.net_worth_total) || 0;
-    const annualSavings = Number(inputs.implied_annual_savings) || 0;
-    const mu = 0.07;
-    const sigma = 0.15;
+    const start = profile.start_net_worth ?? (Number(inputs.net_worth_total) || 0);
+    const annualSpending = profile.annual_spending ?? (Number(inputs.implied_annual_spending) || 0);
+    const annualIncome = profile.monthly_income != null ? profile.monthly_income * 12 : inputs.avg_monthly_income * 12;
+    const annualContribution = profile.extra_contributions?.annual_contribution ?? 0;
+    const allocation = profile.portfolio_allocation ?? (inputs.net_worth_total ? inputs.net_worth_portfolio / inputs.net_worth_total : 0);
     const paths: number[][] = [];
     for (let p = 0; p < nPaths; p += 1) {
       const series = [start];
@@ -176,8 +187,23 @@ export class PlanningService {
         const u1 = Math.max(rand(), 1e-12);
         const u2 = rand();
         const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-        const annualReturn = mu + sigma * z;
-        value = Math.max(value * (1 + annualReturn) + annualSavings, 0);
+        const shock = rand() < profile.shock_probability
+          ? Math.max(0, profile.shock_mean_loss + profile.shock_loss_std * z)
+          : 0;
+        const growthReturn = profile.nominal_return_mean + profile.nominal_return_std * z - shock - profile.tax_drag - profile.annual_fee_drag;
+        const stableReturn = profile.stable_return_mean;
+        const year = y - 1;
+        const events = profile.annual_cashflow_events.reduce((sum, event) => {
+          const startYear = event.start_year ?? event.year ?? 1;
+          const endYear = event.end_year ?? horizonYears;
+          const interval = event.interval_years || 1;
+          const happens = event.recurring
+            ? year + 1 >= startYear && year + 1 <= endYear && Math.abs(((year + 1 - startYear) / interval) - Math.round((year + 1 - startYear) / interval)) < 1e-9
+            : event.year === year + 1;
+          return happens ? sum + event.amount * (event.inflation_adjusted ? (1 + profile.inflation_cpi) ** year : 1) : sum;
+        }, 0);
+        const cashflow = annualIncome * (1 + profile.annual_income_growth) ** year - annualSpending * (1 + profile.inflation_cpi) ** year + annualContribution + events;
+        value = Math.max(value * (allocation * (1 + growthReturn) + (1 - allocation) * (1 + stableReturn)) + cashflow, 0);
         series.push(value);
       }
       paths.push(series);
@@ -196,6 +222,26 @@ export class PlanningService {
     const fanStep = Math.max(1, Math.ceil(paths.length / MC_FAN_PATHS_PERSIST_MAX));
     const fanPaths = paths.filter((_, index) => index % fanStep === 0).slice(0, MC_FAN_PATHS_PERSIST_MAX);
     const terminal = (key: string) => percentilesByYear[key]?.at(-1) ?? start;
+    const checkpointResults = profile.checkpoints.map(checkpoint => {
+      const year = Math.min(horizonYears, Math.max(0, checkpoint.year ?? 0));
+      const target = checkpoint.target_net_worth ?? null;
+      const p50 = percentilesByYear['p50'][year];
+      const success = target == null ? null : paths.filter(path => path[year] >= target).length / paths.length * 100;
+      return {
+        label: checkpoint.label,
+        year,
+        target_date: checkpoint.target_date ?? null,
+        target_net_worth: target,
+        p10: percentilesByYear['p10'][year],
+        p50,
+        p90: percentilesByYear['p90'][year],
+        success_probability_pct: success,
+        gap_to_goal_p50: target == null ? null : p50 - target,
+        on_track: checkpoint.min_success_probability == null || success == null
+          ? null
+          : success >= checkpoint.min_success_probability * 100,
+      };
+    });
     return {
       id: null,
       tool_id: (body as any).tool_id || 'mc_net_worth_paths',
@@ -208,9 +254,9 @@ export class PlanningService {
       disclaimer: PLANNING_DISCLAIMER,
       result_summary: {
         start_net_worth: start,
-        annual_spending_start: inputs.implied_annual_spending,
-        annual_income_start: inputs.avg_monthly_income * 12,
-        annual_contribution_start: annualSavings,
+        annual_spending_start: annualSpending,
+        annual_income_start: annualIncome,
+        annual_contribution_start: annualContribution,
         terminal_p5: terminal('p5'),
         terminal_p10: terminal('p10'),
         terminal_p25: terminal('p25'),
@@ -228,6 +274,7 @@ export class PlanningService {
         fan_paths: fanPaths,
         fan_paths_displayed: fanPaths.length,
         n_paths_simulated: nPaths,
+        checkpoint_results: checkpointResults,
       },
       started_at: startedAt,
       finished_at: new Date().toISOString(),

@@ -118,9 +118,9 @@ def create_run(body: PlanningRunCreate, db: Session = Depends(get_db), current_u
             snapshot,
             payload,
             body.overrides,
-            seed=body.seed or 42,
-            n_paths=body.n_paths or 100,
-            horizon_years=body.horizon_years or 30,
+            seed=body.seed if body.seed is not None else 42,
+            n_paths=body.n_paths if body.n_paths is not None else 100,
+            horizon_years=body.horizon_years if body.horizon_years is not None else 30,
         )
     except HTTPException:
         raise
@@ -143,4 +143,3 @@ def create_run(body: PlanningRunCreate, db: Session = Depends(get_db), current_u
         started_at=started,
         finished_at=finished,
     )
-

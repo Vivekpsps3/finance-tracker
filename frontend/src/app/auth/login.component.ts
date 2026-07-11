@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
@@ -15,19 +15,22 @@ import { UiButtonComponent, UiCardComponent, UiInputComponent } from '../shared/
 export class LoginComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   email = '';
+  username = '';
   displayName = '';
   password = '';
+  recoveryKey = '';
   setupMode = false;
-  signupMode = false;
+  legacyMode = false;
   loading = false;
   error = '';
 
   ngOnInit(): void {
     this.auth.bootstrapStatus().subscribe({
-      next: status => this.setupMode = status.needs_setup,
-      error: () => this.setupMode = false,
+      next: status => { this.setupMode = status.needs_setup; this.cdr.markForCheck(); },
+      error: () => { this.setupMode = false; this.cdr.markForCheck(); },
     });
   }
 
@@ -35,39 +38,69 @@ export class LoginComponent {
     if (!this.canSubmit) return;
     this.loading = true;
     this.error = '';
-    const request = this.setupMode
-      ? this.auth.bootstrap(this.email, this.displayName, this.password)
-      : this.signupMode
-        ? this.auth.signup(this.email, this.displayName, this.password)
-        : this.auth.login(this.email, this.password);
+    this.cdr.markForCheck();
+    if (this.setupMode) {
+      this.auth.bootstrapPasswordless(this.username, this.displayName, this.password).then(
+        () => this.router.navigate(['/']),
+        err => { this.error = err instanceof Error ? err.message : 'Setup failed'; this.loading = false; this.cdr.markForCheck(); }
+      );
+      return;
+    }
+    const request = this.legacyMode ? this.auth.login(this.email, this.password) : null;
+    if (!request) {
+      this.auth.loginWithVault(this.username, this.password).then(
+        () => this.router.navigate(['/']),
+        err => {
+          this.error = err instanceof Error ? err.message : 'Vault authentication failed';
+          this.loading = false;
+          this.cdr.markForCheck();
+        }
+      );
+      return;
+    }
     request.subscribe({
-      next: () => this.router.navigate(['/']),
+      next: () => {
+        this.cdr.markForCheck();
+        if (!this.legacyMode) {
+          this.router.navigate(['/']);
+          return;
+        }
+          this.auth.enrollPasswordless(this.email, this.password, this.recoveryKey).then(
+          () => this.router.navigate(['/']),
+          () => {
+            this.error = 'Signed in, but vault authentication enrollment failed. Try the migration again.';
+            this.loading = false;
+            this.cdr.markForCheck();
+          }
+        );
+      },
       error: err => {
         this.error = this.errorMessage(err);
         this.loading = false;
+        this.cdr.markForCheck();
       },
     });
   }
 
-  toggleSignup(): void {
-    if (this.setupMode) return;
-    this.signupMode = !this.signupMode;
+  toggleLegacyMode(): void {
+    this.legacyMode = !this.legacyMode;
     this.error = '';
   }
 
   get needsDisplayName(): boolean {
-    return this.setupMode || this.signupMode;
+    return this.setupMode;
   }
 
   get canSubmit(): boolean {
-    if (this.loading || !this.email.trim() || !this.password) return false;
+    if (this.loading || !(this.legacyMode ? this.email.trim() : this.username.trim()) || !this.password) return false;
     if (this.needsDisplayName && !this.displayName.trim()) return false;
+    if (this.legacyMode && !this.recoveryKey.trim()) return false;
     if (this.needsDisplayName && this.password.length < 12) return false;
     return true;
   }
 
   get passwordHint(): string {
-    return this.needsDisplayName ? 'Use at least 12 characters.' : '';
+    return this.needsDisplayName ? 'Use at least 12 characters.' : this.legacyMode ? '' : 'Your vault passphrase unlocks this browser-held signing key.';
   }
 
   private errorMessage(err: any): string {
@@ -82,6 +115,6 @@ export class LoginComponent {
         })
         .join('; ');
     }
-    return this.setupMode ? 'Setup failed' : this.signupMode ? 'Signup failed' : 'Login failed';
+    return this.setupMode ? 'Setup failed' : this.legacyMode ? 'Login failed' : 'Vault authentication failed';
   }
 }

@@ -277,7 +277,7 @@
               <tr [class.duplicate-row]="row.status === 'duplicate'" (click)="toggleImportRow(row)">
                 <td>
                   @if (row.status === 'new') {
-                    <input type="checkbox" [checked]="isImportRowSelected(row)" (click)="$event.stopPropagation()" />
+                    <input type="checkbox" [checked]="isImportRowSelected(row)" (click)="$event.stopPropagation()" (change)="toggleImportRow(row)" />
                   }
                 </td>
                 <td>{{ row.date }}</td>

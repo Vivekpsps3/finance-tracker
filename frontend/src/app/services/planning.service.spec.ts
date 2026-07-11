@@ -108,4 +108,46 @@ describe('PlanningService', () => {
         error: done.fail,
       });
   });
+
+  it('applies encrypted run overrides and preserves seed zero', done => {
+    vault.usesEncryptedStore = true;
+    encStore.getNetWorth.and.resolveTo({ total: 100_000, portfolio: 0, liabilities: 0 } as any);
+    encStore.getJobIncomes.and.resolveTo([{ id: 1, monthly_net: 5_000, is_active: true } as any]);
+    encStore.getFixedExpenses.and.resolveTo([{ id: 1, annual_amount: 12_000, is_active: true } as any]);
+    encStore.getSubscriptions.and.resolveTo([]);
+    encStore.getTransactions.and.resolveTo([]);
+
+    service.createRun({
+      tool_id: MC_TOOL_ID,
+      seed: 0,
+      n_paths: 100,
+      horizon_years: 2,
+      overrides: {
+        start_net_worth: 250_000,
+        annual_spending: 10_000,
+        monthly_income: 0,
+        annual_income_growth: 0,
+        inflation_cpi: 0,
+        nominal_return_mean: 0,
+        nominal_return_std: 0,
+        stable_return_mean: 0,
+        portfolio_allocation: 0,
+        tax_drag: 0,
+        annual_fee_drag: 0,
+        shock_probability: 0,
+        shock_mean_loss: 0,
+        shock_loss_std: 0,
+        extra_contributions: { annual_contribution: 5_000 },
+      },
+    }).subscribe({
+      next: run => {
+        expect(run.seed).toBe(0);
+        expect(run.result_summary.start_net_worth).toBe(250_000);
+        expect(run.result_summary.annual_contribution_start).toBe(5_000);
+        expect(run.result_summary.terminal_p50).toBe(240_000);
+        done();
+      },
+      error: done.fail,
+    });
+  });
 });

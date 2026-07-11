@@ -32,7 +32,9 @@ type CollectionName =
   | 'bank_accounts'
   | 'brokerage_accounts'
   | 'import_batches'
+  | 'net_worth_snapshots'
   | 'planning_profiles'
+  | 'planning_runs'
   | 'stock_lab_scenarios';
 
 interface StoredEnvelope<T> {
@@ -40,6 +42,7 @@ interface StoredEnvelope<T> {
   client_id: string;
   revision: number;
   schema_version: number;
+  key_version: number;
   data: T;
 }
 
@@ -60,7 +63,9 @@ export class EncryptedStoreService {
     bank_accounts: new Map(),
     brokerage_accounts: new Map(),
     import_batches: new Map(),
+    net_worth_snapshots: new Map(),
     planning_profiles: new Map(),
+    planning_runs: new Map(),
     stock_lab_scenarios: new Map(),
   };
 
@@ -94,6 +99,7 @@ export class EncryptedStoreService {
         client_id: row.client_id,
         revision: row.revision,
         schema_version: row.schema_version,
+        key_version: row.key_version,
         data: { ...data, id },
       };
       this.bags[row.collection].set(row.client_id, envelope);
@@ -101,6 +107,7 @@ export class EncryptedStoreService {
     this.loaded = true;
     this.nextId = maxId + 1;
     await this.rewriteLegacyRecords();
+    await this.migrateLegacyPlaintext();
   }
 
   private allocateId(): number {
@@ -124,11 +131,12 @@ export class EncryptedStoreService {
       : payload.id
         ? Array.from(this.bags[collection].values()).find(v => v.id === payload.id)
         : undefined;
-    const id = existing?.id ?? this.allocateId();
+    const id = existing?.id ?? payload.id ?? this.allocateId();
+    this.nextId = Math.max(this.nextId, id + 1);
     const cid = existing?.client_id ?? clientId ?? randomClientId(collection.slice(0, 3));
     const data = { ...payload, id };
     const schemaVersion = CURRENT_RECORD_SCHEMA_VERSION;
-    const keyVersion = 1;
+    const keyVersion = existing?.key_version ?? 1;
     const ciphertext = await this.vault.encryptPayload(data, collection, cid, schemaVersion, keyVersion);
     const indexes =
       collection === 'transactions' && (data as any).dedupe_key
@@ -158,21 +166,45 @@ export class EncryptedStoreService {
       client_id: cid,
       revision: row.revision,
       schema_version: schemaVersion,
+      key_version: keyVersion,
       data,
     });
     return data;
   }
 
   private async rewriteLegacyRecords(): Promise<void> {
+    const migrated: Array<{ collection: string; client_id: string }> = [];
     for (const collection of Object.keys(this.bags) as CollectionName[]) {
       for (const envelope of this.bags[collection].values()) {
         // Version 1 records did not authenticate their server-owned identity.
         // Rewrite them once with version 2 AAD after successful local decryption.
         if (envelope.schema_version < CURRENT_RECORD_SCHEMA_VERSION) {
           await this.upsert(collection, envelope.data, envelope.client_id);
+          migrated.push({ collection, client_id: envelope.client_id });
         }
       }
     }
+    // Plaintext migration owns completion while legacy database rows still exist.
+    if (migrated.length && this.vault.currentStatus?.migration_status !== 'vault_ready') {
+      const counts = migrated.reduce<Record<string, number>>((out, record) => {
+        out[record.collection] = (out[record.collection] ?? 0) + 1;
+        return out;
+      }, {});
+      await firstValueFrom(this.vault.completeLegacyMigration(counts, migrated));
+    }
+  }
+
+  private async migrateLegacyPlaintext(): Promise<void> {
+    if (this.vault.currentStatus?.migration_status !== 'vault_ready') return;
+    const exported = await firstValueFrom(this.vault.exportLegacyRecords());
+    const migrated: Array<{ collection: string; client_id: string }> = [];
+    for (const record of exported.records) {
+      if (!this.bags[record.collection]) throw new Error(`Unsupported legacy collection: ${record.collection}`);
+      const clientId = `legacy:${record.collection}:${record.data['id']}`;
+      await this.upsert(record.collection as CollectionName, record.data as { id?: number }, clientId);
+      migrated.push({ collection: record.collection, client_id: clientId });
+    }
+    await firstValueFrom(this.vault.completeLegacyMigration(exported.counts, migrated));
   }
 
   private async remove(collection: CollectionName, id: number): Promise<void> {
@@ -205,6 +237,22 @@ export class EncryptedStoreService {
 
   async deleteTransaction(id: number): Promise<void> {
     return this.remove('transactions', id);
+  }
+
+  async bulkRenameTransactionCategories(renames: { fromCategory: string; toCategory: string }[]): Promise<{ updated: number; conflicts: number }> {
+    const lookup = new Map(renames.map(row => [row.fromCategory, row.toCategory]));
+    const rows = (await this.getTransactions()).filter(row => lookup.has(row.category));
+    let updated = 0;
+    let conflicts = 0;
+    for (const row of rows) {
+      try {
+        await this.updateTransaction(row.id, { category: lookup.get(row.category)! });
+        updated += 1;
+      } catch {
+        conflicts += 1;
+      }
+    }
+    return { updated, conflicts };
   }
 
   async getAssets(): Promise<Asset[]> {
@@ -354,30 +402,8 @@ export class EncryptedStoreService {
       this.getSubscriptions(),
     ]);
     const base = computeCashflowSummary(start, end, txs, incomes, fixed, subs);
-    // Normalize to API field names used by the UI.
-    const fixedAmt = fixed.map(enrichFixedExpense).reduce((s, f) => s + (f.monthly_amount || 0), 0);
-    const subAmt = subs.map(enrichSubscription).reduce((s, f) => s + (f.monthly_amount || 0), 0);
-    const total_income = base.transaction_income + base.planned_income;
-    const total_expenses = base.transaction_expenses + fixedAmt + subAmt;
-    const days = Math.max(
-      1,
-      (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24) + 1
-    );
     return {
-      start_date: start,
-      end_date: end,
-      transaction_income: base.transaction_income,
-      transaction_expenses: base.transaction_expenses,
-      planned_income: base.planned_income,
-      fixed_expenses: fixedAmt,
-      subscriptions: subAmt,
-      total_income,
-      total_expenses,
-      net_cashflow: total_income - total_expenses,
-      savings_rate: total_income > 0 ? ((total_income - total_expenses) / total_income) * 100 : null,
-      average_daily_spend: total_expenses / days,
-      fixed_occurrences: [],
-      subscription_occurrences: [],
+      ...base,
     };
   }
 

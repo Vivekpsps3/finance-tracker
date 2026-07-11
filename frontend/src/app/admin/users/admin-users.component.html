@@ -30,7 +30,7 @@
   <ui-data-table ariaLabel="All user accounts">
     <thead>
       <tr>
-        <th>Email</th>
+        <th>Username</th>
         <th>Name</th>
         <th>Role</th>
         <th>Status</th>
@@ -47,7 +47,7 @@
       } @else {
         @for (user of users; track user.id) {
           <tr>
-            <td>{{ user.email }}</td>
+            <td>{{ user.username || user.email }}</td>
             <td>{{ user.display_name }}</td>
             <td>{{ user.role }}</td>
             <td>{{ user.is_active ? 'Active' : 'Disabled' }}</td>
@@ -68,7 +68,6 @@
               >
                 {{ user.is_active ? 'Disable' : 'Enable' }}
               </ui-button>
-              <ui-button variant="secondary" size="sm" (clicked)="resetPassword(user)">Reset</ui-button>
               <ui-button variant="secondary" size="sm" (clicked)="resetUserContents(user)">Reset contents</ui-button>
               <ui-button variant="danger" size="sm" [disabled]="!canDelete(user)" (clicked)="deleteUser(user)">Delete</ui-button>
             </td>
@@ -84,7 +83,7 @@
     <div class="section-heading section-heading--compact">
       <div>
         <h2 id="create-user-title">Create user</h2>
-        <p>Add a separate account without changing the table above.</p>
+        <p>Create an invitation and deliver the one-time enrollment token securely.</p>
       </div>
     </div>
 
@@ -92,9 +91,8 @@
     @if (createMessage) { <p class="status status--ok">{{ createMessage }}</p> }
 
     <div class="form-grid">
-      <ui-input label="Email" type="email" autocomplete="off" [required]="true" [(value)]="email" />
+      <ui-input label="Username" autocomplete="off" [required]="true" [(value)]="username" />
       <ui-input label="Display name" autocomplete="off" [required]="true" [(value)]="displayName" />
-      <ui-input label="Temporary password" type="password" [showPasswordToggle]="true" autocomplete="new-password" [required]="true" [(value)]="password" />
       <div class="role-field">
         <label class="field-label" for="role">Role</label>
         <select id="role" name="role" [(ngModel)]="role" class="native-select">
@@ -105,7 +103,7 @@
     </div>
 
     <div class="form-actions">
-      <ui-button type="submit" [disabled]="!email.trim() || !displayName.trim() || password.length < 12">Create</ui-button>
+      <ui-button type="submit" [disabled]="!username.trim() || !displayName.trim()">Create invitation</ui-button>
     </div>
   </form>
 </section>

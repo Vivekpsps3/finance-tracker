@@ -145,13 +145,19 @@ export class PortfolioComponent implements OnInit, OnDestroy {
     if (!this.financeService.canRefreshHoldingPrices) return;
     this.refreshingPrices = true;
     this.financeService.refreshAllHoldingPrices().pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
+      next: result => {
         this.refreshingPrices = false;
         this.lastPortfolioRefresh = new Date().toLocaleString();
-        this.toastService.success('Share prices updated');
+        this.toastService.success(
+          result.failed
+            ? `Updated ${result.updated} holding price(s); ${result.failed} ticker(s) unavailable`
+            : `Updated ${result.updated} holding price(s)`
+        );
+        this.cdr.markForCheck();
       },
       error: () => {
         this.refreshingPrices = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -165,6 +171,10 @@ export class PortfolioComponent implements OnInit, OnDestroy {
 
   get canRefreshPrices(): boolean {
     return true;
+  }
+
+  get canImportFidelity(): boolean {
+    return this.financeService.canImportFidelity;
   }
 
   checkSharePrice() {

@@ -18,6 +18,8 @@ describe('FinanceService', () => {
       'addTransaction',
       'getHoldings',
       'getNetWorth',
+      'updateHoldingPrice',
+      'bulkRenameTransactionCategories',
     ]);
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
@@ -140,5 +142,54 @@ describe('FinanceService', () => {
       },
       error: done.fail,
     });
+  });
+
+  it('refreshes unique encrypted ticker symbols with per-symbol failures and reports counts', done => {
+    vault.usesEncryptedStore = true;
+    encStore.getHoldings.and.resolveTo([
+      { id: 1, symbol: 'aapl', shares: 1, purchase_price: 10, current_price: 10 },
+      { id: 2, symbol: 'AAPL', shares: 2, purchase_price: 10, current_price: 10 },
+      { id: 3, symbol: '', shares: 1, purchase_price: 10, current_price: 10 },
+      { id: 4, symbol: 'FAIL', shares: 1, purchase_price: 10, current_price: 10 },
+    ] as any);
+    encStore.updateHoldingPrice.and.resolveTo({} as any);
+    encStore.getNetWorth.and.resolveTo({} as any);
+
+    service.refreshAllHoldingPrices().subscribe({
+      next: result => {
+        expect(result.updated).toBe(2);
+        expect(result.failed).toBe(1);
+        expect(encStore.updateHoldingPrice.calls.count()).toBe(2);
+        done();
+      },
+      error: done.fail,
+    });
+    setTimeout(() => {
+      const aapl = http.expectOne(r => r.url.endsWith('/market/price/AAPL') && r.params.get('refresh') === 'true');
+      const fail = http.expectOne(r => r.url.endsWith('/market/price/FAIL') && r.params.get('refresh') === 'true');
+      expect(aapl.request.body).toBeNull();
+      aapl.flush({ symbol: 'AAPL', price: 200, price_source: 'live', valid: true });
+      fail.flush('unavailable', { status: 503, statusText: 'Unavailable' });
+    });
+  });
+
+  it('renames encrypted categories locally without a legacy request', done => {
+    vault.usesEncryptedStore = true;
+    encStore.bulkRenameTransactionCategories.and.resolveTo({ updated: 2, conflicts: 0 });
+    service.renameCategory('Dining', 'Food').subscribe({
+      next: result => {
+        expect(result.updated).toBe(2);
+        expect(encStore.bulkRenameTransactionCategories).toHaveBeenCalledWith([{ fromCategory: 'Dining', toCategory: 'Food' }]);
+        http.expectNone(r => r.url.includes('/transactions/categories'));
+        done();
+      },
+      error: done.fail,
+    });
+  });
+
+  it('does not expose Fidelity import endpoints in encrypted mode', () => {
+    vault.usesEncryptedStore = true;
+    service.getBrokerageImports().subscribe(options => expect(options).toEqual([]));
+    http.expectNone(r => r.url.includes('/imports/fidelity') || r.url.includes('/imports/brokerages'));
   });
 });

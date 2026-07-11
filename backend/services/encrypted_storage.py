@@ -6,11 +6,25 @@ import re
 from typing import Any
 
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from models import (
+    Asset,
+    BankAccount,
+    BrokerageAccount,
     EncryptedRecord,
     EncryptedRecordIndex,
+    FixedExpense,
+    Holding,
+    ImportBatch,
+    JobIncome,
+    Liability,
+    NetWorthSnapshot,
+    PlanningAssumptionProfile,
+    PlanningScenarioRun,
+    Subscription,
+    Transaction,
     UserCryptoMigration,
     UserVault,
     utc_now,
@@ -38,20 +52,49 @@ ALLOWED_COLLECTIONS = frozenset(
 CLIENT_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{8,128}$")
 MAX_CIPHERTEXT_BYTES = 512_000
 MAX_BATCH = 200
+CURRENT_RECORD_SCHEMA_VERSION = 2
+
+LEGACY_COLLECTIONS = {
+    "transactions": Transaction,
+    "bank_accounts": BankAccount,
+    "import_batches": ImportBatch,
+    "assets": Asset,
+    "liabilities": Liability,
+    "holdings": Holding,
+    "brokerage_accounts": BrokerageAccount,
+    "job_incomes": JobIncome,
+    "fixed_expenses": FixedExpense,
+    "subscriptions": Subscription,
+    "net_worth_snapshots": NetWorthSnapshot,
+    "planning_profiles": PlanningAssumptionProfile,
+    "planning_runs": PlanningScenarioRun,
+}
+
+# Delete dependent rows first so this remains valid on databases enforcing foreign keys.
+LEGACY_DELETE_ORDER = (
+    Transaction,
+    Holding,
+    PlanningScenarioRun,
+    BankAccount,
+    ImportBatch,
+    BrokerageAccount,
+    Asset,
+    Liability,
+    JobIncome,
+    FixedExpense,
+    Subscription,
+    NetWorthSnapshot,
+    PlanningAssumptionProfile,
+)
 
 
 def _b64_decode(value: str) -> bytes:
-    """Decode standard base64; tolerate missing padding from browser btoa/WebCrypto paths."""
-    raw = (value or "").strip()
+    """Decode non-empty RFC 4648 base64 without normalizing client input."""
+    raw = value or ""
     if not raw:
         raise HTTPException(status_code=400, detail="Invalid base64 payload")
-    # URL-safe variants occasionally appear from client encodings.
-    raw = raw.replace("-", "+").replace("_", "/")
-    pad = (-len(raw)) % 4
-    if pad:
-        raw = raw + ("=" * pad)
     try:
-        decoded = base64.b64decode(raw, validate=True)
+        decoded = base64.b64decode(raw, altchars=b"-_", validate=True)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
     if not decoded:
@@ -146,8 +189,14 @@ def create_vault(
         key_version=key_version,
     )
     db.add(vault)
-    # All users are treated as fully on the encrypted path; no one-time legacy migration step.
-    set_migration_status(db, user_id, status="completed", legacy_counts={}, encrypted_counts={})
+    legacy_counts = legacy_collection_counts(db, user_id)
+    set_migration_status(
+        db,
+        user_id,
+        status="vault_ready" if legacy_counts else "completed",
+        legacy_counts=legacy_counts,
+        encrypted_counts=collection_counts(db, user_id),
+    )
     return vault
 
 
@@ -217,7 +266,7 @@ def upsert_records(db: Session, user_id: int, items: list[dict[str, Any]]) -> li
             raise HTTPException(status_code=400, detail="Invalid ciphertext")
         schema_version = int(item.get("schema_version", 1))
         key_version = int(item.get("key_version", 1))
-        if schema_version < 1 or key_version < 1:
+        if schema_version not in {1, CURRENT_RECORD_SCHEMA_VERSION} or key_version < 1:
             raise HTTPException(status_code=400, detail="Invalid version fields")
         row = (
             db.query(EncryptedRecord)
@@ -229,7 +278,10 @@ def upsert_records(db: Session, user_id: int, items: list[dict[str, Any]]) -> li
             .one_or_none()
         )
         if row:
-            expected = int(item.get("expected_revision", row.revision))
+            expected_revision = item.get("expected_revision")
+            if expected_revision is None:
+                raise HTTPException(status_code=400, detail="expected_revision is required for updates")
+            expected = int(expected_revision)
             if expected != row.revision:
                 raise HTTPException(
                     status_code=409,
@@ -351,6 +403,93 @@ def collection_counts(db: Session, user_id: int) -> dict[str, int]:
         if collection in counts:
             counts[collection] += 1
     return counts
+
+
+def legacy_collection_counts(db: Session, user_id: int) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for collection, model in LEGACY_COLLECTIONS.items():
+        count = db.query(model).filter(model.user_id == user_id).count()
+        if count:
+            counts[collection] = count
+    return counts
+
+
+def export_legacy_records(db: Session, user_id: int) -> tuple[dict[str, int], list[dict[str, Any]]]:
+    """Return plaintext only while the browser is replacing it with encrypted records."""
+    migration = get_or_create_migration(db, user_id)
+    if migration.status != "vault_ready":
+        raise HTTPException(status_code=409, detail="Legacy export is available only while migration is vault_ready")
+
+    records: list[dict[str, Any]] = []
+    for collection, model in LEGACY_COLLECTIONS.items():
+        rows = db.query(model).filter(model.user_id == user_id).order_by(model.id).all()
+        for row in rows:
+            data = {
+                column.name: getattr(row, column.name)
+                for column in model.__table__.columns
+                if column.name != "user_id"
+            }
+            records.append({"collection": collection, "data": jsonable_encoder(data)})
+    return legacy_collection_counts(db, user_id), records
+
+
+def complete_legacy_migration(
+    db: Session,
+    user_id: int,
+    *,
+    counts: dict[str, int],
+    records: list[dict[str, str]],
+) -> UserCryptoMigration:
+    migration = get_or_create_migration(db, user_id)
+    if migration.status == "completed":
+        return migration
+
+    actual_counts = legacy_collection_counts(db, user_id)
+    normalized_counts: dict[str, int] = {}
+    for collection, count in counts.items():
+        validate_collection(collection)
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+            raise HTTPException(status_code=400, detail="Invalid migration counts")
+        if count:
+            normalized_counts[collection] = count
+    if normalized_counts != actual_counts:
+        raise HTTPException(status_code=409, detail="Legacy migration count mismatch")
+
+    expected = {(item["collection"], item["client_id"]) for item in records}
+    if len(expected) != len(records):
+        raise HTTPException(status_code=400, detail="Duplicate migration record identity")
+    record_counts: dict[str, int] = {}
+    for collection, client_id in expected:
+        validate_collection(collection)
+        validate_client_id(client_id)
+        record_counts[collection] = record_counts.get(collection, 0) + 1
+    if record_counts != actual_counts:
+        raise HTTPException(status_code=409, detail="Encrypted migration count mismatch")
+
+    for collection, client_id in expected:
+        replacement = (
+            db.query(EncryptedRecord.id)
+            .filter(
+                EncryptedRecord.user_id == user_id,
+                EncryptedRecord.collection == collection,
+                EncryptedRecord.client_id == client_id,
+                EncryptedRecord.schema_version == CURRENT_RECORD_SCHEMA_VERSION,
+            )
+            .one_or_none()
+        )
+        if not replacement:
+            raise HTTPException(status_code=409, detail="Encrypted migration replacement mismatch")
+
+    for model in LEGACY_DELETE_ORDER:
+        db.query(model).filter(model.user_id == user_id).delete(synchronize_session=False)
+    set_migration_status(
+        db,
+        user_id,
+        status="completed",
+        legacy_counts=actual_counts,
+        encrypted_counts=collection_counts(db, user_id),
+    )
+    return migration
 
 
 def set_migration_status(

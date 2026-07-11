@@ -176,7 +176,7 @@ def test_vault_migration_is_idempotent_after_create_all():
         engine2 = create_engine(url, connect_args={"check_same_thread": False})
         with engine2.connect() as conn:
             version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "d4e5f6a7b8c9"
+        assert version == "e8a4c7d2f910"
         engine2.dispose()
 
 

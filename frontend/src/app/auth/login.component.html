@@ -5,27 +5,34 @@
         <rect width="32" height="32" rx="8" fill="var(--accent-glow)" stroke="var(--accent)" stroke-width="1"/>
         <path d="M8 22V10M14 22V6M20 22v-6M26 22H6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
       </svg>
-      <h1 id="login-title">{{ setupMode ? 'Set up Finance' : signupMode ? 'Create account' : 'Finance' }}</h1>
+       <h1 id="login-title">{{ setupMode ? 'Set up Finance' : 'Finance' }}</h1>
     </div>
 
     <ui-card>
       <form class="login-form" (ngSubmit)="submit()">
-        <ui-input label="Email" type="email" autocomplete="username" [required]="true" [(value)]="email" />
+        @if (legacyMode) {
+          <ui-input label="Email" type="email" autocomplete="username" [required]="true" [(value)]="email" />
+        } @else {
+          <ui-input label="Username" autocomplete="username" [required]="true" [(value)]="username" />
+        }
         @if (needsDisplayName) {
           <ui-input label="Display name" autocomplete="name" [required]="true" [(value)]="displayName" />
         }
-        <ui-input label="Password" type="password" [showPasswordToggle]="true" [autocomplete]="needsDisplayName ? 'new-password' : 'current-password'" [required]="true" [(value)]="password" />
+        <ui-input [label]="legacyMode ? 'Legacy password' : 'Vault passphrase'" type="password" [showPasswordToggle]="true" [autocomplete]="needsDisplayName ? 'new-password' : 'current-password'" [required]="true" [(value)]="password" />
+        @if (legacyMode) {
+          <ui-input label="Recovery key" type="password" [showPasswordToggle]="true" autocomplete="off" [required]="true" [(value)]="recoveryKey" />
+        }
         @if (passwordHint) { <p class="password-hint">{{ passwordHint }}</p> }
         @if (error) {
           <p class="login-error" role="alert">{{ error }}</p>
         }
         <ui-button type="submit" [disabled]="!canSubmit">
-          {{ loading ? (needsDisplayName ? 'Creating account' : 'Signing in') : (setupMode ? 'Create admin account' : signupMode ? 'Create account' : 'Sign in') }}
+          {{ loading ? (needsDisplayName ? 'Creating account' : 'Signing in') : (setupMode ? 'Create admin account' : 'Sign in') }}
         </ui-button>
       </form>
       @if (!setupMode) {
-        <button type="button" class="mode-link" (click)="toggleSignup()">
-          {{ signupMode ? 'Sign in instead' : 'Create a new account' }}
+        <button type="button" class="mode-link" (click)="toggleLegacyMode()">
+          {{ legacyMode ? 'Use vault authentication' : 'Use legacy password to migrate this browser' }}
         </button>
       }
     </ui-card>

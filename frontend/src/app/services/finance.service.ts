@@ -6,6 +6,8 @@ import {
   forkJoin,
   from,
   of,
+  mergeMap,
+  reduce,
   tap,
   timeout,
   catchError,
@@ -103,6 +105,10 @@ export class FinanceService {
 
   get canRefreshHoldingPrices(): boolean {
     return true;
+  }
+
+  get canImportFidelity(): boolean {
+    return !this.encMode;
   }
 
   /**
@@ -338,6 +344,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.addJobIncome(body).then(async row => {
         this._jobIncomes.next(await this.encStore.getJobIncomes());
+        this.invalidateDashboardCache();
         return row;
       }));
     }
@@ -354,6 +361,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.updateJobIncome(id, body).then(async row => {
         this._jobIncomes.next(await this.encStore.getJobIncomes());
+        this.invalidateDashboardCache();
         return row;
       }));
     }
@@ -370,6 +378,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.deleteJobIncome(id).then(async () => {
         this._jobIncomes.next(await this.encStore.getJobIncomes());
+        this.invalidateDashboardCache();
         return { ok: true };
       }));
     }
@@ -412,6 +421,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.addSubscription(body).then(async row => {
         this._subscriptions.next(await this.encStore.getSubscriptions());
+        this.invalidateDashboardCache();
         return row;
       }));
     }
@@ -428,6 +438,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.updateSubscription(id, body).then(async row => {
         this._subscriptions.next(await this.encStore.getSubscriptions());
+        this.invalidateDashboardCache();
         return row;
       }));
     }
@@ -444,6 +455,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.deleteSubscription(id).then(async () => {
         this._subscriptions.next(await this.encStore.getSubscriptions());
+        this.invalidateDashboardCache();
         return { ok: true };
       }));
     }
@@ -482,6 +494,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.addFixedExpense(body).then(async row => {
         this._fixedExpenses.next(await this.encStore.getFixedExpenses());
+        this.invalidateDashboardCache();
         return row;
       }));
     }
@@ -498,6 +511,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.updateFixedExpense(id, body).then(async row => {
         this._fixedExpenses.next(await this.encStore.getFixedExpenses());
+        this.invalidateDashboardCache();
         return row;
       }));
     }
@@ -514,6 +528,7 @@ export class FinanceService {
     if (this.encMode) {
       return from(this.encStore.deleteFixedExpense(id).then(async () => {
         this._fixedExpenses.next(await this.encStore.getFixedExpenses());
+        this.invalidateDashboardCache();
         return { ok: true };
       }));
     }
@@ -529,6 +544,13 @@ export class FinanceService {
   renameCategory(fromCategory: string, toCategory: string): Observable<CategoryRenameResult> {
     const from_category = fromCategory.trim();
     const to_category = toCategory.trim();
+    if (this.encMode) {
+      return from(this.encStore.bulkRenameTransactionCategories([{ fromCategory: from_category, toCategory: to_category }]).then(async result => {
+        this.invalidateDashboardCache();
+        this._transactions.next(await this.encStore.getTransactions());
+        return { updated: result.updated, from_category, to_category };
+      }));
+    }
     return this.http
       .put<CategoryRenameResult>(apiUrl('/transactions/categories/rename'), {
         from_category,
@@ -556,6 +578,17 @@ export class FinanceService {
         to_category: row.toCategory.trim(),
       })),
     };
+    if (this.encMode) {
+      const rows = payload.renames.map(row => ({ fromCategory: row.from_category, toCategory: row.to_category }));
+      return from(this.encStore.bulkRenameTransactionCategories(rows).then(async result => {
+        this.invalidateDashboardCache();
+        this._transactions.next(await this.encStore.getTransactions());
+        return {
+          updated: result.updated,
+          renames: payload.renames.map(row => ({ ...row, updated: 0 })),
+        };
+      }));
+    }
     return this.http
       .put<CategoryBulkRenameResult>(apiUrl('/transactions/categories/bulk-rename'), payload)
       .pipe(
@@ -590,31 +623,31 @@ export class FinanceService {
     );
   }
 
-  refreshAllHoldingPrices(): Observable<Holding[]> {
+  refreshAllHoldingPrices(): Observable<{ holdings: Holding[]; updated: number; failed: number }> {
     if (this.encMode) {
-      return from((async () => {
-        const holdings = await this.encStore.getHoldings();
-        const quotes = new Map<string, MarketPriceQuote>();
-        for (const symbol of [...new Set(holdings.map(h => h.symbol.trim().toUpperCase()))]) {
-          if (!symbol) continue;
-          try {
-            const quote = await firstValueFrom(this.lookupSharePrice(symbol, true));
-            if (quote.valid) quotes.set(symbol, quote);
-          } catch {
-            // Preserve the prior encrypted price when the public quote lookup fails.
-          }
-        }
-        await Promise.all(
-          holdings.map(async holding => {
-            const quote = quotes.get(holding.symbol.trim().toUpperCase());
-            if (quote) await this.encStore.updateHoldingPrice(holding.id, quote);
-          })
-        );
-        const refreshed = await this.encStore.getHoldings();
-        this._holdings.next(refreshed);
-        this.refreshDerivedMetrics();
-        return refreshed;
-      })());
+      return from(this.encStore.getHoldings()).pipe(
+        mergeMap(holdings => {
+          const symbols = [...new Set(holdings.map(row => row.symbol.trim().toUpperCase()).filter(symbol => /^[A-Z][A-Z0-9.-]*$/.test(symbol)))];
+          return from(symbols).pipe(
+            mergeMap(symbol => this.lookupSharePrice(symbol, true).pipe(
+              catchError(() => of(null)),
+              mergeMap(quote => from((async () => {
+                if (!quote?.valid) return { updated: 0, failed: 1 };
+                const matching = holdings.filter(row => row.symbol.trim().toUpperCase() === symbol);
+                await Promise.all(matching.map(row => this.encStore.updateHoldingPrice(row.id, quote)));
+                return { updated: matching.length, failed: 0 };
+              })())
+            )), 4),
+            reduce((total, result) => ({ updated: total.updated + result.updated, failed: total.failed + result.failed }), { updated: 0, failed: 0 }),
+            mergeMap(async result => {
+              const refreshed = await this.encStore.getHoldings();
+              this._holdings.next(refreshed);
+              this.refreshDerivedMetrics();
+              return { holdings: refreshed, ...result };
+            })
+          );
+        })
+      );
     }
 
     this.isLoading.next(true);
@@ -625,7 +658,8 @@ export class FinanceService {
           this.isLoading.next(false);
         },
         error: () => this.isLoading.next(false),
-      })
+      }),
+      mergeMap(holdings => of({ holdings, updated: holdings.length, failed: 0 }))
     );
   }
 
@@ -926,6 +960,7 @@ export class FinanceService {
 
   // Fidelity portfolio import (replaces positions per account)
   getBrokerageImports(): Observable<FidelityImportOption[]> {
+    if (this.encMode) return of([]);
     return this.http.get<FidelityImportOption[]>(apiUrl('/imports/brokerages'));
   }
 

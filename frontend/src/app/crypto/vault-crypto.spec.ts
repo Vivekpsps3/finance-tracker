@@ -39,14 +39,25 @@ describe('vault-crypto', () => {
   it('rejects ciphertext when its record identity changes', async () => {
     const dek = await generateDataKey();
     const payload = { amount: 12.34 };
-    const aad = recordAad('assets', 'asset-001', 1, 1);
+    const aad = recordAad('assets', 'asset-001', 2, 1);
     const ct = await encryptJson(dek, payload, aad);
 
     await expectAsync(
-      decryptJson<typeof payload>(dek, ct, recordAad('liabilities', 'asset-001', 1, 1))
+      decryptJson<typeof payload>(dek, ct, recordAad('liabilities', 'asset-001', 2, 1))
     ).toBeRejected();
     await expectAsync(
-      decryptJson<typeof payload>(dek, ct, recordAad('assets', 'asset-002', 1, 1))
+      decryptJson<typeof payload>(dek, ct, recordAad('assets', 'asset-002', 2, 1))
+    ).toBeRejected();
+  });
+
+  it('keeps schema-1 ciphertext decryptable without AAD', async () => {
+    const dek = await generateDataKey();
+    const payload = { amount: 12.34 };
+    const ciphertext = await encryptJson(dek, payload);
+
+    expect(await decryptJson<typeof payload>(dek, ciphertext)).toEqual(payload);
+    await expectAsync(
+      decryptJson<typeof payload>(dek, ciphertext, recordAad('assets', 'asset-001', 1, 1))
     ).toBeRejected();
   });
 

@@ -15,7 +15,9 @@
         </ui-button>
       }
       <ui-button variant="primary" (clicked)="openAddModal()">Add Holding</ui-button>
-      <ui-button variant="secondary" (clicked)="openFidelityImportModal()">Import from Fidelity</ui-button>
+      @if (canImportFidelity) {
+        <ui-button variant="secondary" (clicked)="openFidelityImportModal()">Import from Fidelity</ui-button>
+      }
     </div>
   </ui-page-header>
   @if (!canRefreshPrices) {

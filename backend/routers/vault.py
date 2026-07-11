@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -11,6 +13,9 @@ from schemas_vault import (
     EncryptedRecordBatchDelete,
     EncryptedRecordBatchUpsert,
     EncryptedRecordResponse,
+    LegacyMigrationExportResponse,
+    MigrationCompleteRequest,
+    MigrationStatusResponse,
     VaultCreateRequest,
     VaultResponse,
     VaultUpdateRequest,
@@ -153,6 +158,40 @@ def delete_encrypted_records(
     )
     db.commit()
     return {"deleted": deleted}
+
+
+@router.post("/migration/complete", response_model=MigrationStatusResponse)
+def complete_legacy_migration(
+    body: MigrationCompleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    migration = store.complete_legacy_migration(
+        db,
+        current_user.id,
+        counts=body.counts,
+        records=[item.model_dump() for item in body.records],
+    )
+    db.commit()
+    return MigrationStatusResponse(
+        status=migration.status,
+        legacy_counts=migration.legacy_counts_json and json.loads(migration.legacy_counts_json),
+        encrypted_counts=migration.encrypted_counts_json and json.loads(migration.encrypted_counts_json),
+        error_message=migration.error_message,
+        verified_at=_iso(migration.verified_at),
+        completed_at=_iso(migration.completed_at),
+    )
+
+
+@router.get("/migration/export", response_model=LegacyMigrationExportResponse)
+def export_legacy_migration_records(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not store.get_vault(db, current_user.id):
+        raise HTTPException(status_code=400, detail="Vault required before exporting legacy records")
+    counts, records = store.export_legacy_records(db, current_user.id)
+    return {"counts": counts, "records": records}
 
 
 @router.post("/indexes/lookup")

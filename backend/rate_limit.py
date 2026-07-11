@@ -39,6 +39,12 @@ def _is_limited(request: Request) -> bool:
         return True
     if request.method != "POST":
         return False
+    if path in {
+        "/api/auth/passwordless/lookup",
+        "/api/auth/passwordless/challenge",
+        "/api/auth/passwordless/verify",
+    }:
+        return True
     if path == "/api/planning/v1/runs":
         return True
     if path.startswith("/api/imports/") and ("/preview" in path or "/commit" in path):

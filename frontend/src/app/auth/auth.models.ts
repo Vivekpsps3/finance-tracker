@@ -3,6 +3,7 @@ export type UserRole = 'admin' | 'user';
 export interface AuthUser {
   id: number;
   email: string;
+  username?: string | null;
   display_name: string;
   role: UserRole;
   is_active: boolean;

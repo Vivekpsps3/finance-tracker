@@ -42,7 +42,7 @@ Do not blur these data planes:
 
 - Backend: FastAPI, SQLAlchemy, SQLite, Alembic, yfinance price lookup.
 - Frontend: Angular 19 standalone components, Tailwind, Chart.js.
-- Auth: app-native sessions (cookie + CSRF), roles admin/user, `/admin/users`.
+- Auth: passwordless username + vault-passphrase challenge sessions (cookie + CSRF), roles admin/user, `/admin/users`.
 - Bank imports today: Capital One, Chase, Amex CSV transactions.
 - Brokerage import today: Fidelity CSV positions.
 - Planned later: SimpleFIN. Plaid is not expected to work for this user.
@@ -87,6 +87,17 @@ The user clarified:
 - Stock Lab (`/stock-lab`) is shipping: speculative stock/ETF analysis with
   public market research and encrypted scenario inputs; it must not mutate
   holdings or net worth. Spec: `docs/superpowers/specs/2026-07-09-stock-lab-design.md`.
+- Passwordless login unwraps a browser-held signing key with the vault passphrase
+  and signs a server challenge. Public keys, sessions, and challenge hashes are
+  backend data; passphrases, recovery keys, private keys, and finance plaintext
+  never leave the browser. Password login survives only for bounded legacy
+  migration; admins cannot reset vault access.
+- Schema-v1 records migrate in-browser to schema-v2 authenticated-record AAD;
+  verify encrypted replacement before deleting legacy plaintext, then checkpoint
+  WAL and `VACUUM`.
+- Explicit Portfolio refresh and Stock Lab research disclose ticker symbols to
+  the backend/yfinance. Shares, values, account details, and saved scenarios
+  remain encrypted; do not describe ticker symbols as server-blind after use.
 
 ## Implementation Notes
 

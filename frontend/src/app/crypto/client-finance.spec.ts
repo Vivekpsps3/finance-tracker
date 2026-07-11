@@ -235,12 +235,27 @@ describe('client-finance', () => {
     const summary = computeCashflowSummary('2026-01-01', '2026-01-31', txs, incomes, fixed, subs);
     expect(summary.transaction_income).toBe(1000);
     expect(summary.transaction_expenses).toBe(100);
-    expect(summary.planned_income).toBe(3000);
+    expect(summary.planned_income).toBeCloseTo(3055.44, 2);
     expect(summary.fixed_expenses).toBe(1000);
-    expect(summary.subscriptions).toBe(20);
-    expect(summary.total_income).toBe(4000);
-    expect(summary.total_expenses).toBe(1120);
-    expect(summary.net_cashflow).toBe(2880);
-    expect(summary.savings_rate).toBeCloseTo(72, 0);
+    expect(summary.subscriptions).toBe(0);
+    expect(summary.total_income).toBeCloseTo(4055.44, 2);
+    expect(summary.total_expenses).toBe(1100);
+    expect(summary.net_cashflow).toBeCloseTo(2955.44, 2);
+    expect(summary.savings_rate).toBeCloseTo(72.87, 1);
+  });
+
+  it('counts only active recurring records occurring inside their effective date range', () => {
+    const fixed = [
+      { id: 1, name: 'Weekly', category: 'home', amount: 10, frequency: 'weekly', start_date: '2026-01-01', end_date: '2026-01-15', is_active: true },
+      { id: 2, name: 'Inactive', category: 'home', amount: 100, frequency: 'monthly', start_date: '2026-01-01', is_active: false },
+    ] as FixedExpense[];
+    const subs = [{ id: 3, name: 'Quarterly', category: 'software', amount: 30, frequency: 'quarterly', next_bill_date: '2025-10-31', is_active: true }] as Subscription[];
+
+    const summary = computeCashflowSummary('2026-01-01', '2026-03-31', [], [], fixed, subs);
+
+    expect(summary.fixed_expenses).toBe(30);
+    expect(summary.subscriptions).toBe(30);
+    expect(summary.fixed_occurrences.map(row => row.date)).toEqual(['2026-01-01', '2026-01-08', '2026-01-15']);
+    expect(summary.subscription_occurrences.map(row => row.date)).toEqual(['2026-01-31']);
   });
 });

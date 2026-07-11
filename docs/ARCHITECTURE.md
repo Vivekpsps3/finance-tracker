@@ -48,13 +48,13 @@ Browser/domain proxy
 
 ## Auth And Users
 
-- Login is app-native: `POST /api/auth/login` sets an HttpOnly session cookie and readable CSRF cookie.
-- First-run setup: if no users exist, `/login` bootstraps the first admin (`/api/auth/bootstrap-status`, `/api/auth/bootstrap`).
-- After first-run setup, `/login` also offers signup (`POST /api/auth/signup`) for normal user accounts. Admins can still create accounts directly.
+- Login is passwordless: the browser uses a username and vault passphrase to unwrap a browser-held signing key, then signs a server-issued single-use challenge. Successful verification sets an HttpOnly session cookie and readable CSRF cookie.
+- First-run setup generates the first admin's browser-held auth key and vault (`/api/auth/bootstrap-status`, `/api/auth/bootstrap/passwordless`). Admins create invitation/enrollment records for later users; there is no self-service password signup.
+- Legacy password login exists only for a bounded, unenrolled-account migration endpoint. Enrollment registers the public key, stores only encrypted wraps, and clears the password hash.
 - All non-health finance APIs require a valid session. Mutating requests require `X-CSRF-Token`.
 - Optional legacy `API_KEY` / `FINANCE_API_KEY` middleware can also gate `/api/*` (except health) for non-browser clients.
 - `users`, `user_sessions`, and `audit_events` live in the same SQLite database as finance data.
-- Admin UI route: `/admin/users`. Admins create, disable, reset password, reset contents, delete, and manage users, and view metrics. The raw SQL console is disabled. Self-delete and deleting or disabling the final active admin are blocked.
+- Admin UI route: `/admin/users`. Admins create invitations, disable, reset contents, delete, and manage users, and view metrics. They cannot reset a vault passphrase or recover a user's keys. The raw SQL console is disabled. Self-delete and deleting or disabling the final active admin are blocked.
 - User-owned finance tables include `user_id`; market quote cache and provider registries stay global.
 
 There is **no** `routers/analytics.py`. Net-worth Monte Carlo still lives under `/api/planning/v1`; Stock Lab market research is under `/api/market/research/*`.
@@ -80,7 +80,7 @@ There is **no** `routers/analytics.py`. Net-worth Monte Carlo still lives under 
 - Shell: `MainLayoutComponent` (grouped nav by user intent: Overview, Activity, Cashflow, Net Worth, Planning; admin/user actions in the account menu); lazy feature routes in `app.routes.ts`; `authGuard` + `vaultGuard` protect the app shell; `adminGuard` for `/admin/users`.
 - Vault routes (auth only, outside shell): `/vault/setup`, `/vault/unlock`.
 - State: `FinanceService` / `PlanningService` use the encrypted client store after vault unlock; `VaultService` / `EncryptedStoreService`; `AuthService`.
-- Prices: holdings portfolio refresh stays client-side (manual/imported prices). Public `/api/market` quote and research endpoints are for explicit Stock Lab / typed lookups; Stock Lab may disclose selected owned symbols.
+- Prices: manual/imported prices remain local. An explicit Portfolio refresh and Stock Lab/typed lookup disclose only ticker symbols to `/api/market` and yfinance; shares, values, account details, and other holding fields remain encrypted.
 - Server-blind storage: `/api/vault/*` stores wraps + ciphertext only; backend never decrypts. Legacy plaintext finance routes always return `410`.
 
 ## Where to read more

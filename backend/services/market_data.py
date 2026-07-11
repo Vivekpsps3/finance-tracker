@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import yfinance as yf
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from logging_config import get_logger
 from models import MarketResearchCache, TickerQuote
@@ -149,16 +150,29 @@ class MarketDataService:
             row.fetched_at = now
             row.expires_at = expires
         else:
-            db.add(
-                MarketResearchCache(
-                    symbol=symbol,
-                    period=period,
-                    payload_json=json.dumps(payload, separators=(",", ":")),
-                    source=response.source,
-                    fetched_at=now,
-                    expires_at=expires,
+            savepoint = db.begin_nested()
+            try:
+                db.add(
+                    MarketResearchCache(
+                        symbol=symbol,
+                        period=period,
+                        payload_json=json.dumps(payload, separators=(",", ":")),
+                        source=response.source,
+                        fetched_at=now,
+                        expires_at=expires,
+                    )
                 )
-            )
+                db.flush()
+            except IntegrityError:
+                savepoint.rollback()
+                # Another request won the cold-cache insert. Keep its fresh row and
+                # leave the caller's outer transaction usable.
+                db.query(MarketResearchCache).filter(
+                    MarketResearchCache.symbol == symbol, MarketResearchCache.period == period
+                ).first()
+            else:
+                savepoint.commit()
+            return
         db.flush()
 
     def _fetch_eod(self, symbol: str) -> Tuple[Optional[float], Optional[date], str]:

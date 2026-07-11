@@ -101,6 +101,40 @@ export function enrichHolding(row: Holding): Holding {
   };
 }
 
+function addMonths(date: string, months: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const targetMonth = month - 1 + months;
+  const targetYear = year + Math.floor(targetMonth / 12);
+  const normalizedMonth = ((targetMonth % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(targetYear, normalizedMonth + 1, 0)).getUTCDate();
+  return `${targetYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+}
+
+function addDays(date: string, days: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + days));
+  return next.toISOString().slice(0, 10);
+}
+
+function occurrencesBetween(start: string, frequency: string, rangeStart: string, rangeEnd: string, endDate?: string | null): string[] {
+  if (rangeEnd < rangeStart) return [];
+  const advance = (date: string) => {
+    if (frequency === 'weekly') return addDays(date, 7);
+    if (frequency === 'biweekly') return addDays(date, 14);
+    if (frequency === 'quarterly') return addMonths(date, 3);
+    if (frequency === 'annual') return addMonths(date, 12);
+    return addMonths(date, 1);
+  };
+  let cursor = start;
+  while (cursor < rangeStart) cursor = advance(cursor);
+  const occurrences: string[] = [];
+  while (cursor <= rangeEnd && (!endDate || cursor <= endDate)) {
+    occurrences.push(cursor);
+    cursor = advance(cursor);
+  }
+  return occurrences;
+}
+
 export function computeCashflowSummary(
   start: string,
   end: string,
@@ -109,47 +143,47 @@ export function computeCashflowSummary(
   fixedExpenses: FixedExpense[],
   subscriptions: Subscription[]
 ): CashflowSummary {
-  const startD = new Date(start);
-  const endD = new Date(end);
   let transaction_income = 0;
   let transaction_expenses = 0;
   for (const tx of transactions) {
-    const d = new Date(tx.date);
-    if (d < startD || d > endD) continue;
+    if (tx.date < start || tx.date > end) continue;
     const amt = Number(tx.amount) || 0;
     if (tx.type === 'income') transaction_income += amt;
     else transaction_expenses += Math.abs(amt);
   }
+  const daysInRange = Math.max(1, (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000 + 1);
   const planned_income = jobIncomes
+    .filter(row => row.is_active && row.effective_date <= end)
     .map(enrichJobIncome)
-    .reduce((s, j) => s + (Number(j.monthly_net) || 0), 0);
-  const fixed_total = fixedExpenses
-    .map(enrichFixedExpense)
-    .reduce((s, f) => s + (Number(f.monthly_amount) || 0), 0);
-  const sub_total = subscriptions
-    .map(enrichSubscription)
-    .reduce((s, srow) => s + (Number(srow.monthly_amount) || 0), 0);
-  const total_income = transaction_income + planned_income;
-  const total_expenses = transaction_expenses + fixed_total + sub_total;
-  const net_cashflow = total_income - total_expenses;
-  const days = Math.max(
-    1,
-    (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24) + 1
-  );
+    .reduce((sum, row) => sum + (Number(row.annual_net) || 0) * Math.max(0, (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${[start, row.effective_date].sort().at(-1)}T00:00:00Z`)) / 86_400_000 + 1) / 365.25, 0);
+  const fixedOccurrences = fixedExpenses
+    .filter(row => row.is_active)
+    .flatMap(row => occurrencesBetween(row.start_date, row.frequency, start, end, row.end_date).map(date => ({ date, name: row.name, category: row.category, amount: Number(row.amount) || 0 })));
+  const subscriptionOccurrences = subscriptions
+    .filter(row => row.is_active)
+    .flatMap(row => occurrencesBetween(row.next_bill_date, row.frequency, start, end, row.end_date).map(date => ({ date, name: row.name, category: row.category, amount: Number(row.amount) || 0 })));
+  const fixed_total = fixedOccurrences.reduce((sum, row) => sum + row.amount, 0);
+  const sub_total = subscriptionOccurrences.reduce((sum, row) => sum + row.amount, 0);
+  const roundedIncome = Math.round(planned_income * 100) / 100;
+  const roundedFixed = Math.round(fixed_total * 100) / 100;
+  const roundedSubscriptions = Math.round(sub_total * 100) / 100;
+  const total_income = Math.round((transaction_income + roundedIncome) * 100) / 100;
+  const total_expenses = Math.round((transaction_expenses + roundedFixed + roundedSubscriptions) * 100) / 100;
+  const net_cashflow = Math.round((total_income - total_expenses) * 100) / 100;
   return {
     start_date: start,
     end_date: end,
     transaction_income,
     transaction_expenses,
-    planned_income,
-    fixed_expenses: fixed_total,
-    subscriptions: sub_total,
+    planned_income: roundedIncome,
+    fixed_expenses: roundedFixed,
+    subscriptions: roundedSubscriptions,
     total_income,
     total_expenses,
     net_cashflow,
     savings_rate: total_income > 0 ? (net_cashflow / total_income) * 100 : null,
-    average_daily_spend: total_expenses / days,
-    fixed_occurrences: [],
-    subscription_occurrences: [],
+    average_daily_spend: total_expenses / daysInRange,
+    fixed_occurrences: fixedOccurrences.sort((a, b) => a.date.localeCompare(b.date)),
+    subscription_occurrences: subscriptionOccurrences.sort((a, b) => a.date.localeCompare(b.date)),
   };
 }

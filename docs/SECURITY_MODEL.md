@@ -8,8 +8,8 @@ and account administration.
 
 Protect user finance data from database readers, backups, admin tooling, and
 normal backend/server operators. Admins should be able to manage accounts,
-disable access, reset login passwords, and delete data, but they should not be
-able to decrypt user finance records.
+disable access, reset contents, and delete data, but they should not be able to
+decrypt user finance records or reset vault access.
 
 ## Non-goals
 
@@ -26,13 +26,13 @@ the operator controls the code delivered to browsers.
 
 ## Required architecture
 
-1. Browser generates a random per-user data encryption key.
-2. Browser wraps that key with a vault passphrase-derived key.
-3. Browser also wraps that key with a user-held recovery key.
-4. Vault passphrases, recovery keys, and unwrapped data keys never reach the backend.
-5. Browser encrypts finance records before upload and decrypts them after download.
-6. Backend stores ciphertext, non-sensitive sync metadata, and optional blind indexes only.
-7. Backend never computes net worth, cashflow, planning snapshots, search, sort, or imports over private plaintext for migrated users.
+1. Browser generates a random per-user data encryption key and signing keypair.
+2. Browser wraps the data key and signing private key with a vault passphrase-derived key and a user-held recovery key.
+3. The backend stores the signing public key, encrypted wraps, and a hash of each short-lived, single-use login challenge.
+4. Vault passphrases, recovery keys, signing private keys, and unwrapped data keys never reach the backend.
+5. Browser signs an account-bound challenge locally; only the public-key verification result creates a session.
+6. Browser encrypts finance records before upload and decrypts them after download.
+7. Backend stores ciphertext, non-sensitive sync metadata, and optional blind indexes only; it never computes over private plaintext.
 
 ## Plaintext allowed on the backend
 
@@ -53,18 +53,18 @@ the operator controls the code delivered to browsers.
 
 ## Recovery rules
 
-- Login password reset is separate from vault recovery.
-- Admin password reset must not change encrypted vault material.
-- A user can recover by providing their recovery key in the browser and setting a new vault passphrase.
+- There is no password reset. Admins cannot reset a vault passphrase, generate a signing key, or alter encrypted vault material.
+- A user can recover by providing their recovery key in the browser and setting a new vault passphrase; the browser re-wraps both the data key and signing private key.
 - If a user loses both vault passphrase and recovery key, admins can only delete the encrypted data and let the user start over.
 
 ## Holdings price privacy
 
 Automated server-side quote lookup conflicts with encrypted holdings if symbols
-are private. Current vault-mode portfolio refresh uses manual/imported prices and
-does not batch-send holdings symbols to the backend. Explicit one-off quote
-lookup still discloses the typed symbol to the public market quote endpoint.
-Stock Lab is an explicit ticker-disclosure feature: when the user opens or refreshes Stock Lab, typed symbols and selected owned symbols may be sent to `/api/market/research/*` and yfinance. Saved scenario inputs remain encrypted; backend market cache must store only public symbol-level data.
+are private. Manual/imported prices do not disclose symbols. An explicit
+Portfolio refresh, one-off quote lookup, or Stock Lab research request discloses
+only the requested ticker symbols to the public market endpoint and yfinance.
+Shares, values, cost bases, account details, and saved scenario inputs remain
+encrypted; the backend market cache stores only public symbol-level data.
 
 Longer-term choices if stricter holdings privacy is required:
 
@@ -73,8 +73,17 @@ Longer-term choices if stricter holdings privacy is required:
 3. Fetch quotes directly from the browser, accepting third-party/API-key tradeoffs.
 4. Serve broad public quote datasets so the browser can look up symbols locally.
 
-Do not claim holdings are server-blind if the backend receives per-user quote
-requests for owned symbols.
+Do not claim ticker symbols are server-blind when an explicit Portfolio refresh
+or Stock Lab request has sent them to the backend.
+
+## Migration ordering
+
+Schema-v1 ciphertext is decrypted locally only after account authentication and
+rewritten as schema-v2 records with authenticated-record AAD. Verify the
+encrypted replacement before deleting legacy plaintext rows, then checkpoint the
+SQLite WAL and run `VACUUM`. Password migration follows the same ordering: a
+legacy password session can enroll a signing key only after the vault is
+available; enrollment clears the password hash without uploading any vault secret.
 
 ## Admin tooling
 

@@ -36,6 +36,8 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    if not password_hash:
+        return False
     try:
         return _ph.verify(password_hash, password)
     except (VerifyMismatchError, VerificationError):
@@ -68,6 +70,7 @@ def public_user(user: User) -> dict:
     return {
         "id": user.id,
         "email": user.email,
+        "username": user.username,
         "display_name": user.display_name,
         "role": user.role.value if hasattr(user.role, "value") else str(user.role),
         "is_active": user.is_active,
@@ -107,7 +110,7 @@ def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(CSRF_COOKIE_NAME, path="/")
 
 
-def create_session(db: Session, user: User, request: Request, response: Response) -> str:
+def create_session(db: Session, user: User, request: Request, response: Response, *, migration_only: bool = False) -> str:
     token = secrets.token_urlsafe(48)
     csrf = secrets.token_urlsafe(32)
     now = utc_now_naive()
@@ -120,6 +123,7 @@ def create_session(db: Session, user: User, request: Request, response: Response
         last_seen_at=now,
         user_agent=request.headers.get("user-agent", "")[:500] or None,
         ip_address=request.client.host if request.client else None,
+        migration_only=migration_only,
     )
     db.add(session)
     user.last_login_at = now
@@ -130,7 +134,7 @@ def create_session(db: Session, user: User, request: Request, response: Response
     return csrf
 
 
-def _session_from_request(db: Session, request: Request) -> tuple[UserSession, User]:
+def _session_from_request(db: Session, request: Request, *, allow_migration: bool = False) -> tuple[UserSession, User]:
     token = request.cookies.get(SESSION_COOKIE_NAME)
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
@@ -141,6 +145,8 @@ def _session_from_request(db: Session, request: Request) -> tuple[UserSession, U
     user = db.query(User).filter(User.id == session.user_id).first()
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User is inactive")
+    if session.migration_only and not allow_migration:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Complete passwordless enrollment before accessing the application")
     session.last_seen_at = now
     return session, user
 
@@ -159,6 +165,24 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
+def get_current_migration_user(request: Request, db: Session = Depends(get_db)) -> User:
+    session, user = _session_from_request(db, request, allow_migration=True)
+    if not session.migration_only:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Passwordless enrollment is only available during migration")
+    require_csrf(request, session)
+    return user
+
+
+def complete_migration_session(db: Session, request: Request) -> None:
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
+    session = db.query(UserSession).filter(UserSession.token_hash == _hash_secret(token)).first()
+    if not session or not session.migration_only:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Migration session required")
+    session.migration_only = False
+
+
 def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     if role != UserRole.admin.value:
@@ -171,7 +195,7 @@ def create_user(
     *,
     email: str,
     display_name: str,
-    password: str,
+    password: str | None = None,
     role: UserRole = UserRole.user,
     must_change_password: bool = True,
     actor_user_id: Optional[int] = None,
@@ -183,7 +207,7 @@ def create_user(
         email=clean_email,
         display_name=display_name.strip() or clean_email,
         role=role,
-        password_hash=hash_password(password),
+        password_hash=hash_password(password) if password else None,
         is_active=True,
         must_change_password=must_change_password,
     )

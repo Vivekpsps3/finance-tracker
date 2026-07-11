@@ -324,8 +324,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private loadCashflowForFilter() {
-    const { start, end } = getDateRange(this.filter);
+    let { start, end } = getDateRange(this.filter);
+    if (this.filter.mode === 'all') {
+      const dates = this.transactions.map(row => row.date).sort();
+      start = dates[0] ?? null;
+      end = dates.at(-1) ?? null;
+    }
     if (!start || !end) {
+      this.cashflowSummary = null;
       return;
     }
     this.financeService

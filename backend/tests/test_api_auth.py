@@ -59,15 +59,14 @@ def test_admin_can_create_user_and_user_cannot_access_admin():
     created = admin.post(
         "/api/admin/users",
         json={
-            "email": "new@example.com",
+            "username": "new.user",
             "display_name": "New User",
             "role": "user",
-            "password": "new-user-password",
-            "must_change_password": True,
         },
     )
     assert created.status_code == 200
-    assert created.json()["email"] == "new@example.com"
+    assert created.json()["email"] == "new.user@pending.local"
+    assert created.json()["enrollment_token"]
 
     normal = authenticated_client(app, email="normal@example.com")
     assert normal.get("/api/admin/users").status_code == 403
@@ -78,37 +77,24 @@ def test_inactive_user_cannot_login():
     created = admin.post(
         "/api/admin/users",
         json={
-            "email": "disabled@example.com",
+            "username": "disabled.user",
             "display_name": "Disabled",
             "role": "user",
-            "password": "disabled-password",
         },
     ).json()
     admin.patch(f"/api/admin/users/{created['id']}", json={"is_active": False})
 
     client = TestClient(app)
-    r = client.post("/api/auth/login", json={"email": "disabled@example.com", "password": "disabled-password"})
-    assert r.status_code == 401
+    r = client.post("/api/auth/passwordless/challenge", json={"username": "disabled.user"})
+    assert r.status_code == 200
+    assert set(r.json()) == {"challenge_id", "challenge", "message", "expires_at"}
 
 
 def test_admin_can_delete_user_and_owned_data_is_removed():
     admin = authenticated_client(app, email="owner-admin@example.com", role=UserRole.admin)
-    created = admin.post(
-        "/api/admin/users",
-        json={
-            "email": "delete-me@example.com",
-            "display_name": "Delete Me",
-            "role": "user",
-            "password": "delete-me-password",
-            "must_change_password": False,
-        },
-    ).json()
-
-    # Delete the created account after giving it data through its own session.
-    login = TestClient(app)
-    res = login.post("/api/auth/login", json={"email": "delete-me@example.com", "password": "delete-me-password"})
-    assert res.status_code == 200
-    login.headers.update({"X-CSRF-Token": res.json()["csrf_token"]})
+    # Use a separate authenticated account to give the deletion target data.
+    login = authenticated_client(app, email="delete-me@example.com")
+    created = login.get("/api/auth/me").json()["user"]
     tx = login.post(
         "/api/transactions/",
         json={"date": "2026-01-01", "type": "income", "category": "Salary", "amount": 100},
@@ -167,10 +153,9 @@ def test_admin_cannot_delete_self_or_final_admin():
     second = admin.post(
         "/api/admin/users",
         json={
-            "email": "second-admin@example.com",
+            "username": "second.admin",
             "display_name": "Second Admin",
             "role": "admin",
-            "password": "second-admin-password",
         },
     ).json()
     assert admin.delete(f"/api/admin/users/{second['id']}").status_code == 200
@@ -181,10 +166,9 @@ def test_admin_can_delete_inactive_admin_when_another_admin_is_active():
     inactive_admin = admin.post(
         "/api/admin/users",
         json={
-            "email": "inactive-admin@example.com",
+            "username": "inactive.admin",
             "display_name": "Inactive Admin",
             "role": "admin",
-            "password": "inactive-admin-password",
         },
     ).json()
 
@@ -196,24 +180,20 @@ def test_admin_can_delete_inactive_admin_when_another_admin_is_active():
     assert all(u["email"] != "inactive-admin@example.com" for u in admin.get("/api/admin/users").json())
 
 
-def test_public_signup_creates_normal_user_after_admin_exists():
+def test_public_password_signup_is_retired():
     authenticated_client(app, email="setup-admin@example.com", role=UserRole.admin)
     client = TestClient(app)
     res = client.post(
         "/api/auth/signup",
         json={"email": "signup@example.com", "display_name": "Signup User", "password": "signup-password"},
     )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["user"]["email"] == "signup@example.com"
-    assert body["user"]["role"] == "user"
-    assert client.get("/api/auth/me").status_code == 200
+    assert res.status_code == 410
 
 
-def test_signup_refuses_to_create_first_account():
+def test_public_password_bootstrap_is_retired():
     client = TestClient(app)
     res = client.post(
-        "/api/auth/signup",
+        "/api/auth/bootstrap",
         json={"email": "first@example.com", "display_name": "First", "password": "first-password"},
     )
-    assert res.status_code == 409
+    assert res.status_code == 410

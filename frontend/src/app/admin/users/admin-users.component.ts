@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { apiUrl } from '../../core/api-url';
@@ -31,6 +31,7 @@ interface SqlResult {
 export class AdminUsersComponent implements OnInit {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   users: AuthUser[] = [];
   usersLoading = false;
@@ -44,9 +45,8 @@ export class AdminUsersComponent implements OnInit {
   sql = 'SELECT email, role, is_active FROM users ORDER BY email';
   sqlResult: SqlResult | null = null;
   sqlRunning = false;
-  email = '';
+  username = '';
   displayName = '';
-  password = '';
   role: UserRole = 'user';
 
   ngOnInit(): void {
@@ -70,22 +70,25 @@ export class AdminUsersComponent implements OnInit {
   loadUsers(): void {
     this.usersLoading = true;
     this.usersError = '';
+    this.cdr.markForCheck();
     this.http.get<AuthUser[]>(apiUrl('/admin/users')).subscribe({
       next: users => {
         this.users = users;
         this.usersLoading = false;
+        this.cdr.markForCheck();
       },
       error: err => {
         this.usersError = err?.error?.detail || 'Could not load users';
         this.usersLoading = false;
+        this.cdr.markForCheck();
       },
     });
   }
 
   loadMetrics(): void {
     this.http.get<AdminMetrics>(apiUrl('/admin/metrics')).subscribe({
-      next: metrics => this.metrics = metrics,
-      error: err => this.error = err?.error?.detail || 'Could not load metrics',
+      next: metrics => { this.metrics = metrics; this.cdr.markForCheck(); },
+      error: err => { this.error = err?.error?.detail || 'Could not load metrics'; this.cdr.markForCheck(); },
     });
   }
 
@@ -94,41 +97,42 @@ export class AdminUsersComponent implements OnInit {
     this.sqlRunning = true;
     this.error = '';
     this.message = '';
+    this.cdr.markForCheck();
     this.http.post<SqlResult>(apiUrl('/admin/sql'), { sql: this.sql }).subscribe({
       next: result => {
         this.sqlResult = result;
         this.sqlRunning = false;
         this.message = 'Read-only query executed';
         this.loadMetrics();
+        this.cdr.markForCheck();
       },
       error: err => {
         this.error = err?.error?.detail || 'SQL failed';
         this.sqlRunning = false;
+        this.cdr.markForCheck();
       },
     });
   }
 
   createUser(): void {
-    if (!this.email.trim() || !this.displayName.trim() || this.password.length < 12) return;
+    if (!this.username.trim() || !this.displayName.trim()) return;
     this.createError = '';
     this.createMessage = '';
-    this.http.post<AuthUser>(apiUrl('/admin/users'), {
-      email: this.email,
+    this.http.post<AuthUser & { enrollment_token: string }>(apiUrl('/admin/users'), {
+      username: this.username,
       display_name: this.displayName,
-      password: this.password,
       role: this.role,
-      must_change_password: true,
     }).subscribe({
       next: user => {
         this.users = [...this.users, user].sort((a, b) => a.email.localeCompare(b.email));
-        this.email = '';
+        this.username = '';
         this.displayName = '';
-        this.password = '';
         this.role = 'user';
-        this.createMessage = 'User created';
+        this.createMessage = `Invitation created. Deliver this one-time token securely: ${user.enrollment_token}`;
         this.loadMetrics();
+        this.cdr.markForCheck();
       },
-      error: err => this.createError = err?.error?.detail || 'Could not create user',
+      error: err => { this.createError = err?.error?.detail || 'Could not create user'; this.cdr.markForCheck(); },
     });
   }
 
@@ -154,24 +158,9 @@ export class AdminUsersComponent implements OnInit {
         this.users = this.users.filter(u => u.id !== user.id);
         this.usersMessage = 'User deleted';
         this.loadMetrics();
+        this.cdr.markForCheck();
       },
-      error: err => this.usersError = err?.error?.detail || 'Could not delete user',
-    });
-  }
-
-  resetPassword(user: AuthUser): void {
-    const nextPassword = window.prompt(`New password for ${user.email}`);
-    if (!nextPassword) return;
-    if (nextPassword.length < 12) {
-      this.usersError = 'Password must be at least 12 characters';
-      return;
-    }
-    this.http.post(apiUrl(`/admin/users/${user.id}/reset-password`), {
-      new_password: nextPassword,
-      must_change_password: true,
-    }).subscribe({
-      next: () => this.usersMessage = 'Password reset',
-      error: err => this.usersError = err?.error?.detail || 'Could not reset password',
+      error: err => { this.usersError = err?.error?.detail || 'Could not delete user'; this.cdr.markForCheck(); },
     });
   }
 
@@ -190,8 +179,9 @@ export class AdminUsersComponent implements OnInit {
       next: () => {
         this.usersMessage = 'User contents reset';
         this.loadMetrics();
+        this.cdr.markForCheck();
       },
-      error: err => this.usersError = err?.error?.detail || 'Could not reset user contents',
+      error: err => { this.usersError = err?.error?.detail || 'Could not reset user contents'; this.cdr.markForCheck(); },
     });
   }
 
@@ -203,8 +193,9 @@ export class AdminUsersComponent implements OnInit {
         this.users = this.users.map(u => u.id === updated.id ? updated : u);
         this.usersMessage = 'User updated';
         this.loadMetrics();
+        this.cdr.markForCheck();
       },
-      error: err => this.usersError = err?.error?.detail || 'Could not update user',
+      error: err => { this.usersError = err?.error?.detail || 'Could not update user'; this.cdr.markForCheck(); },
     });
   }
 }

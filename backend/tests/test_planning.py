@@ -221,6 +221,15 @@ def test_mc_run_api_same_seed_same_terminal_p50(client):
     assert p50_1 == p50_2
 
 
+def test_mc_run_api_preserves_zero_seed(client):
+    payload = {"tool_id": "mc_net_worth_paths", "overrides": {"annual_spending": 0}, "seed": 0, "n_paths": 100, "horizon_years": 2}
+    first = client.post("/api/planning/v1/runs", json=payload)
+    second = client.post("/api/planning/v1/runs", json=payload)
+    assert first.status_code == 200
+    assert first.json()["seed"] == 0
+    assert first.json()["result_artifacts"]["percentiles_by_year"] == second.json()["result_artifacts"]["percentiles_by_year"]
+
+
 def test_mc_persisted_fan_paths_capped_via_api(client):
     client.post(
         "/api/assets/",
@@ -471,6 +480,7 @@ def test_mc_run_wall_clock_timeout(client, monkeypatch):
 
     monkeypatch.setenv("MC_RUN_TIMEOUT_SEC", "1")
     monkeypatch.setattr("services.analytics.monte_carlo.mc_net_worth_paths", slow_mc)
+    started = time.monotonic()
     r = client.post(
         "/api/planning/v1/runs",
         json={
@@ -481,4 +491,5 @@ def test_mc_run_wall_clock_timeout(client, monkeypatch):
         },
     )
     assert r.status_code == 504
+    assert time.monotonic() - started < 2
     assert "timed out" in r.json()["detail"].lower()

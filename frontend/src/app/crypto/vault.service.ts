@@ -12,6 +12,7 @@ import {
   unlockWithPassphrase,
   unlockWithRecoveryKey,
 } from './vault-crypto';
+import { rewrapSigningKeyWithPassphrase, WrappedSigningKey } from './auth-crypto';
 
 export interface VaultStatus {
   exists: boolean;
@@ -35,12 +36,18 @@ export interface EncryptedRecordDto {
   updated_at: string;
 }
 
+export interface LegacyMigrationExport {
+  counts: Record<string, number>;
+  records: Array<{ collection: string; data: Record<string, unknown> }>;
+}
+
 @Injectable({ providedIn: 'root' })
 export class VaultService {
   private dek: CryptoKey | null = null;
   private statusSubject = new BehaviorSubject<VaultStatus | null>(null);
   private unlockedSubject = new BehaviorSubject<boolean>(false);
   private lastRecoveryKey: string | null = null;
+  private authWrap: WrappedSigningKey | null = null;
 
   readonly status$ = this.statusSubject.asObservable();
   readonly unlocked$ = this.unlockedSubject.asObservable();
@@ -73,6 +80,14 @@ export class VaultService {
     return status;
   }
 
+  loadPublicStatus(status: VaultStatus): void {
+    this.statusSubject.next(status);
+  }
+
+  loadAuthWrap(wrap: WrappedSigningKey): void {
+    this.authWrap = wrap;
+  }
+
   lock(): void {
     this.dek = null;
     this.unlockedSubject.next(false);
@@ -88,6 +103,14 @@ export class VaultService {
     this.unlockedSubject.next(true);
     this.lastRecoveryKey = material.recoveryKey;
     return { recoveryKey: material.recoveryKey };
+  }
+
+  /** Completes an atomically-created vault after passwordless account bootstrap. */
+  async adoptBootstrapVault(dek: CryptoKey, recoveryKey: string): Promise<void> {
+    await this.refreshStatus();
+    this.dek = dek;
+    this.unlockedSubject.next(true);
+    this.lastRecoveryKey = recoveryKey;
   }
 
   async unlock(passphrase: string): Promise<void> {
@@ -114,11 +137,15 @@ export class VaultService {
       status.recovery_wrapped_dek_b64,
       status.kdf_iterations
     );
+    if (!this.authWrap) throw new Error('Vault authentication material is unavailable; sign in again before recovering your passphrase');
     const wraps = await rewrapDekWithPassphrase(dek, newPassphrase, status.kdf_iterations);
+    const authWrap = await rewrapSigningKeyWithPassphrase(recoveryKey, this.authWrap, newPassphrase);
     const updated = await firstValueFrom(
       this.http.put<VaultStatus>(apiUrl('/vault/wraps'), wraps)
     );
+    await firstValueFrom(this.http.put(apiUrl('/auth/passwordless/wraps'), authWrap));
     this.statusSubject.next(updated);
+    this.authWrap = authWrap;
     this.dek = dek;
     this.unlockedSubject.next(true);
   }
@@ -135,11 +162,7 @@ export class VaultService {
     schemaVersion: number,
     keyVersion: number
   ): Promise<string> {
-    return encryptJson(
-      this.requireDek(),
-      value,
-      schemaVersion >= 2 ? recordAad(collection, clientId, schemaVersion, keyVersion) : undefined
-    );
+    return encryptJson(this.requireDek(), value, this.recordAdditionalData(collection, clientId, schemaVersion, keyVersion));
   }
 
   async decryptPayload<T>(
@@ -152,8 +175,19 @@ export class VaultService {
     return decryptJson<T>(
       this.requireDek(),
       ciphertextB64,
-      schemaVersion >= 2 ? recordAad(collection, clientId, schemaVersion, keyVersion) : undefined
+      this.recordAdditionalData(collection, clientId, schemaVersion, keyVersion)
     );
+  }
+
+  private recordAdditionalData(
+    collection: string,
+    clientId: string,
+    schemaVersion: number,
+    keyVersion: number
+  ): Uint8Array | undefined {
+    if (schemaVersion === 1) return undefined;
+    if (schemaVersion === 2) return recordAad(collection, clientId, schemaVersion, keyVersion);
+    throw new Error(`Unsupported record schema version: ${schemaVersion}`);
   }
 
   async blindIndex(value: string): Promise<string> {
@@ -187,5 +221,16 @@ export class VaultService {
 
   getCounts(): Observable<{ counts: Record<string, number> }> {
     return this.http.get<{ counts: Record<string, number> }>(apiUrl('/vault/counts'));
+  }
+
+  exportLegacyRecords(): Observable<LegacyMigrationExport> {
+    return this.http.get<LegacyMigrationExport>(apiUrl('/vault/migration/export'));
+  }
+
+  completeLegacyMigration(
+    counts: Record<string, number>,
+    records: Array<{ collection: string; client_id: string }>
+  ): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(apiUrl('/vault/migration/complete'), { counts, records });
   }
 }

@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
+import base64
+import binascii
+import hashlib
+import secrets
+from datetime import timedelta
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -10,9 +17,11 @@ from admin_tools import admin_metrics, delete_user_account, execute_admin_sql, r
 from auth import (
     audit_event,
     clear_session_cookie,
+    complete_migration_session,
     create_session,
     create_user,
     get_current_admin,
+    get_current_migration_user,
     get_current_user,
     hash_password,
     normalize_email,
@@ -22,7 +31,9 @@ from auth import (
     verify_password,
 )
 from database import get_db
-from models import User, UserRole, UserSession
+from models import AuthEnrollment, User, UserRole, UserSession
+from services.challenge_auth import CHALLENGE_TTL, PROTOCOL, issue_challenge, verify_challenge
+from services import encrypted_storage as vault_store
 from schemas_auth import (
     AdminPasswordReset,
     AdminSqlRequest,
@@ -30,6 +41,7 @@ from schemas_auth import (
     BootstrapRequest,
     BootstrapStatusResponse,
     AdminUserCreate,
+    AdminInvitationResponse,
     AdminUserUpdate,
     ChangePasswordRequest,
     LoginRequest,
@@ -37,14 +49,77 @@ from schemas_auth import (
     MeResponse,
     SelfDataResetRequest,
     SignupRequest,
+    PasswordlessChallengeRequest,
+    PasswordlessChallengeResponse,
+    PasswordlessEnrollRequest,
+    InvitationEnrollRequest,
+    PasswordlessBootstrapRequest,
+    AuthPrivateKeyWrap,
+    PasswordlessVerifyRequest,
     UserPublic,
 )
 
 router = APIRouter(tags=["auth"])
 
 
+def _origin(request: Request) -> str:
+    return request.headers.get("origin") or str(request.base_url).rstrip("/")
+
+
+def _username(value: str) -> str:
+    return value.strip().lower()
+
+
 def _user_response(user: User) -> UserPublic:
     return UserPublic.model_validate(public_user(user))
+
+
+def _require_p256_public_key(public_key_b64: str) -> None:
+    try:
+        key = serialization.load_der_public_key(base64.b64decode(public_key_b64, validate=True))
+    except (ValueError, binascii.Error) as exc:
+        raise HTTPException(status_code=400, detail="Invalid public key") from exc
+    if not isinstance(key, ec.EllipticCurvePublicKey) or not isinstance(key.curve, ec.SECP256R1):
+        raise HTTPException(status_code=400, detail="A P-256 public key is required")
+
+
+def _store_auth_wrap(user: User, auth: AuthPrivateKeyWrap) -> None:
+    user.auth_kdf_salt_b64 = auth.kdf_salt_b64
+    user.auth_kdf_iterations = auth.kdf_iterations
+    user.auth_wrapped_private_key_b64 = auth.wrapped_private_key_b64
+    user.auth_recovery_wrapped_private_key_b64 = auth.recovery_wrapped_private_key_b64
+
+
+def _decoy_passwordless_material() -> dict:
+    def wrapped() -> str:
+        return base64.b64encode(secrets.token_bytes(48)).decode()
+
+    return {
+        "vault": {
+            "kdf_algorithm": "PBKDF2",
+            "kdf_salt_b64": base64.b64encode(secrets.token_bytes(16)).decode(),
+            "kdf_iterations": 310000,
+            "wrapped_dek_b64": wrapped(),
+            "recovery_wrapped_dek_b64": f"{base64.b64encode(secrets.token_bytes(16)).decode()}.{wrapped()}",
+            "key_version": 1,
+        },
+        "auth": {
+            "kdf_salt_b64": base64.b64encode(secrets.token_bytes(16)).decode(),
+            "kdf_iterations": 310000,
+            "wrapped_private_key_b64": wrapped(),
+            "recovery_wrapped_private_key_b64": f"{base64.b64encode(secrets.token_bytes(16)).decode()}.{wrapped()}",
+        },
+    }
+
+
+def _decoy_challenge(request: Request) -> dict:
+    expires_at = utc_now_naive() + CHALLENGE_TTL
+    return {
+        "challenge_id": secrets.token_urlsafe(24),
+        "challenge": secrets.token_urlsafe(32),
+        "message": "\n".join([PROTOCOL, _origin(request), expires_at.isoformat()]),
+        "expires_at": expires_at,
+    }
 
 
 @router.get("/auth/bootstrap-status", response_model=BootstrapStatusResponse)
@@ -54,18 +129,35 @@ def bootstrap_status(db: Session = Depends(get_db)):
 
 @router.post("/auth/bootstrap", response_model=LoginResponse)
 def bootstrap_first_admin(body: BootstrapRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    raise HTTPException(status_code=410, detail="Password bootstrap is retired; use passwordless bootstrap")
+
+
+@router.post("/auth/bootstrap/passwordless", response_model=LoginResponse)
+def passwordless_bootstrap_first_admin(
+    body: PasswordlessBootstrapRequest, request: Request, response: Response, db: Session = Depends(get_db)
+):
     if db.query(User).count() != 0:
         raise HTTPException(status_code=409, detail="Setup is already complete")
+    username = _username(body.username)
+    _require_p256_public_key(body.public_key_b64)
     user = create_user(
         db,
-        email=body.email,
+        email=f"{username}@pending.local",
         display_name=body.display_name,
-        password=body.password,
         role=UserRole.admin,
         must_change_password=False,
     )
-    db.commit()
-    db.refresh(user)
+    user.username = username
+    user.auth_public_key_b64 = body.public_key_b64
+    user.auth_algorithm = "ECDSA_P256_SHA256"
+    user.auth_key_version = 1
+    _store_auth_wrap(user, body.auth)
+    user.passwordless_enrolled_at = utc_now_naive()
+    vault_store.create_vault(
+        db,
+        user.id,
+        **body.vault.model_dump(),
+    )
     csrf = create_session(db, user, request, response)
     db.refresh(user)
     return {"user": _user_response(user), "csrf_token": csrf}
@@ -73,28 +165,129 @@ def bootstrap_first_admin(body: BootstrapRequest, request: Request, response: Re
 
 @router.post("/auth/signup", response_model=LoginResponse)
 def signup(body: SignupRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    if db.query(User).count() == 0:
-        raise HTTPException(status_code=409, detail="Create the first admin account first")
-    user = create_user(
-        db,
-        email=body.email,
-        display_name=body.display_name,
-        password=body.password,
-        role=UserRole.user,
-        must_change_password=False,
-    )
-    db.commit()
+    raise HTTPException(status_code=410, detail="Password signup is retired; request an administrator invitation")
+
+
+@router.post("/auth/login", response_model=LoginResponse)
+def login(body: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    raise HTTPException(status_code=410, detail="Password login is available only for passwordless migration")
+
+
+@router.post("/auth/login/migrate", response_model=LoginResponse)
+def login_migrate(body: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == normalize_email(body.email)).first()
+    if not user or user.auth_public_key_b64 or not user.is_active or not verify_password(body.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    csrf = create_session(db, user, request, response, migration_only=True)
     db.refresh(user)
+    return {"user": _user_response(user), "csrf_token": csrf}
+
+
+@router.post("/auth/passwordless/enroll")
+def enroll_passwordless(
+    body: PasswordlessEnrollRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_migration_user),
+):
+    username = _username(body.username)
+    if db.query(User).filter(User.username == username, User.id != current_user.id).first():
+        raise HTTPException(status_code=409, detail="Username already exists")
+    _require_p256_public_key(body.public_key_b64)
+    current_user.username = username
+    current_user.auth_public_key_b64 = body.public_key_b64
+    current_user.auth_algorithm = "ECDSA_P256_SHA256"
+    current_user.auth_key_version = 1
+    _store_auth_wrap(current_user, body.auth)
+    current_user.passwordless_enrolled_at = utc_now_naive()
+    current_user.password_hash = None
+    current_user.must_change_password = False
+    complete_migration_session(db, request)
+    audit_event(db, "passwordless_enrolled", actor_user_id=current_user.id, target_user_id=current_user.id)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/auth/passwordless/lookup")
+def passwordless_lookup(body: PasswordlessChallengeRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == _username(body.username)).first()
+    vault = vault_store.get_vault(db, user.id) if user and user.is_active else None
+    if not user or not user.is_active or not user.auth_public_key_b64 or not vault or not user.auth_wrapped_private_key_b64:
+        return _decoy_passwordless_material()
+    return {
+        "vault": {
+            "kdf_algorithm": vault.kdf_algorithm,
+            "kdf_salt_b64": vault.kdf_salt_b64,
+            "kdf_iterations": vault.kdf_iterations,
+            "wrapped_dek_b64": vault.wrapped_dek_b64,
+            "recovery_wrapped_dek_b64": vault.recovery_wrapped_dek_b64,
+            "key_version": vault.key_version,
+        },
+        "auth": {
+            "kdf_salt_b64": user.auth_kdf_salt_b64,
+            "kdf_iterations": user.auth_kdf_iterations,
+            "wrapped_private_key_b64": user.auth_wrapped_private_key_b64,
+            "recovery_wrapped_private_key_b64": user.auth_recovery_wrapped_private_key_b64,
+        },
+    }
+
+
+@router.post("/auth/passwordless/challenge", response_model=PasswordlessChallengeResponse)
+def passwordless_challenge(body: PasswordlessChallengeRequest, request: Request, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == _username(body.username)).first()
+    if not user or not user.is_active or not user.auth_public_key_b64:
+        return _decoy_challenge(request)
+    challenge, raw, message = issue_challenge(db, user, _origin(request))
+    db.commit()
+    return {"challenge_id": challenge.challenge_id, "challenge": raw, "message": message, "expires_at": challenge.expires_at}
+
+
+@router.put("/auth/passwordless/wraps")
+def update_passwordless_wraps(
+    body: AuthPrivateKeyWrap,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _store_auth_wrap(current_user, body)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/auth/passwordless/verify", response_model=LoginResponse)
+def passwordless_verify(body: PasswordlessVerifyRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == _username(body.username)).first()
+    if not user or not user.is_active or not verify_challenge(db, user, body.challenge_id, body.challenge, body.message, body.signature_b64):
+        raise HTTPException(status_code=401, detail="Invalid or expired vault authentication challenge")
     csrf = create_session(db, user, request, response)
     db.refresh(user)
     return {"user": _user_response(user), "csrf_token": csrf}
 
 
-@router.post("/auth/login", response_model=LoginResponse)
-def login(body: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == normalize_email(body.email)).first()
-    if not user or not user.is_active or not verify_password(body.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+@router.post("/auth/invitations/{token}/enroll", response_model=LoginResponse)
+def enroll_invitation(
+    token: str,
+    body: InvitationEnrollRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    enrollment = db.query(AuthEnrollment).filter(AuthEnrollment.token_hash == hashlib.sha256(token.encode()).hexdigest()).first()
+    if not enrollment or enrollment.consumed_at or enrollment.expires_at <= utc_now_naive():
+        raise HTTPException(status_code=401, detail="Authentication failed")
+    user = db.get(User, enrollment.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+    _require_p256_public_key(body.public_key_b64)
+    if vault_store.get_vault(db, user.id):
+        raise HTTPException(status_code=409, detail="Enrollment is already complete")
+    vault_store.create_vault(db, user.id, **body.vault.model_dump())
+    enrollment.consumed_at = utc_now_naive()
+    user.auth_public_key_b64 = body.public_key_b64
+    user.auth_algorithm = "ECDSA_P256_SHA256"
+    user.auth_key_version = 1
+    _store_auth_wrap(user, body.auth)
+    user.passwordless_enrolled_at = utc_now_naive()
+    audit_event(db, "passwordless_enrolled", actor_user_id=user.id, target_user_id=user.id)
     csrf = create_session(db, user, request, response)
     db.refresh(user)
     return {"user": _user_response(user), "csrf_token": csrf}
@@ -164,7 +357,7 @@ def list_users(
     return [_user_response(user) for user in users]
 
 
-@router.post("/admin/users", response_model=UserPublic)
+@router.post("/admin/users", response_model=AdminInvitationResponse)
 def admin_create_user(
     body: AdminUserCreate,
     db: Session = Depends(get_db),
@@ -172,16 +365,23 @@ def admin_create_user(
 ):
     user = create_user(
         db,
-        email=body.email,
+        email=f"{_username(body.username)}@pending.local",
         display_name=body.display_name,
-        password=body.password,
         role=UserRole(body.role),
-        must_change_password=body.must_change_password,
+        must_change_password=False,
         actor_user_id=admin.id,
     )
+    user.username = _username(body.username)
+    token = secrets.token_urlsafe(32)
+    db.add(AuthEnrollment(
+        user_id=user.id,
+        token_hash=hashlib.sha256(token.encode()).hexdigest(),
+        expires_at=utc_now_naive() + timedelta(hours=24),
+        created_by_user_id=admin.id,
+    ))
     db.commit()
     db.refresh(user)
-    return _user_response(user)
+    return {**_user_response(user).model_dump(), "enrollment_token": token}
 
 
 def _role_value(role: UserRole | str) -> str:

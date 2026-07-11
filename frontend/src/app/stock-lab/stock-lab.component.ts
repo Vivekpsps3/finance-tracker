@@ -32,6 +32,7 @@ export class StockLabComponent implements OnInit, OnDestroy {
   period = '10y';
   newComparisonSymbol = '';
   private destroy$ = new Subject<void>();
+  private marketRequest = 0;
 
   constructor(
     private market: MarketResearchService,
@@ -102,22 +103,33 @@ export class StockLabComponent implements OnInit, OnDestroy {
   }
 
   loadMarketData(refresh: boolean): void {
+    const request = ++this.marketRequest;
     const symbols = this.symbols();
-    if (symbols.length === 0) return;
+    if (symbols.length === 0) {
+      this.research = [];
+      this.loading = false;
+      this.cdr.markForCheck();
+      return;
+    }
     this.loading = true;
     this.error = null;
+    this.cdr.markForCheck();
     this.market.getBatch(symbols, { refresh, period: this.period }).pipe(
       takeUntil(this.destroy$),
       finalize(() => {
-        this.loading = false;
-        this.cdr.markForCheck();
+        if (request === this.marketRequest) {
+          this.loading = false;
+          this.cdr.markForCheck();
+        }
       })
     ).subscribe({
       next: batch => {
+        if (request !== this.marketRequest) return;
         this.research = batch.results;
         if (batch.failed.length) this.error = batch.failed.map(row => `${row.symbol}: ${row.error}`).join('; ');
       },
       error: err => {
+        if (request !== this.marketRequest) return;
         this.error = err?.error?.detail || err?.message || 'Market research failed.';
       },
     });

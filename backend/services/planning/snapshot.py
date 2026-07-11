@@ -20,10 +20,12 @@ def _month_key(d: date) -> str:
 
 
 def summarize_transactions(db: Session, user_id: int, months: int = 24) -> Dict[str, Any]:
-    cutoff = date.today() - timedelta(days=months * 31)
+    window_end = date.today()
+    month_index = window_end.month - 1 - (months - 1)
+    cutoff = date(window_end.year + month_index // 12, month_index % 12 + 1, 1)
     rows = (
         db.query(Transaction)
-        .filter(Transaction.user_id == user_id, Transaction.date >= cutoff)
+        .filter(Transaction.user_id == user_id, Transaction.date >= cutoff, Transaction.date <= window_end)
         .all()
     )
     monthly_income: Dict[str, float] = {}
@@ -40,9 +42,7 @@ def summarize_transactions(db: Session, user_id: int, months: int = 24) -> Dict[
             by_category[cat] = by_category.get(cat, 0.0) + amt
 
     def _avg(d: Dict[str, float]) -> float:
-        if not d:
-            return 0.0
-        return round(sum(d.values()) / len(d), 2)
+        return round(sum(d.values()) / months, 2)
 
     cash_assets = (
         db.query(func.coalesce(func.sum(Asset.current_value), 0.0))
