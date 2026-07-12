@@ -94,8 +94,8 @@ export class AuthService {
    */
   async signupPasswordless(username: string, vaultPassphrase: string, displayName = ''): Promise<AuthUser> {
     const normalized = username.trim().toLowerCase();
-    if (!normalized || normalized.includes('@')) {
-      throw new Error('Choose a username (not an email address)');
+    if (!/^[a-z0-9_.-]{3,64}$/.test(normalized)) {
+      throw new Error('Username must be 3-64 letters, numbers, dots, underscores, or hyphens');
     }
     if (vaultPassphrase.length < 12) {
       throw new Error('Vault passphrase must be at least 12 characters');

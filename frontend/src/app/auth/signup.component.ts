@@ -25,8 +25,7 @@ export class SignupComponent {
   get canSubmit(): boolean {
     return (
       !this.loading &&
-      this.username.trim().length >= 3 &&
-      !this.username.includes('@') &&
+      /^[a-zA-Z0-9_.-]{3,64}$/.test(this.username.trim()) &&
       this.password.length >= 12
     );
   }
@@ -51,7 +50,6 @@ export class SignupComponent {
   }
 
   private errorMessage(err: any): string {
-    if (err instanceof Error && err.message) return err.message;
     const detail = err?.error?.detail;
     if (typeof detail === 'string') return detail;
     if (Array.isArray(detail) && detail.length) {
@@ -63,6 +61,7 @@ export class SignupComponent {
         })
         .join('; ');
     }
+    if (err instanceof Error && err.message) return err.message;
     return 'Sign up failed';
   }
 }
