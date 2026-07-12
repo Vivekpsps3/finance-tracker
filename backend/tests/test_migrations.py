@@ -59,6 +59,8 @@ def test_alembic_upgrade_head_on_legacy_holdings_sqlite():
         assert not inspector.has_table("tax_documents")
         holdings_cols = {c["name"] for c in inspector.get_columns("holdings")}
         assert "brokerage_account_id" in holdings_cols
+        users_cols = {c["name"]: c for c in inspector.get_columns("users")}
+        assert users_cols["password_hash"]["nullable"] is True
         assert not inspector.has_table("net_worth_snapshots")
         assert inspector.has_table("user_vaults")
         assert inspector.has_table("encrypted_records")
@@ -176,7 +178,7 @@ def test_vault_migration_is_idempotent_after_create_all():
         engine2 = create_engine(url, connect_args={"check_same_thread": False})
         with engine2.connect() as conn:
             version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "f1a2b3c4d5e6"
+        assert version == "b7c9d2e4f601"
         engine2.dispose()
 
 
@@ -247,7 +249,40 @@ def test_passwordless_migration_recovers_partial_sqlite_state():
         )
         with engine.connect() as conn:
             assert conn.execute(text("SELECT email FROM users WHERE id = 1")).scalar_one() == "owner@example.com"
-            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "f1a2b3c4d5e6"
+            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "b7c9d2e4f601"
+        engine.dispose()
+
+
+def test_password_hash_migration_allows_passwordless_users():
+    with tempfile.TemporaryDirectory() as tmp:
+        url = f"sqlite:///{Path(tmp) / 'passwordless_user.db'}"
+        engine = create_engine(url, connect_args={"check_same_thread": False})
+        with engine.begin() as conn:
+            conn.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
+            conn.execute(text("INSERT INTO alembic_version VALUES ('f1a2b3c4d5e6')"))
+            conn.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY, password_hash VARCHAR NOT NULL)"))
+            conn.execute(text("INSERT INTO users (id, password_hash) VALUES (1, 'legacy-hash')"))
+        engine.dispose()
+
+        here = _backend_dir()
+        cfg = Config(str(here / "alembic.ini"))
+        cfg.set_main_option("script_location", str(here / "alembic"))
+        cfg.set_main_option("sqlalchemy.url", url)
+        prev_db_url = os.environ.get("DATABASE_URL")
+        os.environ["DATABASE_URL"] = url
+        try:
+            command.upgrade(cfg, "head")
+        finally:
+            if prev_db_url is None:
+                os.environ.pop("DATABASE_URL", None)
+            else:
+                os.environ["DATABASE_URL"] = prev_db_url
+
+        engine = create_engine(url, connect_args={"check_same_thread": False})
+        assert {c["name"]: c for c in inspect(engine).get_columns("users")}["password_hash"]["nullable"] is True
+        with engine.begin() as conn:
+            assert conn.execute(text("SELECT password_hash FROM users WHERE id = 1")).scalar_one() == "legacy-hash"
+            conn.execute(text("INSERT INTO users (id, password_hash) VALUES (2, NULL)"))
         engine.dispose()
 
 
