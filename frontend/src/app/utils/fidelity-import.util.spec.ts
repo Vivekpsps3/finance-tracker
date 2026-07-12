@@ -119,4 +119,64 @@ describe('fidelity-import util', () => {
       })
     );
   });
+
+  it('deletes legacy Fidelity holdings matched by account display when account ids diverge', async () => {
+    const accounts: any[] = [];
+    const holdings: any[] = [
+      {
+        id: 1,
+        symbol: 'OLD1',
+        shares: 1,
+        purchase_price: 10,
+        purchase_date: '2020-01-01',
+        brokerage_account_id: 77, // orphaned legacy id
+        account_display: 'Fidelity ···Z111',
+      },
+      {
+        id: 2,
+        symbol: 'OLD2',
+        shares: 4,
+        purchase_price: 20,
+        purchase_date: '2020-01-01',
+        // no brokerage_account_id, only display label
+        account_display: 'Fidelity ···Z111',
+      },
+      {
+        id: 3,
+        symbol: 'KEEP',
+        shares: 1,
+        purchase_price: 5,
+        purchase_date: '2020-01-01',
+        account_display: 'Manual',
+      },
+    ];
+    const store = {
+      getHoldings: jasmine.createSpy().and.callFake(async () => holdings.slice()),
+      getBrokerageAccounts: jasmine.createSpy().and.resolveTo([]),
+      upsertBrokerageAccount: jasmine.createSpy().and.callFake(async (body: any) => {
+        const row = { id: 100, ...body };
+        accounts.push(row);
+        return row;
+      }),
+      deleteHolding: jasmine.createSpy().and.callFake(async (id: number) => {
+        const idx = holdings.findIndex(h => h.id === id);
+        if (idx >= 0) holdings.splice(idx, 1);
+      }),
+      addHolding: jasmine.createSpy().and.callFake(async (body: any) => {
+        const row = { id: 200 + holdings.length, ...body };
+        holdings.push(row);
+        return row;
+      }),
+    };
+
+    const preview = buildFidelityImportPreview('fidelity.csv', SAMPLE_CSV);
+    const selected = preview.rows.filter(r => r.account_mask === 'Z111');
+    const result = await commitFidelityImportRows(store, selected);
+
+    expect(result.holdings_replaced).toBe(2);
+    expect(result.inserted).toBe(1);
+    expect(holdings.map(h => h.symbol).sort()).toEqual(['KEEP', 'VOO']);
+    expect(store.deleteHolding).toHaveBeenCalledWith(1);
+    expect(store.deleteHolding).toHaveBeenCalledWith(2);
+  });
 });

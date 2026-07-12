@@ -105,18 +105,34 @@ export async function commitFidelityImportRows(
     return { accounts_replaced: 0, holdings_replaced: 0, inserted: 0, accounts: [] };
   }
 
-  const masks = Array.from(new Set(rows.map(row => row.account_mask).filter(Boolean)));
-  const existingAccounts = await store.getBrokerageAccounts();
-  const accountByMask = new Map(
-    existingAccounts
-      .filter(acc => acc.broker_slug === 'fidelity')
-      .map(acc => [acc.account_mask, acc] as const)
+  const masks = Array.from(
+    new Set(rows.map(row => normalizeMask(row.account_mask)).filter(Boolean))
   );
+  const maskSet = new Set(masks);
+  const existingAccounts = await store.getBrokerageAccounts();
+  const holdings = await store.getHoldings();
+
+  // Collect every brokerage account that belongs to a selected Fidelity mask
+  // (legacy vault rows may omit broker_slug or use a different id than a recreated account).
+  const matchedAccounts = existingAccounts.filter(acc => maskSet.has(normalizeMask(acc.account_mask)));
+  const replaceAccountIds = new Set<number>(matchedAccounts.map(acc => Number(acc.id)).filter(Boolean));
+
+  // Also treat holdings already labeled for those masks as replace targets, even if
+  // brokerage_account_id is missing or points at an orphaned/legacy account id.
+  for (const holding of holdings) {
+    if (holdingBelongsToMasks(holding, maskSet)) {
+      if (holding.brokerage_account_id != null) {
+        replaceAccountIds.add(Number(holding.brokerage_account_id));
+      }
+    }
+  }
 
   const accMap = new Map<string, BrokerageAccountRecord>();
   const accountDisplays: string[] = [];
   for (const mask of masks) {
-    let acc = accountByMask.get(mask);
+    let acc =
+      matchedAccounts.find(a => normalizeMask(a.account_mask) === mask) ||
+      existingAccounts.find(a => normalizeMask(a.account_mask) === mask);
     if (!acc) {
       const label = accountDisplay(mask);
       acc = await store.upsertBrokerageAccount({
@@ -127,17 +143,26 @@ export async function commitFidelityImportRows(
         nickname: null,
         label,
       });
+    } else if (!acc.broker_slug) {
+      acc = await store.upsertBrokerageAccount({
+        ...acc,
+        broker_slug: 'fidelity',
+        broker_name: acc.broker_name || 'Fidelity',
+        account_mask: mask,
+        label: acc.label || accountDisplay(mask),
+      });
     }
+    replaceAccountIds.add(Number(acc.id));
     accMap.set(mask, acc);
     accountDisplays.push(displayForAccount(acc));
   }
 
-  const holdings = await store.getHoldings();
-  const replacedIds = new Set(
-    holdings
-      .filter(h => h.brokerage_account_id != null && Array.from(accMap.values()).some(a => a.id === h.brokerage_account_id))
-      .map(h => h.id)
+  const toDelete = holdings.filter(
+    h =>
+      (h.brokerage_account_id != null && replaceAccountIds.has(Number(h.brokerage_account_id))) ||
+      holdingBelongsToMasks(h, maskSet)
   );
+  const replacedIds = new Set(toDelete.map(h => h.id));
   for (const id of replacedIds) {
     await store.deleteHolding(id);
   }
@@ -145,7 +170,8 @@ export async function commitFidelityImportRows(
   const purchaseDate = todayIso();
   let inserted = 0;
   for (const row of rows) {
-    const acc = accMap.get(row.account_mask);
+    const mask = normalizeMask(row.account_mask);
+    const acc = accMap.get(mask);
     if (!acc) continue;
     await store.addHolding({
       symbol: row.symbol.toUpperCase().trim(),
@@ -166,6 +192,23 @@ export async function commitFidelityImportRows(
     inserted,
     accounts: accountDisplays,
   };
+}
+
+function normalizeMask(mask: string | null | undefined): string {
+  return String(mask || '').trim();
+}
+
+function holdingBelongsToMasks(holding: Holding, masks: Set<string>): boolean {
+  const display = String(holding.account_display || '');
+  if (!display && holding.brokerage_account_id == null) return false;
+  for (const mask of masks) {
+    if (!mask) continue;
+    if (display === accountDisplay(mask)) return true;
+    if (display.includes(`···${mask}`)) return true;
+    // Nicknamed Fidelity rows still often keep the mask in the label.
+    if (/\bfidelity\b/i.test(display) && display.includes(mask)) return true;
+  }
+  return false;
 }
 
 export function parseFidelityCsv(content: string): ParsedFidelityRow[] {
