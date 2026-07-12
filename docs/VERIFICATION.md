@@ -26,11 +26,6 @@ Supported DB generations and fixtures: [LIFECYCLE.md](./LIFECYCLE.md) and
 See [SECURITY_MODEL.md](./SECURITY_MODEL.md) § Local intelligence privacy gate.
 Detectors live under `frontend/src/app/signals/` and must stay network-zero and non-mutating.
 
-## Observed snapshots (INNO-002)
-
-Encrypted client-only via vault collection `net_worth_snapshots`. Explicit user action
-on Dashboard; attribution defaults to `unknown`. Does not mutate assets/liabilities.
-
 ## Planning / Stock Lab evidence (INNO-003)
 
 Shared fact / inference / scenario cards in `frontend/src/app/utils/evidence-labels.util.ts`.

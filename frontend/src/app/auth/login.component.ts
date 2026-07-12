@@ -127,7 +127,7 @@ export class LoginComponent {
     if (this.legacyMode) {
       return 'One-time only: verify your old email/password, choose a username and new vault passphrase (12+).';
     }
-    return 'Sign in with username and vault passphrase. If you forget the passphrase, encrypted data cannot be recovered.';
+    return 'Use the username you enrolled with (shown under your profile when signed in), plus your vault passphrase. Email only works if that is your account email. Lost passphrase means lost data.';
   }
 
   private errorMessage(err: any): string {

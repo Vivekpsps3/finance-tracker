@@ -182,17 +182,23 @@ export class AuthService {
   }
 
   async loginWithVault(username: string, vaultPassphrase: string): Promise<AuthUser> {
-    const normalized = username.trim().toLowerCase();
+    const identifier = username.trim().toLowerCase();
     const lookup = await firstValueFrom(
-      this.http.post<{ vault: import('../crypto/vault.service').VaultStatus; auth: WrappedSigningKey }>(
-        apiUrl('/auth/passwordless/lookup'),
-        { username: normalized },
-        { withCredentials: true }
-      )
+      this.http.post<{
+        vault: import('../crypto/vault.service').VaultStatus & { username?: string | null };
+        auth: WrappedSigningKey;
+      }>(apiUrl('/auth/passwordless/lookup'), { username: identifier }, { withCredentials: true })
     );
-    if (!lookup?.vault?.wrapped_dek_b64 || !lookup?.auth?.wrapped_private_key_b64) {
+    if (
+      !lookup?.vault?.wrapped_dek_b64 ||
+      !lookup?.auth?.wrapped_private_key_b64 ||
+      !lookup.auth.kdf_salt_b64 ||
+      !lookup.auth.kdf_iterations
+    ) {
       throw new Error('Unable to retrieve vault authentication material');
     }
+    // Prefer server-resolved username (lookup accepts username or legacy email).
+    const handle = (lookup.vault.username || identifier).trim().toLowerCase();
     // Lookup returns public wraps only; mark the vault as present so unlock works on a new browser.
     this.vault.loadPublicStatus({
       exists: true,
@@ -209,7 +215,7 @@ export class AuthService {
     const challenge = await firstValueFrom(
       this.http.post<{ challenge_id: string; challenge: string; message: string }>(
         apiUrl('/auth/passwordless/challenge'),
-        { username: normalized },
+        { username: handle },
         { withCredentials: true }
       )
     );
@@ -220,7 +226,11 @@ export class AuthService {
     try {
       signature_b64 = await signChallenge(vaultPassphrase, lookup.auth, challenge.message);
     } catch {
-      throw new Error('Incorrect vault passphrase, or this account is not enrolled for vault sign-in.');
+      // Same failure shape for wrong passphrase and unknown username (decoy wraps).
+      throw new Error(
+        'Sign-in failed. Check username (not email, unless that is your enrolled username) and vault passphrase. ' +
+          'A browser that is already signed in only needs the passphrase on Unlock vault—use that username on new browsers.'
+      );
     }
     let response: LoginResponse;
     try {
@@ -228,7 +238,7 @@ export class AuthService {
         this.http.post<LoginResponse>(
           apiUrl('/auth/passwordless/verify'),
           {
-            username: normalized,
+            username: handle,
             challenge_id: challenge.challenge_id,
             challenge: challenge.challenge,
             message: challenge.message,

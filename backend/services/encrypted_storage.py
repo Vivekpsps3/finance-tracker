@@ -42,7 +42,6 @@ ALLOWED_COLLECTIONS = frozenset(
         "job_incomes",
         "fixed_expenses",
         "subscriptions",
-        "net_worth_snapshots",
         "planning_profiles",
         "planning_runs",
         "stock_lab_scenarios",

@@ -91,8 +91,29 @@ def test_passwordless_lookup_returns_all_cross_browser_wrapping_metadata():
     lookup = TestClient(app).post("/api/auth/passwordless/lookup", json={"username": "first.admin"})
 
     assert lookup.status_code == 200
-    assert lookup.json()["vault"] == material["vault"] | {"kdf_algorithm": "PBKDF2", "kdf_iterations": 310000, "key_version": 1}
+    assert lookup.json()["vault"] == material["vault"] | {
+        "kdf_algorithm": "PBKDF2",
+        "kdf_iterations": 310000,
+        "key_version": 1,
+        "username": "first.admin",
+    }
     assert lookup.json()["auth"] == material["auth"]
+
+
+def test_passwordless_lookup_accepts_account_email():
+    client = TestClient(app)
+    material = passwordless_material()
+    assert client.post("/api/auth/bootstrap/passwordless", json={
+        "username": "first.admin", "display_name": "First Admin", **material,
+    }).status_code == 200
+
+    by_email = TestClient(app).post(
+        "/api/auth/passwordless/lookup",
+        json={"username": "first.admin@pending.local"},
+    )
+    assert by_email.status_code == 200
+    assert by_email.json()["vault"]["username"] == "first.admin"
+    assert by_email.json()["vault"]["wrapped_dek_b64"] == material["vault"]["wrapped_dek_b64"]
 
 
 def test_passwordless_lookup_and_challenge_do_not_reveal_whether_a_user_exists():

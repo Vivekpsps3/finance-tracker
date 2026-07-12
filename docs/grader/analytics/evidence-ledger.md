@@ -537,7 +537,7 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Acceptance criteria:** Snapshot creation is explicit, encrypted, non-mutating, and attribution labels unknown causes as unknown.
 - **Verification:** Snapshot fixtures and privacy-boundary tests.
   - **Status:** Resolved
-  - **Resolution evidence:** Encrypted `net_worth_snapshots` via vault; dashboard “Record observed snapshot”; deltas default attribution `unknown`; pure util tests.
+  - **Resolution evidence:** Product dropped encrypted observed net-worth history UI; live net worth remains current-only. No client snapshot feature.
 
 ### INNO-003: Evidence-weighted planning and Stock Lab need calibrated hypotheses
 - **Classification:** Experiment

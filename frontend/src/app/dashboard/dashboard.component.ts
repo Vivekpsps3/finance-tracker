@@ -18,11 +18,9 @@ import {
   Holding,
   JobIncome,
   NetWorth,
-  ObservedNetWorthSnapshot,
   Subscription,
   Transaction,
 } from '../models/transaction.model';
-import { attributeSnapshotDelta } from '../utils/observed-snapshot.util';
 import { ChartsComponent } from '../charts/charts.component';
 import {
   UiBadgeComponent,
@@ -87,9 +85,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   largestCategoryTotal = 0;
   asOfLabel = '';
   localSignals: FinancialSignal[] = [];
-  observedSnapshots: ObservedNetWorthSnapshot[] = [];
-  snapshotBusy = false;
-  snapshotMessage: string | null = null;
   private assets: Asset[] = [];
   private holdings: Holding[] = [];
 
@@ -164,7 +159,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         tap(() => {
           this.chartsReady = true;
           this.error = null;
-          this.reloadObservedSnapshots();
         }),
         finalize(() => {
           this.isLoading = false;
@@ -176,54 +170,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.chartsReady = false;
           const detail = err?.message ? ` ${err.message}` : '';
           this.error = `Could not load dashboard. Is the API running?${detail}`;
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  recordObservedSnapshot(): void {
-    if (this.snapshotBusy || !this.netWorth) return;
-    this.snapshotBusy = true;
-    this.snapshotMessage = null;
-    this.financeService
-      .recordObservedNetWorthSnapshot({ attribution: 'unknown' })
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => {
-          this.snapshotBusy = false;
-          this.cdr.markForCheck();
-        })
-      )
-      .subscribe({
-        next: () => {
-          this.snapshotMessage = 'Encrypted observed snapshot saved (attribution: unknown).';
-          this.reloadObservedSnapshots();
-        },
-        error: (err: Error) => {
-          this.snapshotMessage = err?.message || 'Could not save snapshot';
-        },
-      });
-  }
-
-  snapshotDeltaLabel(snap: ObservedNetWorthSnapshot, index: number): string {
-    const older = this.observedSnapshots[index + 1];
-    if (!older) return 'First recorded observation';
-    const delta = attributeSnapshotDelta(older, snap);
-    const sign = delta.deltaTotal >= 0 ? '+' : '';
-    return `${sign}$${delta.deltaTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · cause: ${delta.attribution}`;
-  }
-
-  private reloadObservedSnapshots(): void {
-    this.financeService
-      .listObservedNetWorthSnapshots()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: rows => {
-          this.observedSnapshots = rows;
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.observedSnapshots = [];
           this.cdr.markForCheck();
         },
       });

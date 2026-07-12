@@ -43,7 +43,6 @@ import {
   JobIncomeCreate,
   Liability,
   LiabilityCreate,
-  ObservedNetWorthSnapshot,
   Subscription,
   SubscriptionCreate,
   Transaction,
@@ -772,28 +771,6 @@ export class FinanceService {
     return this.http.get<NetWorth>(apiUrl('/net-worth/')).pipe(
       tap(data => this._netWorth.next(data))
     );
-  }
-
-  listObservedNetWorthSnapshots(): Observable<ObservedNetWorthSnapshot[]> {
-    if (!this.encMode) return of([]);
-    return from(this.encStore.listObservedNetWorthSnapshots());
-  }
-
-  recordObservedNetWorthSnapshot(options: {
-    note?: string;
-    attribution?: string;
-  } = {}): Observable<ObservedNetWorthSnapshot> {
-    if (!this.encMode) {
-      return throwError(() => new Error('Observed snapshots require an unlocked vault'));
-    }
-    return from(this.encStore.recordObservedNetWorthSnapshot(options));
-  }
-
-  deleteObservedNetWorthSnapshot(id: number): Observable<void> {
-    if (!this.encMode) {
-      return throwError(() => new Error('Observed snapshots require an unlocked vault'));
-    }
-    return from(this.encStore.deleteObservedNetWorthSnapshot(id));
   }
 
   getAssets(): Observable<Asset[]> {

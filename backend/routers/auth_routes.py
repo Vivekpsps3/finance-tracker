@@ -71,6 +71,19 @@ def _username(value: str) -> str:
     return value.strip().lower()
 
 
+def _find_passwordless_user(db: Session, identifier: str) -> User | None:
+    """Resolve passwordless login by username, or by email for legacy convenience."""
+    key = _username(identifier)
+    if not key:
+        return None
+    user = db.query(User).filter(User.username == key).first()
+    if user:
+        return user
+    if "@" in key:
+        return db.query(User).filter(User.email == normalize_email(key)).first()
+    return None
+
+
 def _user_response(user: User) -> UserPublic:
     return UserPublic.model_validate(public_user(user))
 
@@ -103,6 +116,7 @@ def _decoy_passwordless_material() -> dict:
             "wrapped_dek_b64": wrapped(),
             "recovery_wrapped_dek_b64": "",
             "key_version": 1,
+            "username": secrets.token_hex(4),
         },
         "auth": {
             "kdf_salt_b64": base64.b64encode(secrets.token_bytes(16)).decode(),
@@ -247,9 +261,17 @@ def enroll_passwordless(
 
 @router.post("/auth/passwordless/lookup")
 def passwordless_lookup(body: PasswordlessChallengeRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == _username(body.username)).first()
+    user = _find_passwordless_user(db, body.username)
     vault = vault_store.get_vault(db, user.id) if user and user.is_active else None
-    if not user or not user.is_active or not user.auth_public_key_b64 or not vault or not user.auth_wrapped_private_key_b64:
+    if (
+        not user
+        or not user.is_active
+        or not user.auth_public_key_b64
+        or not vault
+        or not user.auth_wrapped_private_key_b64
+        or not user.auth_kdf_salt_b64
+        or not user.auth_kdf_iterations
+    ):
         return _decoy_passwordless_material()
     return {
         "vault": {
@@ -257,8 +279,10 @@ def passwordless_lookup(body: PasswordlessChallengeRequest, db: Session = Depend
             "kdf_salt_b64": vault.kdf_salt_b64,
             "kdf_iterations": vault.kdf_iterations,
             "wrapped_dek_b64": vault.wrapped_dek_b64,
-            "recovery_wrapped_dek_b64": vault.recovery_wrapped_dek_b64,
+            "recovery_wrapped_dek_b64": vault.recovery_wrapped_dek_b64 or "",
             "key_version": vault.key_version,
+            # Canonical username so the client can verify with the enrolled handle.
+            "username": user.username,
         },
         "auth": {
             "kdf_salt_b64": user.auth_kdf_salt_b64,
@@ -271,7 +295,7 @@ def passwordless_lookup(body: PasswordlessChallengeRequest, db: Session = Depend
 
 @router.post("/auth/passwordless/challenge", response_model=PasswordlessChallengeResponse)
 def passwordless_challenge(body: PasswordlessChallengeRequest, request: Request, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == _username(body.username)).first()
+    user = _find_passwordless_user(db, body.username)
     if not user or not user.is_active or not user.auth_public_key_b64:
         return _decoy_challenge(request)
     challenge, raw, message = issue_challenge(db, user, _origin(request))
@@ -292,7 +316,7 @@ def update_passwordless_wraps(
 
 @router.post("/auth/passwordless/verify", response_model=LoginResponse)
 def passwordless_verify(body: PasswordlessVerifyRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == _username(body.username)).first()
+    user = _find_passwordless_user(db, body.username)
     if not user or not user.is_active or not verify_challenge(db, user, body.challenge_id, body.challenge, body.message, body.signature_b64):
         raise HTTPException(status_code=401, detail="Invalid or expired vault authentication challenge")
     csrf = create_session(db, user, request, response)

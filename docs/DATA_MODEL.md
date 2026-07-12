@@ -35,7 +35,7 @@ Always **current** via `GET /api/net-worth/` (computed from assets + portfolio m
 
 **Lifecycle:** table and ORM exist; list/create HTTP routes and UI are not wired. Not retired
 and not active product surface. Intended for future encrypted observed-history only—never
-transaction rollups. Vault collection name `net_worth_snapshots` is reserved.
+transaction rollups. No product UI records history; live net worth is current-only.
 
 `net_worth_snapshots` stores the intended shape of observed balance-sheet valuations:
 

@@ -114,7 +114,7 @@ test-security:
 	@if [ "$(SKIP_FRONTEND_TESTS)" = "1" ]; then echo "Skipping frontend security tests"; \
 	else cd $(FRONTEND_DIR) && npx ng test --no-watch --browsers=ChromeHeadless \
 		--include='**/detectors.spec.ts' --include='**/client-finance.spec.ts' \
-		--include='**/observed-snapshot.util.spec.ts' --include='**/evidence-labels.util.spec.ts'; fi
+		--include='**/evidence-labels.util.spec.ts'; fi
 
 test-full: test-fast test-backend test-frontend build-frontend docker-build
 	@echo "test-full OK"
