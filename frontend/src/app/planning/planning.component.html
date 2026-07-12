@@ -9,6 +9,22 @@
     <p>{{ disclaimer }}</p>
   </div>
 
+  <ui-card title="Evidence & uncertainty">
+    <ul class="evidence-list">
+      @for (card of evidenceCards; track card.label) {
+        <li>
+          <ui-source-badge
+            [kind]="card.kind === 'fact' ? 'observed' : card.kind === 'scenario' ? 'scenario' : 'combined'"
+            [title]="evidenceKindLabel(card.kind)" />
+          <div>
+            <strong>{{ evidenceKindLabel(card.kind) }} · {{ card.label }}</strong>
+            <p>{{ card.detail }}</p>
+          </div>
+        </li>
+      }
+    </ul>
+  </ui-card>
+
   @if (showSpendingFallbackBanner()) {
     <div class="mc-callout mc-spending-fallback" role="status">
       <ui-icon name="spark" size="sm" />

@@ -46,6 +46,28 @@
         · Transactions do not change this total.
         · Brokerage cash sweeps and manual cash can double-count if both are entered.
       </p>
+      <div class="snapshot-actions">
+        <ui-button type="button" variant="secondary" [disabled]="snapshotBusy" (clicked)="recordObservedSnapshot()">
+          {{ snapshotBusy ? 'Saving…' : 'Record observed snapshot' }}
+        </ui-button>
+        @if (snapshotMessage) {
+          <p class="snapshot-msg" role="status">{{ snapshotMessage }}</p>
+        }
+      </div>
+      @if (observedSnapshots.length) {
+        <div class="snapshot-history" aria-label="Encrypted observed net worth history">
+          <p class="section-eyebrow">Observed history (encrypted)</p>
+          <ul class="snapshot-list">
+            @for (snap of observedSnapshots; track snap.id; let i = $index) {
+              <li>
+                <strong class="money">${{ snap.total | number: '1.2-2' }}</strong>
+                <span>{{ snap.as_of }} · {{ snap.attribution }}</span>
+                <small>{{ snapshotDeltaLabel(snap, i) }}</small>
+              </li>
+            }
+          </ul>
+        </div>
+      }
     </section>
 
     <section class="cashflow-hero animate-in" aria-labelledby="cashflow-heading">

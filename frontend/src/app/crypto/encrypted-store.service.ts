@@ -6,9 +6,11 @@ import {
   Holding,
   JobIncome,
   Liability,
+  ObservedNetWorthSnapshot,
   Subscription,
   Transaction,
 } from '../models/transaction.model';
+import { buildObservedSnapshot } from '../utils/observed-snapshot.util';
 import { StockLabScenario } from '../models/stock-lab.model';
 import {
   computeCashflowSummary,
@@ -472,6 +474,28 @@ export class EncryptedStoreService {
       this.getHoldings(),
     ]);
     return computeNetWorth(assets, liabilities, holdings);
+  }
+
+  async listObservedNetWorthSnapshots(): Promise<ObservedNetWorthSnapshot[]> {
+    await this.ensureLoaded();
+    return this.list<ObservedNetWorthSnapshot>('net_worth_snapshots').sort((a, b) =>
+      b.recorded_at.localeCompare(a.recorded_at)
+    );
+  }
+
+  async recordObservedNetWorthSnapshot(options: {
+    note?: string;
+    attribution?: string;
+  } = {}): Promise<ObservedNetWorthSnapshot> {
+    const nw = await this.getNetWorth();
+    return this.upsert(
+      'net_worth_snapshots',
+      buildObservedSnapshot(nw, options) as ObservedNetWorthSnapshot
+    );
+  }
+
+  async deleteObservedNetWorthSnapshot(id: number): Promise<void> {
+    return this.remove('net_worth_snapshots', id);
   }
 
   async getCashflowSummary(start: string, end: string) {

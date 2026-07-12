@@ -7,6 +7,22 @@
   <div class="stock-disclosure"><ui-icon name="spark" size="sm" /><span>{{ disclosure }}</span></div>
   @if (error) { <p class="stock-error" role="alert">{{ error }}</p> }
 
+  <ui-card title="Evidence & uncertainty">
+    <ul class="evidence-list">
+      @for (card of evidenceCards; track card.label) {
+        <li>
+          <ui-source-badge
+            [kind]="card.kind === 'fact' ? 'observed' : card.kind === 'scenario' ? 'scenario' : 'combined'"
+            [title]="evidenceKindLabel(card.kind)" />
+          <div>
+            <strong>{{ evidenceKindLabel(card.kind) }} · {{ card.label }}</strong>
+            <p>{{ card.detail }}</p>
+          </div>
+        </li>
+      }
+    </ul>
+  </ui-card>
+
   <ui-card title="Command center">
     <div class="stock-controls-grid">
       <label class="stock-field"><span>Primary ticker</span><input [ngModel]="scenario.primary_symbol" (ngModelChange)="setPrimarySymbol($event)" maxlength="10" /></label>

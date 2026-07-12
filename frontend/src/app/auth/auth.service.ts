@@ -88,17 +88,30 @@ export class AuthService {
     return response.user;
   }
 
-  signup(email: string, displayName: string, password: string): Observable<AuthUser> {
-    return this.http
-      .post<LoginResponse>(apiUrl('/auth/signup'), { email, display_name: displayName, password }, { withCredentials: true })
-      .pipe(
-        tap(res => {
-          this.checkedSession = true;
-          this.finance.clearSessionState();
-          this.userSubject.next(res.user);
-        }),
-        map(res => res.user)
-      );
+  /**
+   * Invitation signup: create vault + signing key with admin-issued token.
+   * Returns recovery key to show once.
+   */
+  async enrollInvitation(token: string, vaultPassphrase: string): Promise<string> {
+    const vaultMaterial = await createVaultMaterial(vaultPassphrase);
+    const signingMaterial = await createSigningKey(vaultPassphrase, vaultMaterial.recoveryKey);
+    const response = await this.http
+      .post<LoginResponse>(
+        apiUrl(`/auth/invitations/${encodeURIComponent(token)}/enroll`),
+        {
+          public_key_b64: signingMaterial.publicKeyB64,
+          vault: vaultMaterial.setupPayload,
+          auth: signingMaterial.wrapped,
+        },
+        { withCredentials: true }
+      )
+      .toPromise();
+    if (!response) throw new Error('Unable to complete invitation signup');
+    await this.vault.adoptBootstrapVault(vaultMaterial.dek, vaultMaterial.recoveryKey);
+    this.checkedSession = true;
+    this.finance.clearSessionState();
+    this.userSubject.next(response.user);
+    return vaultMaterial.recoveryKey;
   }
 
   login(email: string, password: string): Observable<AuthUser> {

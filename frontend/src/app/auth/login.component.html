@@ -41,6 +41,7 @@
           </ui-button>
         </form>
         @if (!setupMode) {
+          <a class="mode-link" routerLink="/signup">Have an invitation? Sign up</a>
           <button type="button" class="mode-link" (click)="toggleLegacyMode()">
             {{ legacyMode ? 'Back to username + vault passphrase' : 'One-time account migration (old password)' }}
           </button>

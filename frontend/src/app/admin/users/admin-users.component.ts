@@ -128,7 +128,7 @@ export class AdminUsersComponent implements OnInit {
         this.username = '';
         this.displayName = '';
         this.role = 'user';
-        this.createMessage = `Invitation created. Deliver this one-time token securely: ${user.enrollment_token}`;
+        this.createMessage = `Invitation created. Share /signup?token=${user.enrollment_token} (or the token alone) securely.`;
         this.loadMetrics();
         this.cdr.markForCheck();
       },

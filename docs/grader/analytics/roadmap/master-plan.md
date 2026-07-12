@@ -36,6 +36,10 @@
 
 **Task W6:** Add privacy feature gate, local snapshots, deterministic signals, encrypted feedback, explicit observed snapshots, attribution, planning sensitivity, Stock Lab evidence, and client-side brokerage reconciliation. Acceptance: all signals are explainable, confidence-scored, reversible, encrypted where persisted, and non-mutating. Verify `SEC-001`, `INNO-001` through `INNO-003`.
 
+**Status:** Complete — local detectors + encrypted observed snapshots + planning/Stock Lab evidence cards; SEC-001 / INNO-001–003 resolved in evidence ledger.
+
 ## Wave 7: Quality And Operations Automation
 
 **Task W7:** Add verification tiers, axe/journey/responsive/performance fixtures, privacy checks, migration matrix, dependency/doc drift audit, production build and Docker smoke, copied-DB preflight, rollback, backup integrity, and restore drill. Acceptance: evidence is retained for `TEST-001`, `OPS-001`, `OPS-002`.
+
+**Status:** Complete — `make test-fast|finance|security|full`, doc-path CI, backup verify scripts, VERIFICATION.md.

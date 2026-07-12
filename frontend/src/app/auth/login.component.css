@@ -57,12 +57,15 @@ h1 {
 }
 
 .mode-link {
+  display: block;
   width: 100%;
   margin-top: var(--space-4);
   border: 0;
   background: transparent;
   color: var(--accent);
   font: inherit;
+  text-align: center;
+  text-decoration: none;
   cursor: pointer;
 }
 

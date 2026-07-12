@@ -10,11 +10,17 @@ import { StockLabScenarioService } from '../services/stock-lab-scenario.service'
 import { ToastService } from '../services/toast.service';
 import { UiButtonComponent, UiCardComponent, UiDataTableComponent, UiEmptyStateComponent, UiIconComponent, UiPageHeaderComponent, UiSkeletonComponent } from '../shared/ui';
 import { buildScorecard, calculatePurchasePlan, calculateReturnPeriods, detectDividendCadence, trailingTwelveMonthDividend } from '../utils/stock-lab.util';
+import {
+  EvidenceCard,
+  evidenceKindLabel,
+  stockLabEvidenceCards,
+} from '../utils/evidence-labels.util';
+import { UiSourceBadgeComponent } from '../shared/ui';
 
 @Component({
   selector: 'app-stock-lab',
   standalone: true,
-  imports: [CommonModule, FormsModule, UiPageHeaderComponent, UiCardComponent, UiButtonComponent, UiDataTableComponent, UiEmptyStateComponent, UiIconComponent, UiSkeletonComponent],
+  imports: [CommonModule, FormsModule, UiPageHeaderComponent, UiCardComponent, UiButtonComponent, UiDataTableComponent, UiEmptyStateComponent, UiIconComponent, UiSkeletonComponent, UiSourceBadgeComponent],
   templateUrl: './stock-lab.component.html',
   styleUrl: './stock-lab.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,6 +28,7 @@ import { buildScorecard, calculatePurchasePlan, calculateReturnPeriods, detectDi
 export class StockLabComponent implements OnInit, OnDestroy {
   readonly disclosure = 'Ticker symbols on this page are sent to market data services. Scenario inputs stay encrypted in your vault.';
   readonly calculateReturnPeriods = calculateReturnPeriods;
+  readonly evidenceKindLabel = evidenceKindLabel;
   scenarios: StockLabScenario[] = [];
   scenario: StockLabScenario;
   holdings: Holding[] = [];
@@ -94,6 +101,15 @@ export class StockLabComponent implements OnInit, OnDestroy {
 
   get trailingDividend(): number {
     return this.primaryResearch ? trailingTwelveMonthDividend(this.primaryResearch) : 0;
+  }
+
+  get evidenceCards(): EvidenceCard[] {
+    const primary = this.primaryResearch;
+    return stockLabEvidenceCards({
+      primarySymbol: this.scenario.primary_symbol,
+      hasQuote: !!primary?.quote?.current_price,
+      cacheStatus: primary?.cache_status,
+    });
   }
 
   symbols(): string[] {

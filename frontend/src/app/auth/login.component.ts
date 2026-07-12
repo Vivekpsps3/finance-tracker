@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from './auth.service';
 import { UiButtonComponent, UiCardComponent, UiInputComponent } from '../shared/ui';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, UiButtonComponent, UiCardComponent, UiInputComponent],
+  imports: [FormsModule, RouterLink, UiButtonComponent, UiCardComponent, UiInputComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

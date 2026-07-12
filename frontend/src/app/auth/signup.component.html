@@ -1,0 +1,60 @@
+<main class="login-shell">
+  <section class="login-panel" aria-labelledby="signup-title">
+    <div class="brand-lockup">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="var(--accent-glow)" stroke="var(--accent)" stroke-width="1"/>
+        <path d="M8 22V10M14 22V6M20 22v-6M26 22H6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <h1 id="signup-title">{{ recoveryKey ? 'Save recovery key' : 'Create account' }}</h1>
+    </div>
+
+    <ui-card>
+      @if (recoveryKey) {
+        <div class="recovery-panel" role="status">
+          <p class="password-hint">
+            Account ready. Save this recovery key offline now—it will not be shown again.
+            Admins cannot reset vault access.
+          </p>
+          <code class="recovery-key">{{ recoveryKey }}</code>
+          <ui-button type="button" (clicked)="finish()">Continue to app</ui-button>
+        </div>
+      } @else {
+        <form class="login-form" (ngSubmit)="submit()">
+          <ui-input
+            label="Invitation token"
+            autocomplete="off"
+            [required]="true"
+            [(value)]="token" />
+          <ui-input
+            label="Vault passphrase"
+            type="password"
+            [showPasswordToggle]="true"
+            autocomplete="new-password"
+            [required]="true"
+            [(value)]="passphrase" />
+          <ui-input
+            label="Confirm vault passphrase"
+            type="password"
+            [showPasswordToggle]="true"
+            autocomplete="new-password"
+            [required]="true"
+            [(value)]="confirmPassphrase" />
+          <p class="password-hint">
+            Use the one-time invitation from an admin. Passphrase must be at least 12 characters.
+            Username was chosen when the invitation was created.
+          </p>
+          @if (passphrase && confirmPassphrase && passphrase !== confirmPassphrase) {
+            <p class="login-error" role="alert">Passphrases do not match</p>
+          }
+          @if (error) {
+            <p class="login-error" role="alert">{{ error }}</p>
+          }
+          <ui-button type="submit" [disabled]="!canSubmit">
+            {{ loading ? 'Creating account' : 'Sign up' }}
+          </ui-button>
+        </form>
+        <a class="mode-link" routerLink="/login">Already have an account? Sign in</a>
+      }
+    </ui-card>
+  </section>
+</main>

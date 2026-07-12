@@ -536,7 +536,8 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Dependencies:** DOC-001, SEC-001, COR-003
 - **Acceptance criteria:** Snapshot creation is explicit, encrypted, non-mutating, and attribution labels unknown causes as unknown.
 - **Verification:** Snapshot fixtures and privacy-boundary tests.
-- **Status:** Open
+  - **Status:** Resolved
+  - **Resolution evidence:** Encrypted `net_worth_snapshots` via vault; dashboard “Record observed snapshot”; deltas default attribution `unknown`; pure util tests.
 
 ### INNO-003: Evidence-weighted planning and Stock Lab need calibrated hypotheses
 - **Classification:** Experiment
@@ -554,4 +555,5 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Dependencies:** COR-001, SEC-001
 - **Acceptance criteria:** Every recommendation exposes assumptions, uncertainty, cited public source, and reversible user action.
 - **Verification:** Deterministic scenario tests and disclosure regression test.
-- **Status:** Open
+  - **Status:** Resolved
+  - **Resolution evidence:** Shared `evidence-labels.util` fact/inference/scenario cards on Planning + Stock Lab; ticker disclosure preserved; non-mutation noted.

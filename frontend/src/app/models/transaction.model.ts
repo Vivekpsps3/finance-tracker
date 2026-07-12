@@ -295,6 +295,21 @@ export interface NetWorth {
   portfolio_breakdown?: Record<string, number>;
 }
 
+/** Encrypted observed balance-sheet snapshot (not a transaction rollup). */
+export interface ObservedNetWorthSnapshot {
+  id: number;
+  recorded_at: string;
+  as_of: string;
+  other_assets: number;
+  portfolio: number;
+  liabilities: number;
+  total_assets: number;
+  total: number;
+  note?: string;
+  /** User-supplied or "unknown" — never invents causes. */
+  attribution: string;
+}
+
 export interface FidelityImportOption {
   slug: string;
   name: string;

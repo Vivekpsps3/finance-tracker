@@ -37,6 +37,11 @@ import {
   UiSkeletonComponent,
   UiSourceBadgeComponent,
 } from '../shared/ui';
+import {
+  EvidenceCard,
+  evidenceKindLabel,
+  planningEvidenceCards,
+} from '../utils/evidence-labels.util';
 
 @Component({
   selector: 'app-planning',
@@ -59,6 +64,7 @@ import {
 })
 export class PlanningComponent implements OnInit, OnDestroy {
   readonly disclaimer = PLANNING_DISCLAIMER;
+  readonly evidenceKindLabel = evidenceKindLabel;
   activeTab: 'overview' | 'monte-carlo' | 'fire' | 'goals' | 'debt' = 'overview';
 
   loading = true;
@@ -82,6 +88,16 @@ export class PlanningComponent implements OnInit, OnDestroy {
   horizonYears = 30;
   nPaths = 500;
   seed = 1;
+
+  get evidenceCards(): EvidenceCard[] {
+    return planningEvidenceCards({
+      usesLedgerNetWorth: this.useLedgerStartingNetWorth,
+      usesRecurringSpending: this.useTxSpending,
+      usesRecurringIncome: this.useTxIncome,
+      horizonYears: this.horizonYears,
+      nPaths: this.nPaths,
+    });
+  }
 
   fire = {
     withdrawalRate: 0.04,

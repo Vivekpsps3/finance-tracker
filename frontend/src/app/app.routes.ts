@@ -10,6 +10,16 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/login.component').then(m => m.LoginComponent),
   },
   {
+    path: 'signup',
+    title: 'Sign up · Finance',
+    loadComponent: () => import('./auth/signup.component').then(m => m.SignupComponent),
+  },
+  {
+    path: 'enroll',
+    redirectTo: 'signup',
+    pathMatch: 'full',
+  },
+  {
     path: 'vault/setup',
     title: 'Create vault · Finance',
     canActivate: [authGuard],

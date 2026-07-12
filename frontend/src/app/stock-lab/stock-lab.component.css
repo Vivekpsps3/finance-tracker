@@ -1,5 +1,25 @@
 .stock-lab-page { display: grid; gap: 18px; }
 .stock-disclosure, .stock-error { border: 1px solid var(--border); background: var(--card-bg); border-radius: 14px; padding: 12px 14px; display: flex; gap: 10px; color: var(--text-secondary); }
+
+.evidence-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.evidence-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.evidence-list p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
 .stock-error { border-color: var(--danger); color: var(--danger); }
 .stock-controls-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .stock-controls-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
