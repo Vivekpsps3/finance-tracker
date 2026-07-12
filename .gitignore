@@ -72,3 +72,4 @@ inline/
 
 # Git worktrees
 .worktrees/
+.superpowers/
