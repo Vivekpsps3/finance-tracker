@@ -20,8 +20,6 @@ Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** per
 
 **Invariant:** Net worth is always balance-sheet based: manual assets + portfolio market value − liabilities. Transactions, recurring cashflow rows, and simulations **never** update net worth.
 
-`net_worth_snapshots` is schema-present, API-unwired, and planned/dormant: ORM + table for observed balance-sheet valuations (same formula as live net worth). **Only** live net worth is product-active; list/create snapshot HTTP routes and “record snapshot” UI are not exposed. Not deleted—reserved for future encrypted observed-history, never transaction rollups.
-
 Tax document storage was removed. Do not add document vault/BLOB storage back without a fresh product/security decision.
 
 Recurring cashflow (job income, rent/utilities-style fixed expenses, subscriptions) is a budget/plan plane. It can appear in cashflow summaries and planning inputs but does **not** change assets, liabilities, holdings, or net worth.

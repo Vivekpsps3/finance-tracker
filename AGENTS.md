@@ -25,9 +25,8 @@ Do not blur these data planes:
 
 1. Net worth = current manual assets + portfolio market value - liabilities.
 2. Transactions are a card/spending ledger and do not change net worth.
-3. Net worth snapshots are schema-present, API-unwired, planned/dormant observed
-   balance-sheet valuations—not transaction rollups and not deleted. Live net
-   worth is current-only; list/create HTTP routes and UI are not wired.
+3. Net worth is current-only; history is not stored. It is never a transaction
+   rollup.
 4. Planning is speculative and must not mutate assets, liabilities, holdings, or
    transactions.
 5. Imported brokerage cash sweeps and manual cash assets can double count; the

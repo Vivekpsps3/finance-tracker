@@ -319,27 +319,6 @@ class Liability(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 
-class NetWorthSnapshot(Base):
-    """Observed net worth at a point in time.
-
-    This is deliberately derived from balance-sheet data only:
-    manual assets + holdings market value - liabilities.
-    """
-
-    __tablename__ = "net_worth_snapshots"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    snapshot_date = Column(Date, default=date.today, nullable=False, index=True)
-    other_assets = Column(Float, nullable=False)
-    portfolio = Column(Float, nullable=False)
-    liabilities = Column(Float, nullable=False)
-    total_assets = Column(Float, nullable=False)
-    total = Column(Float, nullable=False)
-    as_of = Column(DateTime, default=utc_now, nullable=False, index=True)
-    source = Column(String, default="manual", nullable=False)
-    note = Column(String, nullable=True)
-
-
 class PlanningAssumptionProfile(Base):
     """User assumption profile for speculative planning runs (not ledger truth)."""
 

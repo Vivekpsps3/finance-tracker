@@ -56,16 +56,14 @@ Tests set the escape hatch in `backend/tests/conftest.py`.
 |-----------|------|------|----------------------|
 | ORM `create_all` | `database.py` | Creates missing tables from models on startup | After Alembic alone covers every supported generation |
 | Lightweight SQLite | `migrations.py` | Column/table backfills for old DBs | After each backfill has an Alembic revision and matrix fixture |
-| Alembic | `alembic/versions/*` | Versioned upgrades to head `e8a4c7d2f910` | Never delete history; squash only with explicit proof |
+| Alembic | `alembic/versions/*` | Versioned upgrades to head `f1a2b3c4d5e6` | Never delete history; squash only with explicit proof |
 
 Startup order: `create_all` → `run_sqlite_migrations` → Alembic `upgrade head`.
 
-## Reserved tables / collections
+## Encrypted collections
 
 | Name | Lifecycle | Semantics |
 |------|-----------|-----------|
-| `net_worth_snapshots` | reserved | Observed balance-sheet valuations; HTTP/UI unwired; not transaction rollups |
-| vault collection `net_worth_snapshots` | reserved | Same plane for future encrypted observed history |
 | vault collection `stock_lab_scenarios` | active | Encrypted speculative scenarios; non-mutating |
 
 ## Frontend product path
@@ -90,8 +88,7 @@ Named generations with fixture coverage in `backend/tests/test_migrations.py`:
 | `partial-passwordless-d4e5` | Partial passwordless at `d4e5f6a7b8c9` | `test_passwordless_migration_recovers_partial_sqlite_state` |
 | `lightweight-tx-columns` | Bare `transactions` table | `test_run_sqlite_migrations_adds_transaction_columns_on_legacy_table` |
 
-Head revision: `e8a4c7d2f910`. Observed snapshot columns asserted by
-`test_net_worth_snapshots_lifecycle_columns_after_legacy_upgrade`.
+Head revision: `f1a2b3c4d5e6`.
 
 Vault schema-v1 → schema-v2 ciphertext replacement is browser-owned; do not delete
 plaintext source tables until encrypted replacement is verified per user and WAL

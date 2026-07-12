@@ -59,7 +59,7 @@ def test_alembic_upgrade_head_on_legacy_holdings_sqlite():
         assert not inspector.has_table("tax_documents")
         holdings_cols = {c["name"] for c in inspector.get_columns("holdings")}
         assert "brokerage_account_id" in holdings_cols
-        assert inspector.has_table("net_worth_snapshots")
+        assert not inspector.has_table("net_worth_snapshots")
         assert inspector.has_table("user_vaults")
         assert inspector.has_table("encrypted_records")
         assert inspector.has_table("encrypted_record_indexes")
@@ -176,7 +176,7 @@ def test_vault_migration_is_idempotent_after_create_all():
         engine2 = create_engine(url, connect_args={"check_same_thread": False})
         with engine2.connect() as conn:
             version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert version == "e8a4c7d2f910"
+        assert version == "f1a2b3c4d5e6"
         engine2.dispose()
 
 
@@ -247,7 +247,7 @@ def test_passwordless_migration_recovers_partial_sqlite_state():
         )
         with engine.connect() as conn:
             assert conn.execute(text("SELECT email FROM users WHERE id = 1")).scalar_one() == "owner@example.com"
-            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "e8a4c7d2f910"
+            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "f1a2b3c4d5e6"
         engine.dispose()
 
 
@@ -304,58 +304,6 @@ def test_supported_db_generation_matrix_is_documented():
     assert "test_vault_migration_is_idempotent_after_create_all" in source
     assert "test_passwordless_migration_recovers_partial_sqlite_state" in source
     assert "test_run_sqlite_migrations_adds_transaction_columns_on_legacy_table" in source
-
-
-def test_net_worth_snapshots_lifecycle_columns_after_legacy_upgrade():
-    """DOC-001: reserved observed-snapshot table has balance-sheet columns, not rollup fields."""
-    with tempfile.TemporaryDirectory() as tmp:
-        db_path = Path(tmp) / "snapshot_lifecycle.db"
-        url = f"sqlite:///{db_path}"
-        engine = create_engine(url, connect_args={"check_same_thread": False})
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
-                    CREATE TABLE holdings (
-                        id INTEGER PRIMARY KEY,
-                        symbol VARCHAR NOT NULL,
-                        shares FLOAT,
-                        purchase_price FLOAT,
-                        purchase_date DATE
-                    )
-                    """
-                )
-            )
-        engine.dispose()
-
-        here = _backend_dir()
-        cfg = Config(str(here / "alembic.ini"))
-        cfg.set_main_option("script_location", str(here / "alembic"))
-        cfg.set_main_option("sqlalchemy.url", url)
-        prev_db_url = os.environ.get("DATABASE_URL")
-        os.environ["DATABASE_URL"] = url
-        try:
-            command.upgrade(cfg, "head")
-        finally:
-            if prev_db_url is None:
-                os.environ.pop("DATABASE_URL", None)
-            else:
-                os.environ["DATABASE_URL"] = prev_db_url
-
-        engine2 = create_engine(url, connect_args={"check_same_thread": False})
-        cols = {c["name"] for c in inspect(engine2).get_columns("net_worth_snapshots")}
-        engine2.dispose()
-        assert {
-            "snapshot_date",
-            "as_of",
-            "total",
-            "other_assets",
-            "portfolio",
-            "liabilities",
-            "source",
-            "note",
-        }.issubset(cols)
-        assert "transaction_sum" not in cols
 
 
 def test_market_research_cache_create_all_has_expected_columns():

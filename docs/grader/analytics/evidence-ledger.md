@@ -19,7 +19,7 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Affected journeys:** Net worth, transactions, cashflow, planning
 - **Affected platforms:** Web, macOS, iPadOS, iOS
 - **Evidence:** `AGENTS.md:17-44`, `docs/DATA_MODEL.md:8-37`
-- **Finding:** Net worth, transactions, observed snapshots, recurring cashflow, and planning have documented distinct semantics.
+- **Finding:** Net worth, transactions, recurring cashflow, and planning have documented distinct semantics.
 - **Impact:** Prevents transaction-ledger changes from silently changing balance-sheet truth.
 - **Preserve:** The documented formulas and non-mutation boundary.
 - **Recommendation:** Require invariant fixtures before semantics work.
@@ -499,7 +499,7 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
   - **Acceptance criteria:** One lifecycle statement is consistent across docs, model, migration, API, and tests.
   - **Verification:** Cross-reference audit.
   - **Status:** Resolved
-  - **Resolution evidence:** `c102676` + Wave 3 lifecycle map: schema-present/API-unwired/planned-dormant wording in AGENTS, DATA_MODEL, ARCHITECTURE, migration comment, `test_net_worth_snapshots_lifecycle_columns_after_legacy_upgrade`.
+  - **Resolution evidence:** `f1a2b3c4d5e6` drops the retired table at head; current product docs define net worth as current-only.
 
 ### INNO-001: Local explainable signal engine is an unvalidated opportunity
 - **Classification:** Experiment

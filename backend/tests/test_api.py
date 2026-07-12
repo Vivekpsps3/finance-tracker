@@ -112,7 +112,3 @@ def test_market_price_and_refresh_holdings(client, monkeypatch):
     refreshed = client.post(f"/api/holdings/{hid}/refresh-price")
     assert refreshed.status_code == 200
     assert refreshed.json()["current_price"] == 42.5
-
-
-# Net worth history HTTP routes are intentionally unwired. net_worth_snapshots table remains
-# (schema-present, API-unwired) for future encrypted observed-history; live NW is current-only.

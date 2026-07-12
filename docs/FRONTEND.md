@@ -99,15 +99,7 @@ Use **OnPush** on new components; feature pages must call `markForCheck()` after
 
 - **Period filter** applies to insights and charts only.
 - **Net worth hero** is always **current** balance-sheet total (labeled in UI).
-- Observed net worth **history** is not currently exposed in the UI (see [DATA_MODEL.md](./DATA_MODEL.md) on `net_worth_snapshots`).
 - Embedded charts use shared chart utilities where present.
-
-When adding history charts later, keep two concepts separate:
-
-| Concept | Source |
-|---------|--------|
-| Observed net worth | balance-sheet formula / future `net_worth_snapshots` API |
-| Spending/income trends | `transactions` (+ optional cashflow summary) |
 
 ## Recurring cashflow pages
 

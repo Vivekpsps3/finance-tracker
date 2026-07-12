@@ -31,10 +31,6 @@ The dashboard should include:
 - spending by category chart
 - portfolio allocation chart
 
-Optional later: observed net worth snapshot change **only** when balance-sheet
-snapshot history is actually wired end-to-end (table exists; list/create API and
-UI are not currently exposed).
-
 The period filter applies only to transaction-derived (and related cashflow)
 metrics and charts. It must not imply that net worth is computed from
 transactions.
@@ -63,10 +59,10 @@ table when a summary or graph would answer the natural question faster.
 - Use token-based colors from `frontend/src/theme/chart-colors.ts`.
 - Every chart needs a meaningful empty state.
 - Every chart needs a nearby numeric summary so the user does not have to hover.
-- Keep net worth charts sourced from the balance-sheet formula or observed
-  snapshots (when implemented), never from transaction sums.
+- Keep net worth charts sourced from the current balance-sheet formula, never
+  from transaction sums.
 - Investment-insights projections are speculative client-side charts, not
-  observed net worth history.
+  stored net worth history.
 
 ## Visual Style
 

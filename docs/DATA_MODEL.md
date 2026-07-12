@@ -13,7 +13,7 @@ App-native auth uses three security tables:
 | `user_sessions` | Hashed session tokens, CSRF token hashes, expiry/revocation metadata |
 | `audit_events` | Login, logout, user create/update, password reset, and related account events |
 
-The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions, bank accounts, import batches, assets, liabilities, holdings, brokerage accounts, job incomes, fixed expenses, subscriptions, net worth snapshots (table present), planning profiles, and planning runs (table present). Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics and the guarded SQL console read from the same SQLite database.
+The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions, bank accounts, import batches, assets, liabilities, holdings, brokerage accounts, job incomes, fixed expenses, subscriptions, planning profiles, and planning runs. Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics and the guarded SQL console read from the same SQLite database.
 
 Deleting an account is destructive: the admin API removes that user, their sessions, and all rows in user-owned finance tables. It does not delete global provider/cache tables. The API refuses self-delete and refuses deleting an account only when that account is the final active admin. Inactive admins can be deleted when at least one other active admin remains.
 
@@ -31,33 +31,11 @@ Always **current** via `GET /api/net-worth/` (computed from assets + portfolio m
 
 **Not** derived from transactions, imports, job income, fixed expenses, or subscriptions.
 
-### Net worth snapshots (schema-present, API-unwired, planned/dormant)
-
-**Lifecycle:** table and ORM exist; list/create HTTP routes and UI are not wired. Not retired
-and not active product surface. Intended for future encrypted observed-history only—never
-transaction rollups. No product UI records history; live net worth is current-only.
-
-`net_worth_snapshots` stores the intended shape of observed balance-sheet valuations:
-
-```
-snapshot.total = assets + portfolio - liabilities
-```
-
-Columns include `other_assets`, `portfolio`, `liabilities`, `total_assets`, `total`,
-`snapshot_date`, `as_of`, `source`, `note`, and `user_id`.
-
-**Current API surface:** only live net worth is exposed (`GET /api/net-worth/`). There are
-**no** active `GET/POST /api/net-worth/snapshots` routes in `routers/net_worth.py`, and the
-dashboard does not record snapshot history. The table/model remain for a future observed-history
-feature. If re-enabled, snapshots must stay balance-sheet based—not a transaction rollup.
+Net worth history is not stored. The current total is exposed only by `GET /api/net-worth/`.
 
 Expenses, income, card payments, rent, utilities, transfers, and bank imports remain
 transaction/cashflow data. They only affect net worth after the corresponding current
 asset/liability value is updated.
-
-Future back-calculated net worth should be added as a separate projection or derived history
-layer. Example: reconstructing historical investment values from holding purchase dates and
-price history must not rewrite observed snapshots.
 
 ### Avoid double-counting cash
 

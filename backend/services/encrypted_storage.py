@@ -20,7 +20,6 @@ from models import (
     ImportBatch,
     JobIncome,
     Liability,
-    NetWorthSnapshot,
     PlanningAssumptionProfile,
     PlanningScenarioRun,
     Subscription,
@@ -64,7 +63,6 @@ LEGACY_COLLECTIONS = {
     "job_incomes": JobIncome,
     "fixed_expenses": FixedExpense,
     "subscriptions": Subscription,
-    "net_worth_snapshots": NetWorthSnapshot,
     "planning_profiles": PlanningAssumptionProfile,
     "planning_runs": PlanningScenarioRun,
 }
@@ -82,7 +80,6 @@ LEGACY_DELETE_ORDER = (
     JobIncome,
     FixedExpense,
     Subscription,
-    NetWorthSnapshot,
     PlanningAssumptionProfile,
 )
 

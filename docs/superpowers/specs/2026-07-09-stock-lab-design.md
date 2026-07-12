@@ -102,7 +102,6 @@ Stock Lab is speculative planning. It must not write:
 - `liabilities`
 - `transactions`
 - recurring cashflow records
-- net worth snapshots
 
 It must not affect current net worth. Any chart, score, dividend estimate, or projection is labeled as hypothetical.
 

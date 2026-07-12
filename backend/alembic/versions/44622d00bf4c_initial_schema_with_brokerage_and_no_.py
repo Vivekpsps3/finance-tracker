@@ -23,8 +23,8 @@ def upgrade() -> None:
     conn = op.get_bind()
     inspector = sa.inspect(conn)
 
-    # Preserve any legacy net_worth_snapshots table. A later migration normalizes
-    # the table for observed balance-sheet snapshots.
+    # Preserve any legacy table through the historical migration chain; the
+    # current head removes it after compatibility upgrades complete.
 
     # Create brokerages table only if missing (safe for existing DBs)
     if not inspector.has_table("brokerages"):
@@ -74,4 +74,5 @@ def downgrade() -> None:
     op.drop_table('brokerage_accounts')
     op.drop_table('brokerages')
 
-    # net_worth_snapshots is recreated by 9a7d1c3e5f20 (schema-present, HTTP-unwired observed history).
+    # A historical migration recreates legacy observed-history storage before
+    # the current head removes it.
