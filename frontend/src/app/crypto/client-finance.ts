@@ -16,11 +16,18 @@ export function computeNetWorth(
   holdings: Holding[]
 ): NetWorth {
   const other_assets = assets.reduce((sum, a) => sum + (Number(a.current_value) || 0), 0);
-  const portfolio = holdings.reduce((sum, h) => {
+  const portfolio_sources: Record<string, string> = {};
+  const portfolio_breakdown: Record<string, number> = {};
+  let portfolio = 0;
+  for (const h of holdings) {
     const price = Number(h.current_price ?? h.purchase_price) || 0;
     const shares = Number(h.shares) || 0;
-    return sum + price * shares;
-  }, 0);
+    const value = price * shares;
+    portfolio += value;
+    const symbol = (h.symbol || '').trim().toUpperCase() || `holding-${h.id}`;
+    portfolio_sources[symbol] = h.price_source || 'manual';
+    portfolio_breakdown[symbol] = (portfolio_breakdown[symbol] || 0) + value;
+  }
   const liab = liabilities.reduce((sum, l) => sum + (Number(l.balance_owed) || 0), 0);
   return {
     other_assets,
@@ -29,6 +36,8 @@ export function computeNetWorth(
     total_assets: other_assets + portfolio,
     total: other_assets + portfolio - liab,
     as_of: new Date().toISOString(),
+    portfolio_sources: holdings.length ? portfolio_sources : undefined,
+    portfolio_breakdown: holdings.length ? portfolio_breakdown : undefined,
   };
 }
 
@@ -173,6 +182,7 @@ export function computeCashflowSummary(
   const scheduled_income = roundedIncome;
   const scheduled_expenses = Math.round((roundedFixed + roundedSubscriptions) * 100) / 100;
   const scheduled_net_cashflow = Math.round((scheduled_income - scheduled_expenses) * 100) / 100;
+  // Combined outlook always sums observed + scheduled (additive). Overlap flags warn when both planes are non-zero.
   const total_income = Math.round((transaction_income + roundedIncome) * 100) / 100;
   const total_expenses = Math.round((transaction_expenses + roundedFixed + roundedSubscriptions) * 100) / 100;
   const net_cashflow = Math.round((total_income - total_expenses) * 100) / 100;
@@ -191,6 +201,8 @@ export function computeCashflowSummary(
     scheduled_expenses,
     scheduled_net_cashflow,
     combined_outlook_net_cashflow: net_cashflow,
+    possible_income_overlap: observed_income > 0 && scheduled_income > 0,
+    possible_expense_overlap: observed_expenses > 0 && scheduled_expenses > 0,
     total_income,
     total_expenses,
     net_cashflow,

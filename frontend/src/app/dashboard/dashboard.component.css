@@ -187,7 +187,9 @@
 }
 
 .price-refresh-hint,
-.net-worth-note {
+.net-worth-note,
+.net-worth-completeness,
+.cashflow-overlap-note {
   margin-top: var(--space-4);
   font-size: var(--text-sm);
   color: var(--text-secondary);
@@ -196,6 +198,16 @@
 .net-worth-note {
   margin-top: var(--space-6);
   color: var(--text-tertiary);
+}
+
+.net-worth-completeness {
+  margin-top: var(--space-3);
+  color: var(--text-tertiary);
+}
+
+.cashflow-overlap-note {
+  margin-top: var(--space-3);
+  color: var(--text-secondary);
 }
 
 .price-refresh-hint a,

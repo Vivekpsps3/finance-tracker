@@ -1,7 +1,7 @@
 <div class="page">
   <ui-page-header
     title="Planning Lab"
-    subtitle="Build a complete Monte Carlo scenario from your current balance sheet, transaction trends, goals, dated events, and market assumptions."
+    subtitle="Build a Monte Carlo scenario from your current balance sheet, scheduled cashflow, goals, dated events, and market assumptions. Speculative only — never mutates assets, liabilities, holdings, or transactions."
   />
 
     <div class="mc-callout">
@@ -13,9 +13,9 @@
     <div class="mc-callout mc-spending-fallback" role="status">
       <ui-icon name="spark" size="sm" />
       <p>
-        <strong>No expense history found.</strong>
+        <strong>No recurring spending schedules found.</strong>
         Annual spending for this simulation defaults to <strong>$40,000</strong> until you add
-        transactions or turn off “Use transaction spending” and enter a manual amount.
+        fixed expenses or subscriptions, or turn off “Use recurring spending estimate” and enter a manual amount.
       </p>
     </div>
   }
@@ -43,15 +43,19 @@
         @if (activeTab === 'overview') {
           <ui-card title="Planning snapshot">
             <p class="tool-metric">{{ formatMoney(inputs?.net_worth_total) }}</p>
-            <p>Current net worth with {{ formatSignedMoney(effectiveNetCashflow()) }} estimated annual cashflow.</p>
+            <p>Observed balance sheet with {{ formatSignedMoney(effectiveNetCashflow()) }} scheduled annual cashflow (scenario-adjustable).</p>
             <div class="tool-breakdown">
+              <span>Net worth source: {{ inputs?.net_worth_source || 'balance-sheet' }}</span>
+              <span>Income source: {{ inputs?.annual_income_source || 'active-job-income' }}</span>
+              <span>Spending source: {{ inputs?.annual_spending_source || 'active-recurring-schedules' }}</span>
               <span>Annual spending: {{ formatMoney(effectiveAnnualSpending()) }}</span>
               <span>Fixed expenses: {{ formatMoney(inputs?.annual_fixed_expenses) }}</span>
               <span>Subscriptions: {{ formatMoney(inputs?.annual_subscriptions) }}</span>
+              <span>Transactions: {{ inputs?.transaction_count ?? 0 }} (count only — not used for spend)</span>
             </div>
           </ui-card>
           <ui-card title="Useful tools">
-            <p>FIRE, goal funding, and debt payoff use the same ledger-derived spending basis as Monte Carlo. Recurring expenses are included unless you disable them in a tool.</p>
+            <p>FIRE, goal funding, and debt payoff use the same scheduled recurring spending basis as Monte Carlo unless you disable recurring expenses or enter scenario overrides.</p>
           </ui-card>
         }
         @if (activeTab === 'fire') {
@@ -213,7 +217,7 @@
       <div class="mc-metric">
         <span>Current net worth</span>
         <strong>{{ formatMoney(inputs?.net_worth_total) }}</strong>
-        <small>Ledger snapshot, not simulation output</small>
+        <small>Observed balance sheet · {{ inputs?.net_worth_source || 'balance-sheet' }}</small>
       </div>
       <div class="mc-metric">
         <span>Portfolio exposure</span>
@@ -221,11 +225,11 @@
         <small>{{ formatMoney(inputs?.net_worth_portfolio) }} portfolio value</small>
       </div>
       <div class="mc-metric">
-        <span>Annual cash flow</span>
+        <span>Scheduled annual cash flow</span>
         <strong>{{ formatSignedMoney(effectiveNetCashflow()) }}</strong>
         <small>
-          {{ formatMoney(effectiveAnnualIncome()) }} income /
-          {{ formatMoney(effectiveAnnualSpending()) }} spending
+          {{ formatMoney(effectiveAnnualIncome()) }} {{ inputs?.annual_income_source || 'job-income' }} /
+          {{ formatMoney(effectiveAnnualSpending()) }} {{ inputs?.annual_spending_source || 'recurring' }}
         </small>
       </div>
       <div class="mc-metric">

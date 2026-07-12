@@ -82,9 +82,9 @@ describe('PlanningService', () => {
       total: 125_000,
       as_of: '2026-01-01T00:00:00.000Z',
     });
-    encStore.getJobIncomes.and.resolveTo([{ id: 1, monthly_net: 8_000 } as any]);
-    encStore.getFixedExpenses.and.resolveTo([{ id: 1, annual_amount: 36_000 } as any]);
-    encStore.getSubscriptions.and.resolveTo([{ id: 1, annual_amount: 1_200 } as any]);
+    encStore.getJobIncomes.and.resolveTo([{ id: 1, monthly_net: 8_000, is_active: true } as any]);
+    encStore.getFixedExpenses.and.resolveTo([{ id: 1, annual_amount: 36_000, is_active: true } as any]);
+    encStore.getSubscriptions.and.resolveTo([{ id: 1, annual_amount: 1_200, is_active: true } as any]);
     encStore.getTransactions.and.resolveTo([]);
 
     service
@@ -92,7 +92,9 @@ describe('PlanningService', () => {
       .subscribe({
         next: run => {
           expect(run.id).toBeNull();
-          expect(run.input_snapshot_hash).toContain('client-');
+          expect(run.input_snapshot_hash).toContain('client|nw:');
+          expect(run.input_snapshot_hash).toContain('spend:');
+          expect(run.input_snapshot_hash).not.toMatch(/^client-\d+-/);
           expect(run.result_summary.spend_assumption_source).toBe('active-recurring-schedules');
           expect(run.as_of).toMatch(/^\d{4}-\d{2}-\d{2}$/);
           expect(run.started_at).toBeTruthy();

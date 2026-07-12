@@ -114,4 +114,5 @@ def test_market_price_and_refresh_holdings(client, monkeypatch):
     assert refreshed.json()["current_price"] == 42.5
 
 
-# test_net_worth_history removed: net worth history / snapshots feature deleted (current-only NW)
+# Net worth history HTTP routes are intentionally unwired. net_worth_snapshots table remains
+# (schema-present, API-unwired) for future encrypted observed-history; live NW is current-only.

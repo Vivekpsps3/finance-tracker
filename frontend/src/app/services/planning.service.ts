@@ -130,16 +130,30 @@ export class PlanningService {
     const fixed = await this.encStore.getFixedExpenses();
     const subs = await this.encStore.getSubscriptions();
     const txs = await this.encStore.getTransactions();
-    const monthlyIncome = incomes.filter(row => row.is_active).reduce((s, j) => s + (Number(j.monthly_net) || 0), 0);
-    const annualFixed = fixed.filter(row => row.is_active).reduce((s, f) => s + (Number(f.annual_amount) || 0), 0);
-    const annualSubs = subs.filter(row => row.is_active).reduce((s, f) => s + (Number(f.annual_amount) || 0), 0);
+    const activeIncomes = incomes.filter(row => row.is_active);
+    const activeFixed = fixed.filter(row => row.is_active);
+    const activeSubs = subs.filter(row => row.is_active);
+    const monthlyIncome = activeIncomes.reduce((s, j) => s + (Number(j.monthly_net) || 0), 0);
+    const annualFixed = activeFixed.reduce((s, f) => s + (Number(f.annual_amount) || 0), 0);
+    const annualSubs = activeSubs.reduce((s, f) => s + (Number(f.annual_amount) || 0), 0);
     const monthlyExpense = (annualFixed + annualSubs) / 12;
     const implied_annual_spending = annualFixed + annualSubs;
     const implied_annual_savings = monthlyIncome * 12 - implied_annual_spending;
+    const activeIncomeCount = activeIncomes.length;
+    const activeFixedCount = activeFixed.length;
+    const activeSubCount = activeSubs.length;
+    // Hash balance-sheet + recurring schedules (spend source), not transaction-derived spend.
+    const snapshot_hash = [
+      'client',
+      `nw:${nw.total.toFixed(2)}`,
+      `inc:${monthlyIncome.toFixed(2)}x${activeIncomeCount}`,
+      `spend:${implied_annual_spending.toFixed(2)}f${activeFixedCount}s${activeSubCount}`,
+      `txcount:${txs.length}`,
+    ].join('|');
     return {
       disclaimer: PLANNING_DISCLAIMER,
       as_of: new Date().toISOString().slice(0, 10),
-      snapshot_hash: `client-${txs.length}-${nw.total.toFixed(2)}`,
+      snapshot_hash,
       net_worth_total: nw.total,
       net_worth_portfolio: nw.portfolio,
       net_worth_liabilities: nw.liabilities,
@@ -152,6 +166,9 @@ export class PlanningService {
       annual_fixed_expenses: annualFixed,
       annual_subscriptions: annualSubs,
       annual_spending_source: 'active-recurring-schedules',
+      net_worth_source: 'balance-sheet',
+      annual_income_source: 'active-job-income',
+      transaction_role: 'count-only-not-used-for-spend',
     };
   }
 

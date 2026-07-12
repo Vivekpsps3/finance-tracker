@@ -74,4 +74,4 @@ def downgrade() -> None:
     op.drop_table('brokerage_accounts')
     op.drop_table('brokerages')
 
-    # net_worth_snapshots intentionally not recreated — feature removed; do not restore legacy table.
+    # net_worth_snapshots is recreated by 9a7d1c3e5f20 (schema-present, HTTP-unwired observed history).

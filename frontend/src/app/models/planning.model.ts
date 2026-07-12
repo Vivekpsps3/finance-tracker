@@ -86,6 +86,12 @@ export interface PlanningInputsPreview {
   annual_fixed_expenses?: number;
   annual_subscriptions?: number;
   annual_spending_source?: string;
+  /** Balance sheet live total (assets + portfolio − liabilities), not transaction rollup. */
+  net_worth_source?: string;
+  /** Active job-income schedules; not imported paystubs. */
+  annual_income_source?: string;
+  /** Count only — transactions do not drive spending assumptions. */
+  transaction_role?: string;
 }
 
 export interface PlanningProfile {

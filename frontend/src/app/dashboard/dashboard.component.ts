@@ -288,14 +288,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const values = Object.values(sources);
     if (values.every(s => s === 'live')) return 'Live prices';
     if (values.some(s => s === 'cached')) return 'Cached prices';
+    if (values.every(s => s === 'manual' || s === 'import')) return 'Manual / import prices';
     return 'Mixed sources';
   }
 
   freshnessBadgeVariant(): UiBadgeVariant {
     const label = this.portfolioFreshness();
     if (label === 'Live prices') return 'success';
-    if (label === 'Cached prices' || label === 'Mixed sources') return 'warning';
+    if (label === 'Cached prices' || label === 'Mixed sources' || label === 'Manual / import prices') return 'warning';
     return 'default';
+  }
+
+  netWorthCompleteness(): string {
+    const sources = this.netWorth?.portfolio_sources;
+    const holdingCount = sources ? Object.keys(sources).length : 0;
+    const assetPart = this.netWorth?.other_assets
+      ? `Manual assets $${(this.netWorth.other_assets).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+      : 'No manual assets';
+    const holdingPart = holdingCount
+      ? `${holdingCount} holding${holdingCount === 1 ? '' : 's'} priced (${this.portfolioFreshness().toLowerCase()})`
+      : 'No holdings priced';
+    const liabilityPart = this.netWorth?.liabilities
+      ? `Liabilities $${(this.netWorth.liabilities).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+      : 'No liabilities';
+    return `${assetPart} · ${holdingPart} · ${liabilityPart}`;
   }
 
   onFilterChange() {

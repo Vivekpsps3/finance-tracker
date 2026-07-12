@@ -31,7 +31,11 @@ Always **current** via `GET /api/net-worth/` (computed from assets + portfolio m
 
 **Not** derived from transactions, imports, job income, fixed expenses, or subscriptions.
 
-### Net worth snapshots (schema present; HTTP not wired)
+### Net worth snapshots (schema-present, API-unwired, planned/dormant)
+
+**Lifecycle:** table and ORM exist; list/create HTTP routes and UI are not wired. Not retired
+and not active product surface. Intended for future encrypted observed-history only—never
+transaction rollups. Vault collection name `net_worth_snapshots` is reserved.
 
 `net_worth_snapshots` stores the intended shape of observed balance-sheet valuations:
 

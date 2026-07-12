@@ -197,6 +197,16 @@ export interface CashflowSummary {
   scheduled_net_cashflow: number;
   /** Blended observed activity and scheduled assumptions; not an actual-only total. */
   combined_outlook_net_cashflow: number;
+  /**
+   * True when both observed and scheduled income are non-zero.
+   * Combined totals always sum both; if imported pay overlaps job schedules, income is double-counted.
+   */
+  possible_income_overlap: boolean;
+  /**
+   * True when both observed expenses and scheduled bills/subs are non-zero.
+   * Combined expenses always sum both; reimbursed or mirrored bills can double-count.
+   */
+  possible_expense_overlap: boolean;
   total_income: number;
   total_expenses: number;
   net_cashflow: number;

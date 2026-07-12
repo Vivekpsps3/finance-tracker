@@ -41,7 +41,7 @@
       <div class="net-worth-value money stat-display" aria-live="polite">
         ${{ netWorth.total | number: '1.2-2' }}
       </div>
-      <p class="as-of">As of {{ asOfLabel }}</p>
+      <p class="as-of">Observed as of {{ asOfLabel }}</p>
       <div class="net-worth-breakdown">
         <div class="breakdown-item">
           <span class="breakdown-icon"><ui-icon name="building" size="sm" /></span>
@@ -59,6 +59,7 @@
           <span class="value money negative">−${{ netWorth.liabilities | number: '1.2-2' }}</span>
         </div>
       </div>
+      <p class="net-worth-completeness">{{ netWorthCompleteness() }}</p>
       @if (portfolioFreshness() !== 'Live prices' && portfolioFreshness() !== 'No holdings') {
         <p class="price-refresh-hint">
           <a routerLink="/portfolio">Refresh portfolio prices</a> for live quotes.
@@ -67,6 +68,7 @@
       <p class="net-worth-note">
         <a routerLink="/balance-sheet">Edit balance sheet</a>
         · Transactions do not change this total.
+        · Brokerage cash sweeps and manual cash can double-count if both are entered.
       </p>
     </section>
   } @else if (isLoading) {
@@ -107,13 +109,13 @@
           <small>Observed ${{ periodObservedNetCashflow | number:'1.2-2' }} · scheduled ${{ periodScheduledNetCashflow | number:'1.2-2' }}</small>
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label" title="Net cashflow divided by total income for the selected period.">Savings rate</span>
+          <span class="insight-tile__label" title="Combined outlook net cashflow divided by combined outlook income for the selected period.">Combined outlook savings rate</span>
           <span class="insight-tile__value">
             {{ formatPercent(periodSavingsRate) }}
           </span>
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label">Average daily spend</span>
+          <span class="insight-tile__label" title="Combined outlook expenses divided by days in the selected period.">Combined outlook daily spend</span>
           <span class="insight-tile__value money">${{ averageDailySpend | number:'1.2-2' }}</span>
         </div>
         <div class="insight-tile">
@@ -207,24 +209,35 @@
       </div>
     </div>
     @if (cashflowSummary) {
-      <div class="cashflow-strip">
+      <div class="cashflow-strip" aria-label="Cashflow source breakdown">
         <div>
-          <span>Imported income</span>
-          <strong class="money">${{ cashflowSummary.transaction_income | number:'1.2-2' }}</strong>
+          <span>Observed income</span>
+          <strong class="money">${{ cashflowSummary.observed_income | number:'1.2-2' }}</strong>
         </div>
         <div>
-          <span>Planned job net</span>
-          <strong class="money">${{ cashflowSummary.planned_income | number:'1.2-2' }}</strong>
+          <span>Scheduled job net</span>
+          <strong class="money">${{ cashflowSummary.scheduled_income | number:'1.2-2' }}</strong>
         </div>
         <div>
-          <span>Fixed expenses</span>
-          <strong class="money negative">${{ cashflowSummary.fixed_expenses | number:'1.2-2' }}</strong>
+          <span>Observed expenses</span>
+          <strong class="money negative">${{ cashflowSummary.observed_expenses | number:'1.2-2' }}</strong>
         </div>
         <div>
-          <span>Subscriptions</span>
-          <strong class="money negative">${{ cashflowSummary.subscriptions | number:'1.2-2' }}</strong>
+          <span>Scheduled bills + subs</span>
+          <strong class="money negative">${{ cashflowSummary.scheduled_expenses | number:'1.2-2' }}</strong>
         </div>
       </div>
+      @if (cashflowSummary.possible_income_overlap || cashflowSummary.possible_expense_overlap) {
+        <p class="cashflow-overlap-note" role="status">
+          Combined outlook sums Observed + Scheduled.
+          @if (cashflowSummary.possible_income_overlap) {
+            Income may double-count if job pay is also imported as transactions.
+          }
+          @if (cashflowSummary.possible_expense_overlap) {
+            Expenses may double-count if bills are also imported as transactions.
+          }
+        </p>
+      }
     }
     <app-charts
       [embedded]="true"

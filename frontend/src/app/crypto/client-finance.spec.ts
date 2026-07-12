@@ -52,6 +52,7 @@ describe('client-finance', () => {
     expect(nw.liabilities).toBe(200);
     expect(nw.total_assets).toBe(1700);
     expect(nw.total).toBe(1500);
+    expect(nw.portfolio_sources).toEqual({ VTI: 'manual' });
   });
 
   it('falls back to purchase price when current price missing', () => {
@@ -61,9 +62,11 @@ describe('client-finance', () => {
       shares: 5,
       purchase_price: 40,
       purchase_date: '2026-01-01',
+      price_source: 'import',
     } as Holding;
     const nw = computeNetWorth([], [], [h]);
     expect(nw.portfolio).toBe(200);
+    expect(nw.portfolio_sources).toEqual({ VXUS: 'import' });
   });
 
   it('enriches holdings with market value', () => {
@@ -249,6 +252,47 @@ describe('client-finance', () => {
     expect(summary.scheduled_expenses).toBe(1000);
     expect(summary.scheduled_net_cashflow).toBeCloseTo(2055.44, 2);
     expect(summary.combined_outlook_net_cashflow).toBeCloseTo(2955.44, 2);
+    // Both observed and scheduled income present → additive combined can double-count pay.
+    expect(summary.possible_income_overlap).toBe(true);
+    expect(summary.possible_expense_overlap).toBe(true);
+  });
+
+  it('flags no income overlap when only one plane has income', () => {
+    const incomes = [
+      enrichJobIncome({
+        id: 1,
+        employer: 'Acme',
+        title: 'Eng',
+        base_pay: 120_000,
+        pay_frequency: 'annual',
+        hours_per_week: 40,
+        annual_bonus: 0,
+        annual_equity: 0,
+        annual_other: 0,
+        annual_taxes: 0,
+        annual_deductions: 0,
+        taxes_per_period: 0,
+        deductions_per_period: 0,
+        effective_date: '2026-01-01',
+        is_active: true,
+        pay_periods_per_year: 1,
+        annual_base_pay: 0,
+        annual_gross: 0,
+        monthly_gross: 0,
+        period_gross: 0,
+        period_net: 0,
+        annual_net: 0,
+        monthly_net: 0,
+        created_at: '',
+        updated_at: '',
+      } as JobIncome),
+    ];
+    const summary = computeCashflowSummary('2026-01-01', '2026-01-31', [], incomes, [], []);
+    expect(summary.observed_income).toBe(0);
+    expect(summary.scheduled_income).toBeGreaterThan(0);
+    expect(summary.possible_income_overlap).toBe(false);
+    expect(summary.possible_expense_overlap).toBe(false);
+    expect(summary.total_income).toBe(summary.scheduled_income);
   });
 
   it('counts only active recurring records occurring inside their effective date range', () => {
