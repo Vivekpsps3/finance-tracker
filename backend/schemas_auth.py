@@ -54,6 +54,8 @@ class PasswordlessEnrollRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_.-]+$")
     public_key_b64: str = Field(..., min_length=16, max_length=4096)
     auth: AuthPrivateKeyWrap
+    # Same vault payload as bootstrap/invitation so migration is one step to a usable vault.
+    vault: VaultCreateRequest
 
 
 class InvitationEnrollRequest(BaseModel):

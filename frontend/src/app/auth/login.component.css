@@ -69,3 +69,18 @@ h1 {
 .mode-link:hover {
   text-decoration: underline;
 }
+
+.recovery-panel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.recovery-key {
+  display: block;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  word-break: break-all;
+  font-size: var(--text-sm);
+}

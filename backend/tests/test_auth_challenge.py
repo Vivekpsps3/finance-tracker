@@ -142,6 +142,41 @@ def test_migration_session_cannot_access_normal_authenticated_routes():
     assert client.get("/api/auth/me").status_code == 403
 
 
+def test_passwordless_enroll_rejects_email_as_username_and_creates_vault():
+    client = TestClient(app)
+    from auth import create_user
+    from database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        create_user(db, email="legacy@example.com", display_name="Legacy", password="legacy-password")
+        db.commit()
+    finally:
+        db.close()
+
+    login = client.post("/api/auth/login/migrate", json={"email": "legacy@example.com", "password": "legacy-password"})
+    assert login.status_code == 200
+    client.headers["X-CSRF-Token"] = login.json()["csrf_token"]
+    material = passwordless_material()
+
+    bad = client.post(
+        "/api/auth/passwordless/enroll",
+        json={"username": "legacy@example.com", **material},
+    )
+    assert bad.status_code == 422
+
+    good = client.post(
+        "/api/auth/passwordless/enroll",
+        json={"username": "legacy.user", **material},
+    )
+    assert good.status_code == 200
+    assert good.json()["ok"] is True
+    assert client.get("/api/auth/me").status_code == 200
+    vault = client.get("/api/vault/status")
+    assert vault.status_code == 200
+    assert vault.json()["exists"] is True
+
+
 def test_recovery_can_update_the_signing_key_wrap_for_the_new_passphrase():
     client = TestClient(app)
     material = passwordless_material()

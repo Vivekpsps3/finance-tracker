@@ -114,13 +114,51 @@ export class AuthService {
       );
   }
 
-  async enrollPasswordless(username: string, vaultPassphrase: string, recoveryKey: string): Promise<void> {
-    const material = await createSigningKey(vaultPassphrase, recoveryKey);
-    await this.http.post(apiUrl('/auth/passwordless/enroll'), {
-      username,
-      public_key_b64: material.publicKeyB64,
-      auth: material.wrapped,
-    }, { withCredentials: true }).toPromise();
+  /**
+   * One-time migration: after password migrate-login, enroll username + vault + signing key.
+   * Returns the generated recovery key (show once; same key wraps vault DEK and signing key).
+   */
+  async enrollPasswordless(username: string, vaultPassphrase: string): Promise<string> {
+    const normalized = username.trim().toLowerCase();
+    if (!/^[a-z0-9_.-]{3,64}$/.test(normalized)) {
+      throw new Error('Username must be 3–64 characters: letters, numbers, underscore, dot, or hyphen.');
+    }
+    if (vaultPassphrase.length < 12) {
+      throw new Error('Vault passphrase must be at least 12 characters.');
+    }
+    const vaultMaterial = await createVaultMaterial(vaultPassphrase);
+    const signingMaterial = await createSigningKey(vaultPassphrase, vaultMaterial.recoveryKey);
+    try {
+      await firstValueFrom(
+        this.http.post(
+          apiUrl('/auth/passwordless/enroll'),
+          {
+            username: normalized,
+            public_key_b64: signingMaterial.publicKeyB64,
+            vault: vaultMaterial.setupPayload,
+            auth: signingMaterial.wrapped,
+          },
+          { withCredentials: true }
+        )
+      );
+    } catch (err: any) {
+      const detail = err?.error?.detail;
+      if (typeof detail === 'string') throw new Error(detail);
+      if (Array.isArray(detail) && detail.length) {
+        throw new Error(
+          detail
+            .map((item: any) => {
+              const field = Array.isArray(item?.loc) ? item.loc[item.loc.length - 1] : null;
+              const message = item?.msg || 'Invalid value';
+              return field ? `${field}: ${message}` : message;
+            })
+            .join('; ')
+        );
+      }
+      throw new Error('Vault authentication enrollment failed. Try the migration again.');
+    }
+    await this.vault.adoptBootstrapVault(vaultMaterial.dek, vaultMaterial.recoveryKey);
+    return vaultMaterial.recoveryKey;
   }
 
   async loginWithVault(username: string, vaultPassphrase: string): Promise<AuthUser> {

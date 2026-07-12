@@ -193,6 +193,8 @@ def enroll_passwordless(
     username = _username(body.username)
     if db.query(User).filter(User.username == username, User.id != current_user.id).first():
         raise HTTPException(status_code=409, detail="Username already exists")
+    if vault_store.get_vault(db, current_user.id):
+        raise HTTPException(status_code=409, detail="Vault already exists for this account")
     _require_p256_public_key(body.public_key_b64)
     current_user.username = username
     current_user.auth_public_key_b64 = body.public_key_b64
@@ -202,6 +204,7 @@ def enroll_passwordless(
     current_user.passwordless_enrolled_at = utc_now_naive()
     current_user.password_hash = None
     current_user.must_change_password = False
+    vault_store.create_vault(db, current_user.id, **body.vault.model_dump())
     complete_migration_session(db, request)
     audit_event(db, "passwordless_enrolled", actor_user_id=current_user.id, target_user_id=current_user.id)
     db.commit()

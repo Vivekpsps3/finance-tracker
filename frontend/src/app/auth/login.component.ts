@@ -21,7 +21,10 @@ export class LoginComponent {
   username = '';
   displayName = '';
   password = '';
-  recoveryKey = '';
+  /** New vault passphrase during one-time password→passwordless migration. */
+  vaultPassphrase = '';
+  /** Shown once after successful migration enroll. */
+  migrationRecoveryKey = '';
   setupMode = false;
   legacyMode = false;
   loading = false;
@@ -77,14 +80,18 @@ export class LoginComponent {
           this.router.navigate(['/']);
           return;
         }
-          this.auth.enrollPasswordless(this.email, this.password, this.recoveryKey).then(
-          () => this.router.navigate(['/']),
-          () => {
-            this.error = 'Signed in, but vault authentication enrollment failed. Try the migration again.';
+        this.auth
+          .enrollPasswordless(this.username, this.vaultPassphrase)
+          .then(recoveryKey => {
+            this.migrationRecoveryKey = recoveryKey;
             this.loading = false;
             this.cdr.markForCheck();
-          }
-        );
+          })
+          .catch(err => {
+            this.error = this.errorMessage(err);
+            this.loading = false;
+            this.cdr.markForCheck();
+          });
       },
       error: err => {
         this.error = this.errorMessage(err);
@@ -94,8 +101,13 @@ export class LoginComponent {
     });
   }
 
+  finishMigration(): void {
+    void this.router.navigate(['/']);
+  }
+
   toggleLegacyMode(): void {
     this.legacyMode = !this.legacyMode;
+    this.migrationRecoveryKey = '';
     this.error = '';
   }
 
@@ -104,9 +116,12 @@ export class LoginComponent {
   }
 
   get canSubmit(): boolean {
+    if (this.migrationRecoveryKey) return false;
     if (this.loading || !(this.legacyMode ? this.email.trim() : this.username.trim()) || !this.password) return false;
     if (this.needsDisplayName && !this.displayName.trim()) return false;
-    if (this.legacyMode && !this.recoveryKey.trim()) return false;
+    if (this.legacyMode) {
+      if (!this.username.trim() || this.vaultPassphrase.length < 12) return false;
+    }
     if (this.needsDisplayName && this.password.length < 12) return false;
     return true;
   }
@@ -116,7 +131,7 @@ export class LoginComponent {
       return 'Use at least 12 characters. Username + vault passphrase sign you in and unlock finance data on any browser. Admins cannot reset your vault.';
     }
     if (this.legacyMode) {
-      return 'One-time only: sign in with the old password, then enroll vault authentication with a new recovery key. Day-to-day sign-in is username + vault passphrase.';
+      return 'One-time only: verify your old email/password, choose a username and new vault passphrase (12+). A recovery key is generated after enroll—save it offline.';
     }
     return 'Sign in with username and vault passphrase. If you forget the passphrase, use your recovery key on Unlock vault—nobody else can reset access.';
   }
