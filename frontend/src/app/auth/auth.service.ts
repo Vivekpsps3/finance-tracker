@@ -72,7 +72,7 @@ export class AuthService {
   async bootstrapPasswordless(username: string, displayName: string, vaultPassphrase: string): Promise<AuthUser> {
     const normalized = username.trim().toLowerCase();
     const vaultMaterial = await createVaultMaterial(vaultPassphrase);
-    const signingMaterial = await createSigningKey(vaultPassphrase, vaultMaterial.recoveryKey);
+    const signingMaterial = await createSigningKey(vaultPassphrase);
     const response = await this.http.post<LoginResponse>(apiUrl('/auth/bootstrap/passwordless'), {
       username: normalized,
       display_name: displayName.trim(),
@@ -81,7 +81,7 @@ export class AuthService {
       auth: signingMaterial.wrapped,
     }, { withCredentials: true }).toPromise();
     if (!response) throw new Error('Unable to create passwordless account');
-    await this.vault.adoptBootstrapVault(vaultMaterial.dek, vaultMaterial.recoveryKey);
+    await this.vault.adoptBootstrapVault(vaultMaterial.dek);
     this.checkedSession = true;
     this.finance.clearSessionState();
     this.userSubject.next(response.user);
@@ -89,16 +89,25 @@ export class AuthService {
   }
 
   /**
-   * Invitation signup: create vault + signing key with admin-issued token.
-   * Returns recovery key to show once.
+   * Open self-signup: username + vault passphrase (no invitation).
+   * Signs in and unlocks vault immediately.
    */
-  async enrollInvitation(token: string, vaultPassphrase: string): Promise<string> {
+  async signupPasswordless(username: string, vaultPassphrase: string, displayName = ''): Promise<AuthUser> {
+    const normalized = username.trim().toLowerCase();
+    if (!normalized || normalized.includes('@')) {
+      throw new Error('Choose a username (not an email address)');
+    }
+    if (vaultPassphrase.length < 12) {
+      throw new Error('Vault passphrase must be at least 12 characters');
+    }
     const vaultMaterial = await createVaultMaterial(vaultPassphrase);
-    const signingMaterial = await createSigningKey(vaultPassphrase, vaultMaterial.recoveryKey);
+    const signingMaterial = await createSigningKey(vaultPassphrase);
     const response = await this.http
       .post<LoginResponse>(
-        apiUrl(`/auth/invitations/${encodeURIComponent(token)}/enroll`),
+        apiUrl('/auth/signup/passwordless'),
         {
+          username: normalized,
+          display_name: (displayName || normalized).trim(),
           public_key_b64: signingMaterial.publicKeyB64,
           vault: vaultMaterial.setupPayload,
           auth: signingMaterial.wrapped,
@@ -106,12 +115,12 @@ export class AuthService {
         { withCredentials: true }
       )
       .toPromise();
-    if (!response) throw new Error('Unable to complete invitation signup');
-    await this.vault.adoptBootstrapVault(vaultMaterial.dek, vaultMaterial.recoveryKey);
+    if (!response) throw new Error('Unable to create account');
+    await this.vault.adoptBootstrapVault(vaultMaterial.dek);
     this.checkedSession = true;
     this.finance.clearSessionState();
     this.userSubject.next(response.user);
-    return vaultMaterial.recoveryKey;
+    return response.user;
   }
 
   login(email: string, password: string): Observable<AuthUser> {
@@ -129,9 +138,8 @@ export class AuthService {
 
   /**
    * One-time migration: after password migrate-login, enroll username + vault + signing key.
-   * Returns the generated recovery key (show once; same key wraps vault DEK and signing key).
    */
-  async enrollPasswordless(username: string, vaultPassphrase: string): Promise<string> {
+  async enrollPasswordless(username: string, vaultPassphrase: string): Promise<void> {
     const normalized = username.trim().toLowerCase();
     if (!/^[a-z0-9_.-]{3,64}$/.test(normalized)) {
       throw new Error('Username must be 3–64 characters: letters, numbers, underscore, dot, or hyphen.');
@@ -140,7 +148,7 @@ export class AuthService {
       throw new Error('Vault passphrase must be at least 12 characters.');
     }
     const vaultMaterial = await createVaultMaterial(vaultPassphrase);
-    const signingMaterial = await createSigningKey(vaultPassphrase, vaultMaterial.recoveryKey);
+    const signingMaterial = await createSigningKey(vaultPassphrase);
     try {
       await firstValueFrom(
         this.http.post(
@@ -170,8 +178,7 @@ export class AuthService {
       }
       throw new Error('Vault authentication enrollment failed. Try the migration again.');
     }
-    await this.vault.adoptBootstrapVault(vaultMaterial.dek, vaultMaterial.recoveryKey);
-    return vaultMaterial.recoveryKey;
+    await this.vault.adoptBootstrapVault(vaultMaterial.dek);
   }
 
   async loginWithVault(username: string, vaultPassphrase: string): Promise<AuthUser> {

@@ -47,7 +47,8 @@ class AuthPrivateKeyWrap(BaseModel):
     kdf_salt_b64: str = Field(..., min_length=16, max_length=4096)
     kdf_iterations: int = Field(310000, ge=100000, le=10000000)
     wrapped_private_key_b64: str = Field(..., min_length=16, max_length=8192)
-    recovery_wrapped_private_key_b64: str = Field(..., min_length=16, max_length=8192)
+    # Legacy field; recovery-key path removed. Empty string means unused.
+    recovery_wrapped_private_key_b64: str = Field("", max_length=8192)
 
 
 class PasswordlessEnrollRequest(BaseModel):
@@ -67,6 +68,15 @@ class InvitationEnrollRequest(BaseModel):
 class PasswordlessBootstrapRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_.-]+$")
     display_name: str = Field(..., min_length=1, max_length=160)
+    public_key_b64: str = Field(..., min_length=16, max_length=4096)
+    vault: VaultCreateRequest
+    auth: AuthPrivateKeyWrap
+
+
+class PasswordlessSignupRequest(BaseModel):
+    """Open self-signup: username + vault material. No invitation token."""
+    username: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_.-]+$")
+    display_name: str = Field("", max_length=160)
     public_key_b64: str = Field(..., min_length=16, max_length=4096)
     vault: VaultCreateRequest
     auth: AuthPrivateKeyWrap

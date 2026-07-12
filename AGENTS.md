@@ -90,9 +90,10 @@ The user clarified:
   holdings or net worth. Spec: `docs/superpowers/specs/2026-07-09-stock-lab-design.md`.
 - Passwordless login unwraps a browser-held signing key with the vault passphrase
   and signs a server challenge. Public keys, sessions, and challenge hashes are
-  backend data; passphrases, recovery keys, private keys, and finance plaintext
-  never leave the browser. Password login survives only for bounded legacy
-  migration; admins cannot reset vault access.
+  backend data; passphrases, private keys, and finance plaintext never leave the
+  browser. No recovery-key path—lost passphrase means lost vault data. Password
+  login survives only for bounded legacy migration; admins cannot reset vault
+  access. Open self-signup is passwordless (username + vault passphrase).
 - Schema-v1 records migrate in-browser to schema-v2 authenticated-record AAD;
   verify encrypted replacement before deleting legacy plaintext, then checkpoint
   WAL and `VACUUM`.

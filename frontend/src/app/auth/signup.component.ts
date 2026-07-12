@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from './auth.service';
 import { UiButtonComponent, UiCardComponent, UiInputComponent } from '../shared/ui';
 
@@ -12,34 +12,22 @@ import { UiButtonComponent, UiCardComponent, UiInputComponent } from '../shared/
   styleUrl: './login.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SignupComponent implements OnInit {
+export class SignupComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
-  private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
 
-  token = '';
-  passphrase = '';
-  confirmPassphrase = '';
-  recoveryKey = '';
+  username = '';
+  password = '';
   loading = false;
   error = '';
-
-  ngOnInit(): void {
-    this.token = this.route.snapshot.queryParamMap.get('token') || '';
-    this.route.queryParamMap.subscribe(params => {
-      this.token = params.get('token') || this.token;
-      this.cdr.markForCheck();
-    });
-  }
 
   get canSubmit(): boolean {
     return (
       !this.loading &&
-      !this.recoveryKey &&
-      this.token.trim().length > 0 &&
-      this.passphrase.length >= 12 &&
-      this.passphrase === this.confirmPassphrase
+      this.username.trim().length >= 3 &&
+      !this.username.includes('@') &&
+      this.password.length >= 12
     );
   }
 
@@ -48,11 +36,11 @@ export class SignupComponent implements OnInit {
     this.loading = true;
     this.error = '';
     this.cdr.markForCheck();
-    this.auth.enrollInvitation(this.token.trim(), this.passphrase).then(
-      recoveryKey => {
-        this.recoveryKey = recoveryKey;
+    this.auth.signupPasswordless(this.username, this.password).then(
+      () => {
         this.loading = false;
         this.cdr.markForCheck();
+        return this.router.navigate(['/']);
       },
       err => {
         this.error = this.errorMessage(err);
@@ -62,17 +50,19 @@ export class SignupComponent implements OnInit {
     );
   }
 
-  finish(): void {
-    void this.router.navigate(['/']);
-  }
-
   private errorMessage(err: any): string {
     if (err instanceof Error && err.message) return err.message;
     const detail = err?.error?.detail;
     if (typeof detail === 'string') return detail;
     if (Array.isArray(detail) && detail.length) {
-      return detail.map((item: any) => item?.msg || 'Invalid value').join('; ');
+      return detail
+        .map((item: any) => {
+          const field = Array.isArray(item?.loc) ? item.loc[item.loc.length - 1] : null;
+          const message = item?.msg || 'Invalid value';
+          return field ? `${field}: ${message}` : message;
+        })
+        .join('; ');
     }
-    return 'Invitation signup failed. Check the token and try again.';
+    return 'Sign up failed';
   }
 }

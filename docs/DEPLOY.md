@@ -17,7 +17,7 @@ domain / LAN / VPN
 | Step | Action |
 |------|--------|
 | 1 | Put TLS in front of the web container and keep the API private to Compose or loopback. |
-| 2 | Open `/login` on a fresh database and create the first admin with a username and vault passphrase; store its browser-displayed recovery key offline. Use `/admin/users` to create later invitations. |
+| 2 | Open `/login` on a fresh database and create the first admin with a username and vault passphrase (lost passphrase = lost vault data). Open self-signup is also available at `/signup`. |
 | 3 | Set **`CORS_ORIGINS`** to your UI origin(s) only (comma-separated). Avoid `*`. |
 | 4 | Keep **`allow_credentials=True`** and explicit origins because browser auth uses cookies. |
 | 5 | Set **`SESSION_COOKIE_SECURE=1`** for HTTPS deployments. Use `0` only for local HTTP development. |
@@ -76,7 +76,7 @@ finance.vivekpanchagnula.com {
 }
 ```
 
-Create the first admin by opening `/login` after the API starts and preserve its recovery key offline. After that, admins create invitation/enrollment records at `/admin/users`; they cannot reset another user's vault access. The CLI command is available for recovery or automation:
+Create the first admin by opening `/login` after the API starts, or use open self-signup at `/signup`. Admins cannot reset another user's vault access. The CLI command is available for automation:
 
 ```bash
 docker compose exec api python manage.py create-admin --email you@example.com --display-name "Your Name"
@@ -205,7 +205,7 @@ sudo ./svc.sh start
 Before go-live, confirm:
 
 - First admin exists, can log in, and can open `/admin/users`.
-- Recovery keys are stored offline; lost vault passphrase and recovery key mean encrypted data cannot be recovered.
+- There is no recovery-key path; lost vault passphrase means encrypted data cannot be recovered.
 - `SESSION_COOKIE_SECURE=1` on HTTPS deployments.
 - `CORS_ORIGINS` lists only your UI origin(s).
 - `DATABASE_URL` points at a backed-up SQLite file or mounted volume.

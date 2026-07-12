@@ -1,6 +1,7 @@
 /**
  * Browser-only crypto for server-blind storage.
- * Backend never receives passphrases, recovery keys, or unwrapped DEKs.
+ * Backend never receives passphrases or unwrapped DEKs.
+ * Access is vault passphrase only (no recovery-key path).
  */
 
 const textEncoder = new TextEncoder();
@@ -106,23 +107,16 @@ export async function createVaultMaterial(passphrase: string, iterations = DEFAU
   const dek = await generateDataKey();
   const salt = randomBytes(16);
   const passKey = await deriveWrapKey(passphrase, salt, iterations);
-  const recoveryKey = bufToB64(randomBytes(32)).replace(/[+/=]/g, '').slice(0, 40);
-  const recoverySalt = randomBytes(16);
-  // Recovery uses the recovery key string as passphrase material with its own salt, fixed iterations.
-  const recoveryWrapKey = await deriveWrapKey(recoveryKey, recoverySalt, iterations);
   const wrappedDek = await wrapKey(dek, passKey);
-  const recoveryWrapped = await wrapKey(dek, recoveryWrapKey);
-  // Pack recovery salt into recovery wrap payload as saltB64 || wrapped
-  const recoveryPacked = `${bufToB64(recoverySalt)}.${recoveryWrapped}`;
   return {
     dek,
-    recoveryKey,
     setupPayload: {
       kdf_algorithm: 'PBKDF2' as const,
       kdf_salt_b64: bufToB64(salt),
       kdf_iterations: iterations,
       wrapped_dek_b64: wrappedDek,
-      recovery_wrapped_dek_b64: recoveryPacked,
+      // Legacy column; recovery-key path removed. Empty means unused.
+      recovery_wrapped_dek_b64: '',
       key_version: 1,
     },
   };
@@ -137,18 +131,6 @@ export async function unlockWithPassphrase(
   const salt = b64ToBuf(kdfSaltB64);
   const passKey = await deriveWrapKey(passphrase, salt, kdfIterations);
   return unwrapKey(wrappedDekB64, passKey);
-}
-
-export async function unlockWithRecoveryKey(
-  recoveryKey: string,
-  recoveryPacked: string,
-  kdfIterations: number
-): Promise<CryptoKey> {
-  const [saltB64, wrapped] = recoveryPacked.split('.');
-  if (!saltB64 || !wrapped) throw new Error('Invalid recovery material');
-  const salt = b64ToBuf(saltB64);
-  const wrapKeyMaterial = await deriveWrapKey(recoveryKey, salt, kdfIterations);
-  return unwrapKey(wrapped, wrapKeyMaterial);
 }
 
 export async function rewrapDekWithPassphrase(

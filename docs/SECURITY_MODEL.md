@@ -27,9 +27,9 @@ the operator controls the code delivered to browsers.
 ## Required architecture
 
 1. Browser generates a random per-user data encryption key and signing keypair.
-2. Browser wraps the data key and signing private key with a vault passphrase-derived key and a user-held recovery key.
+2. Browser wraps the data key and signing private key with a vault passphrase-derived key only (no recovery-key path).
 3. The backend stores the signing public key, encrypted wraps, and a hash of each short-lived, single-use login challenge.
-4. Vault passphrases, recovery keys, signing private keys, and unwrapped data keys never reach the backend.
+4. Vault passphrases, signing private keys, and unwrapped data keys never reach the backend.
 5. Browser signs an account-bound challenge locally; only the public-key verification result creates a session.
 6. Browser encrypts finance records before upload and decrypts them after download.
 7. Backend stores ciphertext, non-sensitive sync metadata, and optional blind indexes only; it never computes over private plaintext.
@@ -54,8 +54,7 @@ the operator controls the code delivered to browsers.
 ## Recovery rules
 
 - There is no password reset. Admins cannot reset a vault passphrase, generate a signing key, or alter encrypted vault material.
-- A user can recover by providing their recovery key in the browser and setting a new vault passphrase; the browser re-wraps both the data key and signing private key.
-- If a user loses both vault passphrase and recovery key, admins can only delete the encrypted data and let the user start over.
+- There is no recovery-key path. If a user loses their vault passphrase, encrypted finance data cannot be recovered; admins can only delete the encrypted data and let the user start over.
 
 ## Holdings price privacy
 

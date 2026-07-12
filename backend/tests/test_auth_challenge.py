@@ -33,13 +33,13 @@ def passwordless_material():
         "vault": {
             "kdf_salt_b64": "MTIzNDU2Nzg5MDEyMzQ1Ng==",
             "wrapped_dek_b64": "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg=",
-            "recovery_wrapped_dek_b64": "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg=",
+            "recovery_wrapped_dek_b64": "",
         },
         "auth": {
             "kdf_salt_b64": "MTIzNDU2Nzg5MDEyMzQ1Ng==",
             "kdf_iterations": 310000,
             "wrapped_private_key_b64": "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg=",
-            "recovery_wrapped_private_key_b64": "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg=",
+            "recovery_wrapped_private_key_b64": "",
         },
     }
 
@@ -177,19 +177,44 @@ def test_passwordless_enroll_rejects_email_as_username_and_creates_vault():
     assert vault.json()["exists"] is True
 
 
-def test_recovery_can_update_the_signing_key_wrap_for_the_new_passphrase():
+def test_authenticated_user_can_update_signing_key_wrap():
     client = TestClient(app)
     material = passwordless_material()
     bootstrap = client.post("/api/auth/bootstrap/passwordless", json={
         "username": "first.admin", "display_name": "First Admin", **material,
     })
     client.headers["X-CSRF-Token"] = bootstrap.json()["csrf_token"]
-    replacement = {**material["auth"], "wrapped_private_key_b64": "YW5vdGhlci1sb25nLWVuY3J5cHRlZC1wcml2YXRlLWtleS1wYXlsb2Fk"}
+    replacement = {
+        **material["auth"],
+        "wrapped_private_key_b64": "YW5vdGhlci1sb25nLWVuY3J5cHRlZC1wcml2YXRlLWtleS1wYXlsb2Fk",
+        "recovery_wrapped_private_key_b64": "",
+    }
 
     response = client.put("/api/auth/passwordless/wraps", json=replacement)
 
     assert response.status_code == 200
     assert TestClient(app).post("/api/auth/passwordless/lookup", json={"username": "first.admin"}).json()["auth"] == replacement
+
+
+def test_open_passwordless_signup_creates_user_without_invitation():
+    admin = TestClient(app)
+    material = passwordless_material()
+    assert admin.post("/api/auth/bootstrap/passwordless", json={
+        "username": "first.admin", "display_name": "First Admin", **material,
+    }).status_code == 200
+
+    client = TestClient(app)
+    signup_material = passwordless_material()
+    response = client.post(
+        "/api/auth/signup/passwordless",
+        json={"username": "open.user", "display_name": "Open User", **signup_material},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["user"]["username"] == "open.user"
+    assert response.json()["user"]["role"] == "user"
+    assert client.get("/api/vault/status").json()["exists"] is True
+    assert client.get("/api/auth/me").status_code == 200
 
 
 def test_bootstrap_rejects_a_non_p256_authentication_key():

@@ -245,7 +245,7 @@ export class MainLayoutComponent implements OnInit {
   async clearMyData(): Promise<void> {
     const confirmed = await this.confirm.ask(
       'Clear your data?',
-        'This permanently removes your transactions, imports, assets, liabilities, holdings, cashflow, planning runs, saved planning inputs, and net worth snapshots. Your account and sign-in enrollment stay in place. Vault access still requires your passphrase or recovery key.',
+        'This permanently removes your transactions, imports, assets, liabilities, holdings, cashflow, planning runs, saved planning inputs, and net worth snapshots. Your account and sign-in enrollment stay in place. Vault access still requires your passphrase.',
       'Clear my data'
     );
     if (!confirmed) return;

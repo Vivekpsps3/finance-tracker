@@ -33,7 +33,7 @@ Details: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 - **Calendar** — Daily transaction summary
 - **Monte Carlo** (`/planning`) — Net worth fan chart, tunable assumptions from your ledger (speculative; does not change net worth or ledger)
 - **Stock Lab** (`/stock-lab`) — Stock/ETF decision lab: returns, dividends, purchase scenarios, comparisons; encrypted saved scenarios; public market research (speculative; does not change net worth or holdings)
-- **Auth / vault / admin** — Username plus vault-passphrase challenge login, browser-owned encrypted vault setup/unlock/recovery, invitation enrollment, `/admin/users` for admins
+- **Auth / vault / admin** — Username plus vault-passphrase challenge login, open self-signup, browser-owned encrypted vault, `/admin/users` for admins
 
 ## Tech stack
 
@@ -103,7 +103,7 @@ Open http://127.0.0.1:8080. The `web` container serves Angular and proxies
 
 ## Production checklist
 
-See **[docs/DEPLOY.md](docs/DEPLOY.md)**. In short: TLS in front of the web container, create the first admin and retain its recovery key, set `CORS_ORIGINS` and `SESSION_COOKIE_SECURE=1`, back up the SQLite file.
+See **[docs/DEPLOY.md](docs/DEPLOY.md)**. In short: TLS in front of the web container, create the first admin with username + vault passphrase, set `CORS_ORIGINS` and `SESSION_COOKIE_SECURE=1`, back up the SQLite file.
 
 ## Troubleshooting
 

@@ -10,7 +10,8 @@ class VaultCreateRequest(BaseModel):
     kdf_salt_b64: str
     kdf_iterations: int = 310000
     wrapped_dek_b64: str
-    recovery_wrapped_dek_b64: str
+    # Legacy column; recovery-key path removed. Empty string means unused.
+    recovery_wrapped_dek_b64: str = ""
     key_version: int = 1
 
 

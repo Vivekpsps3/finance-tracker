@@ -54,6 +54,7 @@ from schemas_auth import (
     PasswordlessEnrollRequest,
     InvitationEnrollRequest,
     PasswordlessBootstrapRequest,
+    PasswordlessSignupRequest,
     AuthPrivateKeyWrap,
     PasswordlessVerifyRequest,
     UserPublic,
@@ -87,7 +88,7 @@ def _store_auth_wrap(user: User, auth: AuthPrivateKeyWrap) -> None:
     user.auth_kdf_salt_b64 = auth.kdf_salt_b64
     user.auth_kdf_iterations = auth.kdf_iterations
     user.auth_wrapped_private_key_b64 = auth.wrapped_private_key_b64
-    user.auth_recovery_wrapped_private_key_b64 = auth.recovery_wrapped_private_key_b64
+    user.auth_recovery_wrapped_private_key_b64 = auth.recovery_wrapped_private_key_b64 or ""
 
 
 def _decoy_passwordless_material() -> dict:
@@ -100,14 +101,14 @@ def _decoy_passwordless_material() -> dict:
             "kdf_salt_b64": base64.b64encode(secrets.token_bytes(16)).decode(),
             "kdf_iterations": 310000,
             "wrapped_dek_b64": wrapped(),
-            "recovery_wrapped_dek_b64": f"{base64.b64encode(secrets.token_bytes(16)).decode()}.{wrapped()}",
+            "recovery_wrapped_dek_b64": "",
             "key_version": 1,
         },
         "auth": {
             "kdf_salt_b64": base64.b64encode(secrets.token_bytes(16)).decode(),
             "kdf_iterations": 310000,
             "wrapped_private_key_b64": wrapped(),
-            "recovery_wrapped_private_key_b64": f"{base64.b64encode(secrets.token_bytes(16)).decode()}.{wrapped()}",
+            "recovery_wrapped_private_key_b64": "",
         },
     }
 
@@ -165,7 +166,40 @@ def passwordless_bootstrap_first_admin(
 
 @router.post("/auth/signup", response_model=LoginResponse)
 def signup(body: SignupRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    raise HTTPException(status_code=410, detail="Password signup is retired; request an administrator invitation")
+    raise HTTPException(status_code=410, detail="Password signup is retired; use passwordless signup")
+
+
+@router.post("/auth/signup/passwordless", response_model=LoginResponse)
+def passwordless_signup(
+    body: PasswordlessSignupRequest, request: Request, response: Response, db: Session = Depends(get_db)
+):
+    """Open self-signup: anyone may create an account with username + vault material."""
+    username = _username(body.username)
+    if "@" in username:
+        raise HTTPException(status_code=422, detail="Username cannot be an email address")
+    if db.query(User).filter(User.username == username).first():
+        raise HTTPException(status_code=409, detail="Username already exists")
+    _require_p256_public_key(body.public_key_b64)
+    display = (body.display_name or "").strip() or username
+    is_first = db.query(User).count() == 0
+    user = create_user(
+        db,
+        email=f"{username}@pending.local",
+        display_name=display,
+        role=UserRole.admin if is_first else UserRole.user,
+        must_change_password=False,
+    )
+    user.username = username
+    user.auth_public_key_b64 = body.public_key_b64
+    user.auth_algorithm = "ECDSA_P256_SHA256"
+    user.auth_key_version = 1
+    _store_auth_wrap(user, body.auth)
+    user.passwordless_enrolled_at = utc_now_naive()
+    vault_store.create_vault(db, user.id, **body.vault.model_dump())
+    audit_event(db, "passwordless_signup", actor_user_id=user.id, target_user_id=user.id)
+    csrf = create_session(db, user, request, response)
+    db.refresh(user)
+    return {"user": _user_response(user), "csrf_token": csrf}
 
 
 @router.post("/auth/login", response_model=LoginResponse)
@@ -230,7 +264,7 @@ def passwordless_lookup(body: PasswordlessChallengeRequest, db: Session = Depend
             "kdf_salt_b64": user.auth_kdf_salt_b64,
             "kdf_iterations": user.auth_kdf_iterations,
             "wrapped_private_key_b64": user.auth_wrapped_private_key_b64,
-            "recovery_wrapped_private_key_b64": user.auth_recovery_wrapped_private_key_b64,
+            "recovery_wrapped_private_key_b64": user.auth_recovery_wrapped_private_key_b64 or "",
         },
     }
 

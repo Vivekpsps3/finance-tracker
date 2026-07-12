@@ -108,12 +108,13 @@ def _b64_len(value: str) -> int:
 
 def _validate_recovery_wrap(value: str) -> None:
     """
-    Recovery material is browser-packed as: base64(salt) + '.' + base64(iv||ciphertext).
-    Backend stores it opaquely and must not require the whole string to be pure base64.
+    Recovery-key path is retired. Empty means unused.
+    Legacy non-empty wraps are still stored opaquely for old rows.
     """
     packed = (value or "").strip()
+    if not packed:
+        return
     if "." not in packed:
-        # Allow pure base64 recovery wraps for older clients/tests.
         if _b64_len(packed) < 32:
             raise HTTPException(status_code=400, detail="Recovery wrap too short")
         return
@@ -165,7 +166,7 @@ def create_vault(
     kdf_salt_b64: str,
     kdf_iterations: int,
     wrapped_dek_b64: str,
-    recovery_wrapped_dek_b64: str,
+    recovery_wrapped_dek_b64: str = "",
     key_version: int = 1,
 ) -> UserVault:
     if get_vault(db, user_id):
@@ -185,7 +186,7 @@ def create_vault(
         kdf_salt_b64=kdf_salt_b64,
         kdf_iterations=kdf_iterations,
         wrapped_dek_b64=wrapped_dek_b64,
-        recovery_wrapped_dek_b64=recovery_wrapped_dek_b64,
+        recovery_wrapped_dek_b64=recovery_wrapped_dek_b64 or "",
         key_version=key_version,
     )
     db.add(vault)

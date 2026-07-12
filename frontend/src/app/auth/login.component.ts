@@ -23,8 +23,6 @@ export class LoginComponent {
   password = '';
   /** New vault passphrase during one-time password→passwordless migration. */
   vaultPassphrase = '';
-  /** Shown once after successful migration enroll. */
-  migrationRecoveryKey = '';
   setupMode = false;
   legacyMode = false;
   loading = false;
@@ -32,8 +30,14 @@ export class LoginComponent {
 
   ngOnInit(): void {
     this.auth.bootstrapStatus().subscribe({
-      next: status => { this.setupMode = status.needs_setup; this.cdr.markForCheck(); },
-      error: () => { this.setupMode = false; this.cdr.markForCheck(); },
+      next: status => {
+        this.setupMode = status.needs_setup;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.setupMode = false;
+        this.cdr.markForCheck();
+      },
     });
   }
 
@@ -57,8 +61,7 @@ export class LoginComponent {
       );
       return;
     }
-    const request = this.legacyMode ? this.auth.login(this.email, this.password) : null;
-    if (!request) {
+    if (!this.legacyMode) {
       this.auth.loginWithVault(this.username, this.password).then(
         () => {
           this.loading = false;
@@ -73,19 +76,14 @@ export class LoginComponent {
       );
       return;
     }
-    request.subscribe({
+    this.auth.login(this.email, this.password).subscribe({
       next: () => {
-        this.cdr.markForCheck();
-        if (!this.legacyMode) {
-          this.router.navigate(['/']);
-          return;
-        }
         this.auth
           .enrollPasswordless(this.username, this.vaultPassphrase)
-          .then(recoveryKey => {
-            this.migrationRecoveryKey = recoveryKey;
+          .then(() => {
             this.loading = false;
             this.cdr.markForCheck();
+            return this.router.navigate(['/']);
           })
           .catch(err => {
             this.error = this.errorMessage(err);
@@ -101,13 +99,8 @@ export class LoginComponent {
     });
   }
 
-  finishMigration(): void {
-    void this.router.navigate(['/']);
-  }
-
   toggleLegacyMode(): void {
     this.legacyMode = !this.legacyMode;
-    this.migrationRecoveryKey = '';
     this.error = '';
   }
 
@@ -116,8 +109,9 @@ export class LoginComponent {
   }
 
   get canSubmit(): boolean {
-    if (this.migrationRecoveryKey) return false;
-    if (this.loading || !(this.legacyMode ? this.email.trim() : this.username.trim()) || !this.password) return false;
+    if (this.loading || !(this.legacyMode ? this.email.trim() : this.username.trim()) || !this.password) {
+      return false;
+    }
     if (this.needsDisplayName && !this.displayName.trim()) return false;
     if (this.legacyMode) {
       if (!this.username.trim() || this.vaultPassphrase.length < 12) return false;
@@ -128,12 +122,12 @@ export class LoginComponent {
 
   get passwordHint(): string {
     if (this.needsDisplayName) {
-      return 'Use at least 12 characters. Username + vault passphrase sign you in and unlock finance data on any browser. Admins cannot reset your vault.';
+      return 'Use at least 12 characters. Username + vault passphrase sign you in and unlock finance data. Admins cannot reset your vault.';
     }
     if (this.legacyMode) {
-      return 'One-time only: verify your old email/password, choose a username and new vault passphrase (12+). A recovery key is generated after enroll—save it offline.';
+      return 'One-time only: verify your old email/password, choose a username and new vault passphrase (12+).';
     }
-    return 'Sign in with username and vault passphrase. If you forget the passphrase, use your recovery key on Unlock vault—nobody else can reset access.';
+    return 'Sign in with username and vault passphrase. If you forget the passphrase, encrypted data cannot be recovered.';
   }
 
   private errorMessage(err: any): string {

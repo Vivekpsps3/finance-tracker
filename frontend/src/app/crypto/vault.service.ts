@@ -8,11 +8,9 @@ import {
   encryptJson,
   hmacBlindIndex,
   recordAad,
-  rewrapDekWithPassphrase,
   unlockWithPassphrase,
-  unlockWithRecoveryKey,
 } from './vault-crypto';
-import { rewrapSigningKeyWithPassphrase, WrappedSigningKey } from './auth-crypto';
+import { WrappedSigningKey } from './auth-crypto';
 
 export interface VaultStatus {
   exists: boolean;
@@ -46,7 +44,6 @@ export class VaultService {
   private dek: CryptoKey | null = null;
   private statusSubject = new BehaviorSubject<VaultStatus | null>(null);
   private unlockedSubject = new BehaviorSubject<boolean>(false);
-  private lastRecoveryKey: string | null = null;
   private authWrap: WrappedSigningKey | null = null;
 
   readonly status$ = this.statusSubject.asObservable();
@@ -65,13 +62,6 @@ export class VaultService {
 
   get currentStatus(): VaultStatus | null {
     return this.statusSubject.value;
-  }
-
-  /** Shown once after setup; caller must display then clear. */
-  consumeRecoveryKey(): string | null {
-    const key = this.lastRecoveryKey;
-    this.lastRecoveryKey = null;
-    return key;
   }
 
   async refreshStatus(): Promise<VaultStatus> {
@@ -104,7 +94,7 @@ export class VaultService {
     this.unlockedSubject.next(false);
   }
 
-  async setup(passphrase: string): Promise<{ recoveryKey: string }> {
+  async setup(passphrase: string): Promise<void> {
     const material = await createVaultMaterial(passphrase);
     const status = await firstValueFrom(
       this.http.post<VaultStatus>(apiUrl('/vault/setup'), material.setupPayload)
@@ -112,16 +102,13 @@ export class VaultService {
     this.statusSubject.next(status);
     this.dek = material.dek;
     this.unlockedSubject.next(true);
-    this.lastRecoveryKey = material.recoveryKey;
-    return { recoveryKey: material.recoveryKey };
   }
 
-  /** Completes an atomically-created vault after passwordless account bootstrap. */
-  async adoptBootstrapVault(dek: CryptoKey, recoveryKey: string): Promise<void> {
+  /** Completes an atomically-created vault after passwordless account bootstrap/signup. */
+  async adoptBootstrapVault(dek: CryptoKey): Promise<void> {
     await this.refreshStatus();
     this.dek = dek;
     this.unlockedSubject.next(true);
-    this.lastRecoveryKey = recoveryKey;
   }
 
   async unlock(passphrase: string): Promise<void> {
@@ -135,29 +122,6 @@ export class VaultService {
       status.kdf_iterations,
       status.wrapped_dek_b64
     );
-    this.unlockedSubject.next(true);
-  }
-
-  async unlockWithRecovery(recoveryKey: string, newPassphrase: string): Promise<void> {
-    const status = this.statusSubject.value ?? (await this.refreshStatus());
-    if (!status.exists || !status.recovery_wrapped_dek_b64 || !status.kdf_iterations) {
-      throw new Error('Vault is not set up');
-    }
-    const dek = await unlockWithRecoveryKey(
-      recoveryKey,
-      status.recovery_wrapped_dek_b64,
-      status.kdf_iterations
-    );
-    if (!this.authWrap) throw new Error('Vault authentication material is unavailable; sign in again before recovering your passphrase');
-    const wraps = await rewrapDekWithPassphrase(dek, newPassphrase, status.kdf_iterations);
-    const authWrap = await rewrapSigningKeyWithPassphrase(recoveryKey, this.authWrap, newPassphrase);
-    const updated = await firstValueFrom(
-      this.http.put<VaultStatus>(apiUrl('/vault/wraps'), wraps)
-    );
-    await firstValueFrom(this.http.put(apiUrl('/auth/passwordless/wraps'), authWrap));
-    this.statusSubject.next(updated);
-    this.authWrap = authWrap;
-    this.dek = dek;
     this.unlockedSubject.next(true);
   }
 

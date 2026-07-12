@@ -15,11 +15,10 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
         title="Create your vault"
         subtitle="Your finance data is encrypted in the browser. The server only stores ciphertext." />
       <ui-card title="Vault passphrase">
-          <p class="muted">
-            Choose a strong vault passphrase. Together with your username it signs you in and unlocks encrypted
-            finance data on any browser. If you lose both the passphrase and recovery key, your data cannot be
-            recovered—administrators cannot reset vault access.
-          </p>
+        <p class="muted">
+          Choose a strong vault passphrase (12+). It unlocks encrypted finance data on this browser.
+          If you lose the passphrase, your data cannot be recovered—administrators cannot reset vault access.
+        </p>
         <label>
           Vault passphrase
           <input type="password" [(ngModel)]="passphrase" autocomplete="new-password" minlength="12" />
@@ -31,29 +30,9 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
         @if (error) {
           <p class="error" role="alert">{{ error }}</p>
         }
-        @if (recoveryKey) {
-          <div class="recovery">
-            <strong>Save this recovery key now</strong>
-             <code>{{ recoveryKey }}</code>
-             <p class="muted">It will not be shown again. Store it offline.</p>
-            <div class="form-actions">
-              <ui-button variant="secondary" (clicked)="copyRecoveryKey()">Copy recovery key</ui-button>
-              <ui-button variant="secondary" (clicked)="downloadRecoveryKey()">Download recovery key</ui-button>
-            </div>
-            @if (recoveryAction) {
-              <p class="muted" role="status">{{ recoveryAction }}</p>
-            }
-            <label class="acknowledgement">
-              <input type="checkbox" [(ngModel)]="recoveryAcknowledged" />
-              <span>I saved this key somewhere I can access without this app.</span>
-            </label>
-            <ui-button [disabled]="!recoveryAcknowledged" (clicked)="continueAfterRecovery()">Continue</ui-button>
-          </div>
-        } @else {
-          <div class="form-actions">
-            <ui-button [disabled]="busy" (clicked)="setup()">Create vault</ui-button>
-          </div>
-        }
+        <div class="form-actions">
+          <ui-button [disabled]="busy" (clicked)="setup()">Create vault</ui-button>
+        </div>
       </ui-card>
     </div>
   `,
@@ -70,17 +49,9 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
       .error {
         color: var(--danger);
       }
-      .recovery {
-        display: grid;
-        gap: 0.75rem;
-        margin-top: 1rem;
-        padding: 1rem;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-      }
-      code {
-        word-break: break-all;
-        font-size: 1rem;
+      .muted {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
       }
     `,
   ],
@@ -90,9 +61,6 @@ export class VaultSetupComponent implements OnInit {
   confirm = '';
   error = '';
   busy = false;
-  recoveryKey = '';
-  recoveryAcknowledged = false;
-  recoveryAction = '';
 
   constructor(
     private vault: VaultService,
@@ -118,37 +86,12 @@ export class VaultSetupComponent implements OnInit {
     }
     this.busy = true;
     try {
-      const { recoveryKey } = await this.vault.setup(this.passphrase);
-      this.recoveryKey = recoveryKey;
+      await this.vault.setup(this.passphrase);
+      await this.router.navigateByUrl('/');
     } catch (e: any) {
       this.error = e?.error?.detail || e?.message || 'Vault setup failed';
     } finally {
       this.busy = false;
     }
-  }
-
-  async continueAfterRecovery(): Promise<void> {
-    await this.vault.refreshStatus();
-    await this.router.navigateByUrl('/');
-  }
-
-  async copyRecoveryKey(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.recoveryKey);
-      this.recoveryAction = 'Recovery key copied. Paste it into an offline password manager or document.';
-    } catch {
-      this.recoveryAction = 'Copy is unavailable in this browser. Select the key and store it offline.';
-    }
-  }
-
-  downloadRecoveryKey(): void {
-    const blob = new Blob([`Finance recovery key\n\n${this.recoveryKey}\n`], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'finance-recovery-key.txt';
-    link.click();
-    URL.revokeObjectURL(url);
-    this.recoveryAction = 'Recovery key download created. Store the file offline.';
   }
 }

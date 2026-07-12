@@ -9,7 +9,6 @@ import {
   recordAad,
   rewrapDekWithPassphrase,
   unlockWithPassphrase,
-  unlockWithRecoveryKey,
 } from './vault-crypto';
 
 describe('vault-crypto', () => {
@@ -61,10 +60,10 @@ describe('vault-crypto', () => {
     ).toBeRejected();
   });
 
-  it('creates a vault and unlocks with passphrase', async () => {
+  it('creates a vault and unlocks with passphrase only', async () => {
     const passphrase = 'correct-horse-battery-staple';
     const material = await createVaultMaterial(passphrase, fastIterations);
-    expect(material.recoveryKey.length).toBeGreaterThan(20);
+    expect(material.setupPayload.recovery_wrapped_dek_b64).toBe('');
     expect(material.setupPayload.kdf_algorithm).toBe('PBKDF2');
     expect(material.setupPayload.kdf_iterations).toBe(fastIterations);
     expect(material.setupPayload.wrapped_dek_b64).toBeTruthy();
@@ -93,18 +92,11 @@ describe('vault-crypto', () => {
     ).toBeRejected();
   });
 
-  it('unlocks with recovery key and rewraps passphrase', async () => {
+  it('rewraps DEK under a new passphrase', async () => {
     const material = await createVaultMaterial('original-passphrase-12', fastIterations);
-    const recovered = await unlockWithRecoveryKey(
-      material.recoveryKey,
-      material.setupPayload.recovery_wrapped_dek_b64,
-      fastIterations
-    );
     const payload = { value: 99 };
     const ct = await encryptJson(material.dek, payload);
-    expect(await decryptJson(recovered, ct)).toEqual(payload);
-
-    const rewrap = await rewrapDekWithPassphrase(recovered, 'new-passphrase-12', fastIterations);
+    const rewrap = await rewrapDekWithPassphrase(material.dek, 'new-passphrase-12', fastIterations);
     const unlocked = await unlockWithPassphrase(
       'new-passphrase-12',
       rewrap.kdf_salt_b64,
@@ -112,10 +104,6 @@ describe('vault-crypto', () => {
       rewrap.wrapped_dek_b64
     );
     expect(await decryptJson(unlocked, ct)).toEqual(payload);
-  });
-
-  it('rejects invalid recovery material', async () => {
-    await expectAsync(unlockWithRecoveryKey('key', 'not-packed', fastIterations)).toBeRejected();
   });
 
   it('produces stable blind indexes for the same DEK and value', async () => {
