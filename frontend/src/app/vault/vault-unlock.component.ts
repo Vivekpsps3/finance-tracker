@@ -13,13 +13,14 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
     <div class="page vault-page">
       <ui-page-header
         title="Unlock vault"
-        subtitle="Decrypt your finance data in this browser session. Nothing sensitive is sent to the server." />
-      <ui-card [title]="mode === 'passphrase' ? 'Passphrase' : 'Recovery key'">
+        subtitle="Decrypt your finance data in this browser session. Nothing sensitive is sent to the server. Admins cannot reset vault access." />
+      <ui-card [title]="mode === 'passphrase' ? 'Vault passphrase' : 'Recovery key'">
         @if (mode === 'passphrase') {
           <label>
             Vault passphrase
             <input type="password" [(ngModel)]="passphrase" autocomplete="current-password" />
           </label>
+          <p class="muted">Forgot your passphrase? Use your recovery key to set a new one. Nobody else can reset access.</p>
         } @else {
           <label>
             Recovery key
@@ -29,6 +30,7 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
             New vault passphrase
             <input type="password" [(ngModel)]="passphrase" autocomplete="new-password" />
           </label>
+          <p class="muted">Recovery replaces the forgotten passphrase only. Store the new passphrase and keep the recovery key offline.</p>
         }
         @if (error) {
           <p class="error" role="alert">{{ error }}</p>
@@ -36,7 +38,7 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
         <div class="form-actions">
           <ui-button [disabled]="busy" (clicked)="unlock()">Unlock</ui-button>
           <ui-button variant="ghost" (clicked)="toggleMode()">
-            {{ mode === 'passphrase' ? 'Use recovery key' : 'Use passphrase' }}
+            {{ mode === 'passphrase' ? 'Use recovery key' : 'Use vault passphrase' }}
           </ui-button>
         </div>
       </ui-card>
@@ -54,6 +56,10 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
       }
       .error {
         color: var(--danger);
+      }
+      .muted {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
       }
     `,
   ],

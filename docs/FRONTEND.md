@@ -61,6 +61,7 @@ Import from `shared/ui` or `shared/ui/index.ts`.
 | `ui-button` | `variant`: primary \| secondary \| ghost \| danger; `(clicked)` output |
 | `ui-card` | `title`, optional `[uiCardActions]` |
 | `ui-badge` | `variant`: default \| success \| warning \| danger |
+| `ui-source-badge` | Financial plane: `observed` \| `scheduled` \| `combined` \| `scenario` |
 | `ui-input` | `[(value)]` model, `label`, `type` |
 | `ui-select` | `[(value)]`, `options: UiSelectOption[]` |
 | `ui-skeleton` | `variant`: lines \| block \| circle |

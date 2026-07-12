@@ -112,9 +112,13 @@ export class LoginComponent {
   }
 
   get passwordHint(): string {
-    if (this.needsDisplayName) return 'Use at least 12 characters. This passphrase signs you in and unlocks your vault on any browser.';
-    if (this.legacyMode) return 'Use your old password only to migrate this account once.';
-    return 'Username and vault passphrase work on any browser. Recovery key is only needed if you forget the passphrase.';
+    if (this.needsDisplayName) {
+      return 'Use at least 12 characters. Username + vault passphrase sign you in and unlock finance data on any browser. Admins cannot reset your vault.';
+    }
+    if (this.legacyMode) {
+      return 'One-time only: sign in with the old password, then enroll vault authentication with a new recovery key. Day-to-day sign-in is username + vault passphrase.';
+    }
+    return 'Sign in with username and vault passphrase. If you forget the passphrase, use your recovery key on Unlock vault—nobody else can reset access.';
   }
 
   private errorMessage(err: any): string {

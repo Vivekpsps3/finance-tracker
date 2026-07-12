@@ -16,9 +16,10 @@ import { UiButtonComponent, UiCardComponent, UiPageHeaderComponent } from '../sh
         subtitle="Your finance data is encrypted in the browser. The server only stores ciphertext." />
       <ui-card title="Vault passphrase">
           <p class="muted">
-           Choose a strong vault passphrase. It unlocks this browser's encrypted vault. If you lose both the
-           passphrase and recovery key, your finance data cannot be recovered by you or an administrator.
-         </p>
+            Choose a strong vault passphrase. Together with your username it signs you in and unlocks encrypted
+            finance data on any browser. If you lose both the passphrase and recovery key, your data cannot be
+            recovered—administrators cannot reset vault access.
+          </p>
         <label>
           Vault passphrase
           <input type="password" [(ngModel)]="passphrase" autocomplete="new-password" minlength="12" />

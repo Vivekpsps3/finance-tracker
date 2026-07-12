@@ -1,0 +1,47 @@
+<h2>Stock Lab architecture and data flow</h2>
+<p class="subtitle">This feature intentionally crosses the market-data privacy boundary for ticker symbols, but keeps scenario inputs encrypted and keeps real finance data untouched.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Data Flow</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:1fr .45fr 1fr .45fr 1fr;gap:10px;align-items:center;">
+      <div class="placeholder" style="height:118px;">Browser Stock Lab UI<br><br>Primary symbol<br>Compare symbols<br>Shares / dollars / target price<br>Saved scenario controls</div>
+      <div style="text-align:center;font-size:24px;">→</div>
+      <div class="placeholder" style="height:118px;">Backend public market router<br><br>/api/market/research/{symbol}<br>/api/market/research/batch<br>rate limited<br>validated symbols</div>
+      <div style="text-align:center;font-size:24px;">→</div>
+      <div class="placeholder" style="height:118px;">yfinance + market cache<br><br>history<br>dividends<br>splits<br>metadata<br>fundamentals when available</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr .45fr 1fr;gap:10px;align-items:center;margin-top:16px;">
+      <div class="placeholder" style="height:96px;">Browser encrypted vault<br><br>stock_lab_scenarios collection<br>watchlist inputs<br>custom assumptions<br>owned-symbol inclusion preference</div>
+      <div style="text-align:center;font-size:24px;">↔</div>
+      <div class="placeholder" style="height:96px;">/api/vault/* ciphertext only<br><br>backend cannot read saved scenario contents</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px;">
+      <div class="placeholder" style="height:74px;">Current holdings read in browser</div>
+      <div class="placeholder" style="height:74px;">Optional owned-symbol lookup</div>
+      <div class="placeholder" style="height:74px;">Computed report in browser</div>
+      <div class="placeholder" style="height:74px;">No portfolio writes</div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>Saved privately</h4>
+    <ul>
+      <li>Scenario names and assumptions</li>
+      <li>Watchlist/comparison sets</li>
+      <li>Target share counts, purchase budgets, custom return assumptions</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>Public/cacheable market data</h4>
+    <ul>
+      <li>Ticker symbols queried for research</li>
+      <li>Historical prices, dividends, splits, provider metadata</li>
+      <li>Provider fields may be missing and must degrade cleanly</li>
+    </ul>
+  </div>
+</div>

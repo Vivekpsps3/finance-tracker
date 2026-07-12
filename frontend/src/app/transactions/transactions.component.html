@@ -36,15 +36,15 @@
       </label>
       <div class="month-totals">
         <div class="month-total month-total--expense">
-          <span class="month-total__label">{{ hasMore ? 'Loaded expenses' : 'Expenses' }}</span>
+          <span class="month-total__label"><ui-source-badge kind="observed" /> {{ hasMore ? 'Loaded expenses' : 'Expenses' }}</span>
           <strong class="money">${{ monthExpenseTotal | number: '1.2-2' }}</strong>
         </div>
         <div class="month-total month-total--income">
-          <span class="month-total__label">{{ hasMore ? 'Loaded income' : 'Income' }}</span>
+          <span class="month-total__label"><ui-source-badge kind="observed" /> {{ hasMore ? 'Loaded income' : 'Income' }}</span>
           <strong class="money">${{ monthIncomeTotal | number: '1.2-2' }}</strong>
         </div>
         <div class="month-total month-total--net">
-          <span class="month-total__label">{{ hasMore ? 'Loaded net' : 'Net cashflow' }}</span>
+          <span class="month-total__label"><ui-source-badge kind="observed" /> {{ hasMore ? 'Loaded net' : 'Net cashflow' }}</span>
           <strong class="money">${{ monthIncomeTotal - monthExpenseTotal | number: '1.2-2' }}</strong>
         </div>
       </div>

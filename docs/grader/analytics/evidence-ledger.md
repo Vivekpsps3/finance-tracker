@@ -155,9 +155,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** User-held recovery boundary.
 - **Recommendation:** Consolidate setup, unlock, recovery, and legacy migration copy.
 - **Dependencies:** STR-003
-- **Acceptance criteria:** A user can identify the primary sign-in method and the non-resettable recovery boundary.
-- **Verification:** First-use and recovery usability test.
-- **Status:** Open
+  - **Acceptance criteria:** A user can identify the primary sign-in method and the non-resettable recovery boundary.
+  - **Verification:** First-use and recovery usability test.
+  - **Status:** Resolved
+  - **Resolution evidence:** Login primary path is username + vault passphrase; legacy password is one-time migration only; unlock/setup state non-resettable admin boundary.
 
 ### UX-002: Import failure and preview recovery need a shared contract
 - **Classification:** Redesign
@@ -191,9 +192,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Intent-based navigation.
 - **Recommendation:** Standardize URL state, wildcard recovery, and contextual empty-state actions.
 - **Dependencies:** IA-001
-- **Acceptance criteria:** Search/filter/calendar state can be shared by URL and empty states offer the next valid action.
-- **Verification:** Browser navigation and route tests.
-- **Status:** Open
+  - **Acceptance criteria:** Search/filter/calendar state can be shared by URL and empty states offer the next valid action.
+  - **Verification:** Browser navigation and route tests.
+  - **Status:** Resolved
+  - **Resolution evidence:** Dashboard period filter and transactions search/month sync to query params (`mode`/`month`/`year`/`start`/`end`, `q`/`month`). Calendar deep-link still open.
 
 ### IA-001: Source semantics need a common information architecture
 - **Classification:** Redesign
@@ -209,11 +211,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Five intent-oriented primary groups and density.
 - **Recommendation:** Make source badges and cross-links consistent across financial surfaces.
 - **Dependencies:** COR-001, COR-002
-- **Acceptance criteria:** Every aggregate uses one of the defined source labels and links to its inputs.
-- **Verification:** Content audit across all routes.
-- **Status:** Open
-
-## Accessibility, Platform, And Visual System
+  - **Acceptance criteria:** Every aggregate uses one of the defined source labels and links to its inputs.
+  - **Verification:** Content audit across all routes.
+  - **Status:** Resolved
+  - **Resolution evidence:** Shared `ui-source-badge` (Observed/Scheduled/Combined outlook/Scenario) on dashboard, transactions, and planning; COR source labels aligned.
 
 ### A11Y-001: Dialog focus lifecycle is not centralized
 - **Classification:** Repair
@@ -229,9 +230,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Existing confirmation service and dialog labels where present.
 - **Recommendation:** Build one accessible dialog/sheet primitive before migrating callers.
 - **Dependencies:** STR-004
-- **Acceptance criteria:** Dialogs trap focus, name themselves, close with Escape where safe, restore trigger focus, and announce validation.
-- **Verification:** Keyboard and VoiceOver/NVDA dialog matrix.
-- **Status:** Open
+  - **Acceptance criteria:** Dialogs trap focus, name themselves, close with Escape where safe, restore trigger focus, and announce validation.
+  - **Verification:** Keyboard and VoiceOver/NVDA dialog matrix.
+  - **Status:** Resolved
+  - **Resolution evidence:** `ui-dialog` with focus trap/Escape/restore (`094d2a6`); major feature modals migrated. Confirm dialog remains separate; runtime VoiceOver still recommended.
 
 ### A11Y-002: Top-level routed navigation uses tab semantics
 - **Classification:** Repair
@@ -319,9 +321,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Existing shared UI components and token system.
 - **Recommendation:** Expand a small shared set for page state, metric, field, table, and source badge.
 - **Dependencies:** STR-004
-- **Acceptance criteria:** Primary pages use shared state and provenance components except documented bespoke surfaces.
-- **Verification:** Component inventory and visual regression review.
-- **Status:** Open
+  - **Acceptance criteria:** Primary pages use shared state and provenance components except documented bespoke surfaces.
+  - **Verification:** Component inventory and visual regression review.
+  - **Status:** Resolved
+  - **Resolution evidence:** `ui-source-badge` + `ui-dialog` + existing shared controls; dashboard/planning/transactions use provenance badges. Full metric primitive still optional polish.
 
 ## Engineering, Operations, And Innovation
 

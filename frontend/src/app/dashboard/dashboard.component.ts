@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, combineLatest, finalize, takeUntil, tap } from 'rxjs';
 import { FinanceService } from '../services/finance.service';
 import {
@@ -31,6 +31,7 @@ import {
   UiSelectOption,
   UiSkeletonComponent,
   UiIconComponent,
+  UiSourceBadgeComponent,
 } from '../shared/ui';
 import { filterByDate, getDateRange, getDefaultDateFilter } from '../utils/date.util';
 
@@ -50,6 +51,7 @@ import { filterByDate, getDateRange, getDefaultDateFilter } from '../utils/date.
     UiEmptyStateComponent,
     UiSelectComponent,
     UiIconComponent,
+    UiSourceBadgeComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
@@ -105,10 +107,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   constructor(
     private financeService: FinanceService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   ngOnInit() {
+    this.readFilterFromQuery(this.route.snapshot.queryParamMap);
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      this.readFilterFromQuery(params);
+      this.applyDateFilter();
+      this.loadCashflowForFilter();
+      this.cdr.markForCheck();
+    });
+
     combineLatest([
       this.financeService.netWorth$,
       this.financeService.dashboardTransactions$,
@@ -150,6 +162,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
       });
+  }
+
+  private readFilterFromQuery(params: { get(name: string): string | null }): void {
+    const mode = params.get('mode');
+    if (mode === 'month' || mode === 'year' || mode === 'custom' || mode === 'all') {
+      this.filter.mode = mode;
+    }
+    const month = params.get('month');
+    if (month) this.filter.month = month;
+    const year = params.get('year');
+    if (year && !Number.isNaN(Number(year))) this.filter.year = Number(year);
+    const start = params.get('start');
+    if (start) this.filter.start = start;
+    const end = params.get('end');
+    if (end) this.filter.end = end;
+  }
+
+  private writeFilterToQuery(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        mode: this.filter.mode === 'month' ? null : this.filter.mode,
+        month: this.filter.mode === 'month' ? this.filter.month || null : null,
+        year: this.filter.mode === 'year' ? this.filter.year || null : null,
+        start: this.filter.mode === 'custom' ? this.filter.start || null : null,
+        end: this.filter.mode === 'custom' ? this.filter.end || null : null,
+      },
+      queryParamsHandling: '',
+      replaceUrl: true,
+    });
   }
 
   ngOnDestroy() {
@@ -321,6 +363,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.filter.mode === 'year' && !this.filter.year) {
       this.filter.year = new Date().getFullYear();
     }
+    this.writeFilterToQuery();
     this.applyDateFilter();
     this.loadCashflowForFilter();
     this.cdr.markForCheck();
@@ -328,6 +371,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   resetFilter() {
     this.filter = getDefaultDateFilter();
+    this.writeFilterToQuery();
     this.applyDateFilter();
     this.loadCashflowForFilter();
     this.cdr.markForCheck();

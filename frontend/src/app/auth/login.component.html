@@ -18,21 +18,21 @@
         @if (needsDisplayName) {
           <ui-input label="Display name" autocomplete="name" [required]="true" [(value)]="displayName" />
         }
-        <ui-input [label]="legacyMode ? 'Legacy password' : 'Vault passphrase'" type="password" [showPasswordToggle]="true" [autocomplete]="needsDisplayName ? 'new-password' : 'current-password'" [required]="true" [(value)]="password" />
+        <ui-input [label]="legacyMode ? 'Old account password (one-time migration)' : 'Vault passphrase'" type="password" [showPasswordToggle]="true" [autocomplete]="needsDisplayName ? 'new-password' : 'current-password'" [required]="true" [(value)]="password" />
         @if (legacyMode) {
-          <ui-input label="Recovery key" type="password" [showPasswordToggle]="true" autocomplete="off" [required]="true" [(value)]="recoveryKey" />
+          <ui-input label="New recovery key for this vault" type="password" [showPasswordToggle]="true" autocomplete="off" [required]="true" [(value)]="recoveryKey" />
         }
         @if (passwordHint) { <p class="password-hint">{{ passwordHint }}</p> }
         @if (error) {
           <p class="login-error" role="alert">{{ error }}</p>
         }
         <ui-button type="submit" [disabled]="!canSubmit">
-          {{ loading ? (needsDisplayName ? 'Creating account' : 'Signing in') : (setupMode ? 'Create admin account' : 'Sign in') }}
+          {{ loading ? (needsDisplayName ? 'Creating account' : 'Signing in') : (setupMode ? 'Create admin account' : (legacyMode ? 'Migrate and sign in' : 'Sign in')) }}
         </ui-button>
       </form>
       @if (!setupMode) {
         <button type="button" class="mode-link" (click)="toggleLegacyMode()">
-          {{ legacyMode ? 'Use vault authentication' : 'Use legacy password to migrate this browser' }}
+          {{ legacyMode ? 'Back to username + vault passphrase' : 'One-time account migration (old password)' }}
         </button>
       }
     </ui-card>

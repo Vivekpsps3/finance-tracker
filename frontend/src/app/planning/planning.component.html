@@ -215,17 +215,17 @@
 
     <section class="mc-summary-band" aria-label="Planning inputs">
       <div class="mc-metric">
-        <span>Current net worth</span>
+        <span>Current net worth <ui-source-badge kind="observed" /></span>
         <strong>{{ formatMoney(inputs?.net_worth_total) }}</strong>
-        <small>Observed balance sheet · {{ inputs?.net_worth_source || 'balance-sheet' }}</small>
+        <small>Balance sheet · {{ inputs?.net_worth_source || 'balance-sheet' }}</small>
       </div>
       <div class="mc-metric">
-        <span>Portfolio exposure</span>
+        <span>Portfolio exposure <ui-source-badge kind="observed" /></span>
         <strong>{{ formatPct(inferredAllocation()) }}</strong>
         <small>{{ formatMoney(inputs?.net_worth_portfolio) }} portfolio value</small>
       </div>
       <div class="mc-metric">
-        <span>Scheduled annual cash flow</span>
+        <span>Scheduled annual cash flow <ui-source-badge kind="scheduled" /></span>
         <strong>{{ formatSignedMoney(effectiveNetCashflow()) }}</strong>
         <small>
           {{ formatMoney(effectiveAnnualIncome()) }} {{ inputs?.annual_income_source || 'job-income' }} /
@@ -233,7 +233,7 @@
         </small>
       </div>
       <div class="mc-metric">
-        <span>Run scale</span>
+        <span>Run scale <ui-source-badge kind="scenario" /></span>
         <strong>{{ nPaths | number }} paths</strong>
         <small>{{ horizonYears }} years · seed {{ seed }}</small>
       </div>

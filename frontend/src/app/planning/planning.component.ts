@@ -35,6 +35,7 @@ import {
   UiIconComponent,
   UiPageHeaderComponent,
   UiSkeletonComponent,
+  UiSourceBadgeComponent,
 } from '../shared/ui';
 
 @Component({
@@ -48,6 +49,7 @@ import {
     UiButtonComponent,
     UiSkeletonComponent,
     UiIconComponent,
+    UiSourceBadgeComponent,
     UiDataTableComponent,
     MonteCarloFanChartComponent,
   ],

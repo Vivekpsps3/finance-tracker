@@ -35,6 +35,7 @@
           <h2 id="nw-heading" class="sr-only">Current net worth</h2>
         </div>
         <div class="net-worth-actions">
+          <ui-source-badge kind="observed" title="Manual assets + portfolio market value − liabilities. Not a transaction rollup." />
           <ui-badge [variant]="freshnessBadgeVariant()">{{ portfolioFreshness() }}</ui-badge>
         </div>
       </div>
@@ -88,34 +89,44 @@
     @if (filteredTransactions.length || periodJobNetIncomeTotal || periodFixedExpenseTotal || (netWorth && netWorth.total_assets > 0)) {
       <div class="insight-tiles">
         <div class="insight-tile">
-          <span class="insight-tile__label" title="Observed imported income plus scheduled job-income assumptions. This is an outlook, not actual-only income.">Combined outlook income</span>
+          <span class="insight-tile__label" title="Observed imported income plus scheduled job-income assumptions. This is an outlook, not actual-only income.">
+            <ui-source-badge kind="combined" /> Income
+          </span>
           <span class="insight-tile__value money">${{ periodIncomeTotal | number:'1.2-2' }}</span>
           @if (periodJobNetIncomeTotal) {
-            <small>${{ periodJobNetIncomeTotal | number:'1.2-2' }} planned job net</small>
+            <small>${{ periodJobNetIncomeTotal | number:'1.2-2' }} scheduled job net</small>
           }
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label" title="Observed imported expenses plus scheduled bills and subscriptions. This is an outlook, not actual-only spending.">Combined outlook expenses</span>
+          <span class="insight-tile__label" title="Observed imported expenses plus scheduled bills and subscriptions. This is an outlook, not actual-only spending.">
+            <ui-source-badge kind="combined" /> Expenses
+          </span>
           <span class="insight-tile__value money negative">${{ periodExpenseTotal | number:'1.2-2' }}</span>
           @if (periodFixedExpenseTotal) {
             <small>${{ periodFixedExpenseTotal | number:'1.2-2' }} fixed + subscriptions</small>
           }
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label" title="Observed activity plus scheduled assumptions. Review the observed and scheduled amounts below before using this as a forecast.">Combined outlook cashflow</span>
+          <span class="insight-tile__label" title="Observed activity plus scheduled assumptions. Review the observed and scheduled amounts below before using this as a forecast.">
+            <ui-source-badge kind="combined" /> Cashflow
+          </span>
           <span class="insight-tile__value money" [class.negative]="periodNetCashflow < 0">
             {{ periodNetCashflow >= 0 ? '+' : '−' }}${{ abs(periodNetCashflow) | number:'1.2-2' }}
           </span>
           <small>Observed ${{ periodObservedNetCashflow | number:'1.2-2' }} · scheduled ${{ periodScheduledNetCashflow | number:'1.2-2' }}</small>
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label" title="Combined outlook net cashflow divided by combined outlook income for the selected period.">Combined outlook savings rate</span>
+          <span class="insight-tile__label" title="Combined outlook net cashflow divided by combined outlook income for the selected period.">
+            <ui-source-badge kind="combined" /> Savings rate
+          </span>
           <span class="insight-tile__value">
             {{ formatPercent(periodSavingsRate) }}
           </span>
         </div>
         <div class="insight-tile">
-          <span class="insight-tile__label" title="Combined outlook expenses divided by days in the selected period.">Combined outlook daily spend</span>
+          <span class="insight-tile__label" title="Combined outlook expenses divided by days in the selected period.">
+            <ui-source-badge kind="combined" /> Daily spend
+          </span>
           <span class="insight-tile__value money">${{ averageDailySpend | number:'1.2-2' }}</span>
         </div>
         <div class="insight-tile">
@@ -211,19 +222,19 @@
     @if (cashflowSummary) {
       <div class="cashflow-strip" aria-label="Cashflow source breakdown">
         <div>
-          <span>Observed income</span>
+          <span><ui-source-badge kind="observed" /> Income</span>
           <strong class="money">${{ cashflowSummary.observed_income | number:'1.2-2' }}</strong>
         </div>
         <div>
-          <span>Scheduled job net</span>
+          <span><ui-source-badge kind="scheduled" /> Job net</span>
           <strong class="money">${{ cashflowSummary.scheduled_income | number:'1.2-2' }}</strong>
         </div>
         <div>
-          <span>Observed expenses</span>
+          <span><ui-source-badge kind="observed" /> Expenses</span>
           <strong class="money negative">${{ cashflowSummary.observed_expenses | number:'1.2-2' }}</strong>
         </div>
         <div>
-          <span>Scheduled bills + subs</span>
+          <span><ui-source-badge kind="scheduled" /> Bills + subs</span>
           <strong class="money negative">${{ cashflowSummary.scheduled_expenses | number:'1.2-2' }}</strong>
         </div>
       </div>

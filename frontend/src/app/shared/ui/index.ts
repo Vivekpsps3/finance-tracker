@@ -1,6 +1,7 @@
 export { UiButtonComponent, type UiButtonVariant, type UiButtonSize } from './ui-button/ui-button.component';
 export { UiCardComponent } from './ui-card/ui-card.component';
 export { UiBadgeComponent, type UiBadgeVariant } from './ui-badge/ui-badge.component';
+export { UiSourceBadgeComponent, type UiSourceKind } from './ui-source-badge/ui-source-badge.component';
 export { UiInputComponent } from './ui-input/ui-input.component';
 export { UiSelectComponent, type UiSelectOption } from './ui-select/ui-select.component';
 export { UiSkeletonComponent, type UiSkeletonVariant } from './ui-skeleton/ui-skeleton.component';

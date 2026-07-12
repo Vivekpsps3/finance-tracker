@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { FinanceService } from '../services/finance.service';
 import {
@@ -32,6 +33,7 @@ import {
   UiSelectOption,
   UiDataTableComponent,
   UiDialogComponent,
+  UiSourceBadgeComponent,
 } from '../shared/ui';
 
 @Component({
@@ -49,6 +51,7 @@ import {
     UiSelectComponent,
     UiDataTableComponent,
     UiDialogComponent,
+    UiSourceBadgeComponent,
   ],
   templateUrl: './transactions.component.html',
   styleUrl: './transactions.component.css',
@@ -102,7 +105,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     private financeService: FinanceService,
     private toastService: ToastService,
     private confirmService: ConfirmService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   private currentMonthKey(): string {
@@ -125,6 +130,12 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    const q = this.route.snapshot.queryParamMap;
+    const search = q.get('q');
+    if (search) this.searchTerm = search;
+    const month = q.get('month');
+    if (month && /^\d{4}-\d{2}$/.test(month)) this.summaryMonth = month;
+
     this.financeService.isLoading$.pipe(takeUntil(this.destroy$)).subscribe(l => {
       this.loading = l;
       this.cdr.markForCheck();
@@ -137,6 +148,18 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     });
 
     this.reloadTransactionList();
+  }
+
+  private syncQueryParams(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        q: this.searchTerm.trim() || null,
+        month: this.summaryMonth || null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   private reloadTransactionList(): void {
@@ -231,11 +254,6 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   get canBulkRenameCategories(): boolean {
     return this.validBulkRenameRows.length > 0 && !this.categoryMergeSaving;
-  }
-
-  onSummaryMonthChange() {
-    this.computeMonthTotals();
-    this.cdr.markForCheck();
   }
 
   private computeMonthTotals() {
@@ -443,7 +461,14 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange() {
+    this.syncQueryParams();
     this.reloadTransactionList();
+  }
+
+  onSummaryMonthChange() {
+    this.syncQueryParams();
+    this.computeMonthTotals();
+    this.cdr.markForCheck();
   }
 
   async mergeCategory(): Promise<void> {
