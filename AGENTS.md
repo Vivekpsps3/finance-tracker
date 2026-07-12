@@ -50,6 +50,7 @@ Do not blur these data planes:
 ## Where To Look
 
 - `docs/ARCHITECTURE.md`: one-page architecture.
+- `docs/LIFECYCLE.md`: active/retired/reserved API and schema ownership.
 - `docs/DATA_MODEL.md`: financial formulas and table semantics.
 - `docs/FRONTEND.md`: Angular routes, shared UI, design conventions.
 - `docs/DESIGN_GUIDE.md`: page-level metrics, chart rules, visual standards.

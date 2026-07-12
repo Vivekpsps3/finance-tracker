@@ -12,6 +12,7 @@
 | [MIGRATION_TO_SERVER_BLIND_ENCRYPTION.md](./MIGRATION_TO_SERVER_BLIND_ENCRYPTION.md) | Stepwise encryption migration plan |
 | [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md) | New bank CSV importer |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | One-page system architecture |
+| [LIFECYCLE.md](./LIFECYCLE.md) | Active/retired/reserved surface ownership |
 | [../AGENTS.md](../AGENTS.md) | Fast handoff for future AI agents |
 
 Project overview: [../README.md](../README.md).

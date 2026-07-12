@@ -46,30 +46,6 @@
   color: var(--text-secondary);
 }
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: color-mix(in srgb, var(--bg) 62%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  z-index: 20;
-}
-
-.modal {
-  position: fixed;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
-  z-index: 21;
-  width: min(720px, calc(100vw - 2rem));
-  max-height: calc(100vh - 2rem);
-  overflow: auto;
-  padding: var(--space-6);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  background: var(--card-bg);
-  box-shadow: var(--shadow-card);
-}
-
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -121,15 +97,6 @@ textarea {
 
   .form-grid {
     grid-template-columns: 1fr;
-  }
-
-  .modal {
-    inset: auto var(--space-2) var(--space-2) var(--space-2);
-    width: auto;
-    max-height: calc(100vh - var(--space-4));
-    transform: none;
-    padding: var(--space-5);
-    border-radius: var(--radius-xl) var(--radius-xl) var(--radius-lg) var(--radius-lg);
   }
 
   .modal-actions {

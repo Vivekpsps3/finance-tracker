@@ -66,7 +66,8 @@ Import from `shared/ui` or `shared/ui/index.ts`.
 | `ui-skeleton` | `variant`: lines \| block \| circle |
 | `ui-empty-state` | `title`, `message` |
 | `ui-page-header` | `title`, `subtitle`, `[uiPageActions]` |
-| `ui-data-table` | Scroll wrapper; project table markup inside |
+| `ui-data-table` | Scroll wrapper; project table markup inside; sortable columns expose semantic order |
+| `ui-dialog` | Accessible modal shell: focus trap, Escape, backdrop close, scroll lock, restore focus; use for feature modals |
 | `ui-icon` | Named icons used in nav and empty states |
 
 Use **OnPush** on new components; feature pages must call `markForCheck()` after every manual subscription or promise mutation, including loading finalization and asynchronous error paths.

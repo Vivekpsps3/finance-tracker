@@ -318,35 +318,6 @@
   color: var(--text);
 }
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: var(--space-8) var(--space-4);
-  z-index: 1500;
-  overflow-y: auto;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
-}
-
-.modal-panel {
-  background: var(--card-bg);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
-  width: 100%;
-  max-width: 560px;
-  box-shadow: var(--shadow-lg);
-  animation: modal-in var(--motion-base) var(--ease-emphasized);
-}
-
-.modal-panel h3 {
-  margin-top: 0;
-}
-
 .toast-host {
   position: fixed;
   bottom: var(--space-5);
@@ -478,18 +449,6 @@
   .form-actions .ui-btn,
   .table-actions--toolbar .ui-btn {
     width: 100%;
-  }
-
-  .modal-backdrop {
-    align-items: flex-end;
-    padding: var(--space-2);
-  }
-
-  .modal-panel {
-    max-height: calc(100vh - var(--space-4));
-    overflow: auto;
-    border-radius: var(--radius-xl) var(--radius-xl) var(--radius-lg) var(--radius-lg);
-    padding: var(--space-5);
   }
 
   .toast-host {

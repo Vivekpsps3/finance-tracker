@@ -7,6 +7,7 @@ Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** per
 - Active browser finance storage is `/api/vault/*`: the backend stores ciphertext, sync revisions, and blind indexes only.
 - Active non-finance plaintext surfaces are auth/admin account management, health, and public market quote/research cache.
 - Retired plaintext finance routers still exist behind `ALLOW_LEGACY_FINANCE=1` for backend regression tests and old DB service coverage. Normal deployments return `410` and these routes are hidden from OpenAPI.
+- Full surface ownership and retirement conditions: [LIFECYCLE.md](./LIFECYCLE.md).
 
 ## Data planes (do not mix)
 
@@ -71,7 +72,7 @@ There is **no** `routers/analytics.py`. Net-worth Monte Carlo still lives under 
 ## Imports
 
 - **Banks:** browser-side parsers in `frontend/src/app/utils/bank-import.util.ts` preview and commit CSV rows into encrypted transaction records. Backend parsers remain for regression tests only.
-- **Brokerage:** server-side Fidelity plaintext import is retired in normal encrypted mode and will need a client-side replacement before use.
+- **Brokerage:** client-side Fidelity CSV parse/preview/replace-commit into encrypted holdings; server plaintext Fidelity import remains retired (410) except tests.
 
 **SimpleFIN later:** the user wants SimpleFIN eventually. **Plaid is not the intended integration** even if placeholder env vars exist. CSV only today.
 

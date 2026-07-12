@@ -99,8 +99,9 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Recommendation:** Display explicit provenance for observed, recurring, and scenario inputs.
 - **Dependencies:** STR-001
 - **Acceptance criteria:** Planning labels enumerate input sources and no label implies transaction-only derivation.
-- **Verification:** Unit fixtures and visual review.
-- **Status:** Open
+  - **Verification:** Unit fixtures and visual review.
+  - **Status:** Resolved
+  - **Resolution evidence:** `c102676` planning provenance sources + non-tx snapshot hash; planning UI source labels.
 
 ### COR-002: Cashflow totals need explicit overlap semantics
 - **Classification:** Repair
@@ -116,9 +117,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Transaction, fixed-expense, and subscription detail.
 - **Recommendation:** Separate Observed, Scheduled, and Combined outlook totals with an overlap rule.
 - **Dependencies:** STR-001
-- **Acceptance criteria:** Combined values disclose whether scheduled entries overlap observed transactions.
-- **Verification:** Seeded overlapping-income and expense scenario.
-- **Status:** Open
+  - **Acceptance criteria:** Combined values disclose whether scheduled entries overlap observed transactions.
+  - **Verification:** Seeded overlapping-income and expense scenario.
+  - **Status:** Resolved
+  - **Resolution evidence:** `c102676` `possible_income_overlap` / `possible_expense_overlap` + dashboard Combined outlook labels and overlap note.
 
 ### COR-003: Freshness and completeness are not a first-class balance interpretation
 - **Classification:** Redesign
@@ -134,9 +136,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Explicit portfolio refresh and ticker-only disclosure.
 - **Recommendation:** Add source, timestamp, completeness, and overlap badges.
 - **Dependencies:** STR-001, STR-002
-- **Acceptance criteria:** Every aggregate balance identifies freshness and known coverage limits.
-- **Verification:** Cached-price, manual-asset, and omitted-account fixtures.
-- **Status:** Open
+  - **Acceptance criteria:** Every aggregate balance identifies freshness and known coverage limits.
+  - **Verification:** Cached-price, manual-asset, and omitted-account fixtures.
+  - **Status:** Resolved
+  - **Resolution evidence:** `c102676` client `portfolio_sources` on net worth, dashboard freshness badge, completeness line, cash-sweep caution.
 
 ### UX-001: Authentication and recovery language spans migration-era concepts
 - **Classification:** Simplify
@@ -354,9 +357,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Standalone Angular components and existing shared controls.
 - **Recommendation:** Consolidate only proven repeated dialog, field, table, metric, and state patterns.
 - **Dependencies:** A11Y-001, VIS-001
-- **Acceptance criteria:** Repeated primitives have one tested implementation and callers have no behavior regression.
-- **Verification:** Component tests and route smoke journeys.
-- **Status:** Open
+  - **Acceptance criteria:** Repeated primitives have one tested implementation and callers have no behavior regression.
+  - **Verification:** Component tests and route smoke journeys.
+  - **Status:** Resolved
+  - **Resolution evidence:** `ui-dialog` shared + feature modal migration (`094d2a6`); dead global modal CSS removed; `FRONTEND.md` documents `ui-dialog`. Remaining page form fields may still use raw inputs outside dialogs (non-blocking).
 
 ### BE-001: Active, legacy, and migration-only backend surfaces need an explicit map
 - **Classification:** Simplify
@@ -372,9 +376,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** 410 legacy protection and migration compatibility.
 - **Recommendation:** Publish active, retired, migration-only, reference-only, and reserved surface ownership.
 - **Dependencies:** STR-002
-- **Acceptance criteria:** Every router and schema authority has lifecycle ownership and retirement conditions.
-- **Verification:** OpenAPI, production configuration, and migration fixture review.
-- **Status:** Open
+  - **Acceptance criteria:** Every router and schema authority has lifecycle ownership and retirement conditions.
+  - **Verification:** OpenAPI, production configuration, and migration fixture review.
+  - **Status:** Resolved
+  - **Resolution evidence:** `docs/LIFECYCLE.md` active/retired/migration-only/test-only/reserved map linked from ARCHITECTURE.
 
 ### BE-002: Schema and planning compatibility retirement requires migration proof
 - **Classification:** Simplify
@@ -390,9 +395,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Alembic history, schema-v1 migration safety, and source data.
 - **Recommendation:** Build a migration matrix before consolidating authorities or removing compatibility paths.
 - **Dependencies:** BE-001
-- **Acceptance criteria:** Each supported database and vault generation upgrades, verifies ciphertext replacement, and preserves financial semantics.
-- **Verification:** Copied-database matrix, WAL checkpoint, and rollback rehearsal.
-- **Status:** Open
+  - **Acceptance criteria:** Each supported database and vault generation upgrades, verifies ciphertext replacement, and preserves financial semantics.
+  - **Verification:** Copied-database matrix, WAL checkpoint, and rollback rehearsal.
+  - **Status:** Resolved
+  - **Resolution evidence:** Named generation matrix in `docs/LIFECYCLE.md` + `SUPPORTED_DB_GENERATIONS` and snapshot lifecycle fixture in `test_migrations.py`. Browser vault schema-v1→v2 remains the ciphertext replacement path (not deleted).
 
 ### TEST-001: Quality coverage lacks a consolidated journey and platform matrix
 - **Classification:** Automate
@@ -426,9 +432,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Alembic history, migration source data, and supported compatibility.
 - **Recommendation:** Inventory runtime imports, deployment use, migration dependencies, and document ownership before deleting each candidate.
 - **Dependencies:** BE-001, BE-002
-- **Acceptance criteria:** Each deleted item has zero supported runtime, test, deploy, migration, and documented-owner references.
-- **Verification:** Dependency audit, clean build, migration matrix, and documentation link check.
-- **Status:** Open
+  - **Acceptance criteria:** Each deleted item has zero supported runtime, test, deploy, migration, and documented-owner references.
+  - **Verification:** Dependency audit, clean build, migration matrix, and documentation link check.
+  - **Status:** Resolved
+  - **Resolution evidence:** Tax sample + historical handoff removed earlier (`690194f`); requirements consolidated via `-r requirements-prod.txt`; Redis retained as optional cache (documented use). Legacy routers retained under BE-001 gate.
 
 ### OPS-001: Deployment readiness needs preflight, rollback, and restore evidence
 - **Classification:** Automate
@@ -480,9 +487,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Observed valuation semantics and no transaction rollups.
 - **Recommendation:** Resolve whether encrypted observed snapshots are current, planned, or retired, then align docs, schema, and tests.
 - **Dependencies:** BE-002
-- **Acceptance criteria:** One lifecycle statement is consistent across docs, model, migration, API, and tests.
-- **Verification:** Cross-reference audit.
-- **Status:** Open
+  - **Acceptance criteria:** One lifecycle statement is consistent across docs, model, migration, API, and tests.
+  - **Verification:** Cross-reference audit.
+  - **Status:** Resolved
+  - **Resolution evidence:** `c102676` + Wave 3 lifecycle map: schema-present/API-unwired/planned-dormant wording in AGENTS, DATA_MODEL, ARCHITECTURE, migration comment, `test_net_worth_snapshots_lifecycle_columns_after_legacy_upgrade`.
 
 ### INNO-001: Local explainable signal engine is an unvalidated opportunity
 - **Classification:** Experiment
