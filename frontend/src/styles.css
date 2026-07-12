@@ -8,7 +8,7 @@
   html {
     min-height: 100%;
     background: var(--bg);
-    color-scheme: dark;
+    color-scheme: light dark;
     text-size-adjust: 100%;
     -webkit-text-size-adjust: 100%;
   }

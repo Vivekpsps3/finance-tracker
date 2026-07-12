@@ -1,16 +1,24 @@
 {
   "name": "Finance",
   "short_name": "Finance",
+  "description": "Self-hosted personal finance tracker with browser-owned encryption. No offline finance plaintext cache.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0c",
   "theme_color": "#0a0a0c",
+  "categories": ["finance", "productivity"],
   "icons": [
     {
       "src": "favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

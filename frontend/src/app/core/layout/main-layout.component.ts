@@ -52,12 +52,13 @@ export class MainLayoutComponent implements OnInit {
   showTutorial = false;
 
   /** Absolute paths so nav works from any child route (relative links break e.g. /portfolio/planning). */
+  /** Primary surfaces first: position → net worth inputs → cashflow → activity → planning. */
   readonly navGroups: NavGroup[] = [
     {
       label: 'Overview',
       shortLabel: 'Home',
       icon: 'dashboard',
-      tooltip: 'Current position, cashflow, spending, and portfolio summary.',
+      tooltip: 'Current net worth and cashflow outlook.',
       items: [
         {
           path: '/',
@@ -65,63 +66,7 @@ export class MainLayoutComponent implements OnInit {
           shortLabel: 'Dashboard',
           icon: 'dashboard',
           exact: true,
-          tooltip: 'Open the main dashboard: current net worth, period trends, and setup status.',
-        },
-      ],
-    },
-    {
-      label: 'Activity',
-      shortLabel: 'Activity',
-      icon: 'transactions',
-      tooltip: 'Review what already happened: transactions, imports, and calendar activity.',
-      items: [
-        {
-          path: '/transactions',
-          label: 'Transactions',
-          shortLabel: 'Txns',
-          icon: 'transactions',
-          exact: false,
-          tooltip: 'Import and review card or bank transactions. These do not change net worth.',
-        },
-        {
-          path: '/calendar',
-          label: 'Calendar',
-          shortLabel: 'Calendar',
-          icon: 'calendar',
-          exact: false,
-          tooltip: 'See transaction activity by day for the selected month.',
-        },
-      ],
-    },
-    {
-      label: 'Cashflow',
-      shortLabel: 'Cash',
-      icon: 'wallet',
-      tooltip: 'Model recurring money in and out: paychecks, bills, and subscriptions.',
-      items: [
-        {
-          path: '/income',
-          label: 'Income',
-          shortLabel: 'Income',
-          icon: 'building',
-          exact: false,
-          tooltip: 'Add job income and realistic tax/deduction estimates for cashflow planning.',
-        },
-        {
-          path: '/fixed-expenses',
-          label: 'Bills',
-          shortLabel: 'Bills',
-          icon: 'credit-card',
-          exact: false,
-          tooltip: 'Track rent, mortgage, utilities, insurance, and other scheduled fixed bills.',
-        },
-        {
-          path: '/subscriptions',
-          label: 'Subscriptions',
-          shortLabel: 'Subs',
-          icon: 'wallet',
-          exact: false,
-          tooltip: 'Track recurring software, media, memberships, and services.',
+          tooltip: 'Current net worth, cashflow outlook, and local signals.',
         },
       ],
     },
@@ -129,7 +74,7 @@ export class MainLayoutComponent implements OnInit {
       label: 'Net Worth',
       shortLabel: 'Worth',
       icon: 'scale',
-      tooltip: 'Maintain current assets, debts, and portfolio holdings that drive net worth.',
+      tooltip: 'Assets, debts, and portfolio holdings that drive net worth.',
       items: [
         {
           path: '/balance-sheet',
@@ -137,7 +82,7 @@ export class MainLayoutComponent implements OnInit {
           shortLabel: 'Balances',
           icon: 'scale',
           exact: false,
-          tooltip: 'Update manual assets and liabilities. This is the current balance-sheet truth.',
+          tooltip: 'Manual assets and liabilities — current balance-sheet truth.',
         },
         {
           path: '/portfolio',
@@ -145,7 +90,63 @@ export class MainLayoutComponent implements OnInit {
           shortLabel: 'Portfolio',
           icon: 'portfolio',
           exact: false,
-          tooltip: 'Add or import investment holdings that are valued inside net worth.',
+          tooltip: 'Holdings valued inside net worth (manual or Fidelity import).',
+        },
+      ],
+    },
+    {
+      label: 'Cashflow',
+      shortLabel: 'Cash',
+      icon: 'wallet',
+      tooltip: 'Recurring paychecks, bills, and subscriptions.',
+      items: [
+        {
+          path: '/income',
+          label: 'Income',
+          shortLabel: 'Income',
+          icon: 'building',
+          exact: false,
+          tooltip: 'Job income and tax/deduction estimates.',
+        },
+        {
+          path: '/fixed-expenses',
+          label: 'Bills',
+          shortLabel: 'Bills',
+          icon: 'credit-card',
+          exact: false,
+          tooltip: 'Rent, utilities, insurance, and other fixed bills.',
+        },
+        {
+          path: '/subscriptions',
+          label: 'Subscriptions',
+          shortLabel: 'Subs',
+          icon: 'wallet',
+          exact: false,
+          tooltip: 'Recurring software, media, and memberships.',
+        },
+      ],
+    },
+    {
+      label: 'Activity',
+      shortLabel: 'Activity',
+      icon: 'transactions',
+      tooltip: 'Imported transactions and calendar (do not change net worth).',
+      items: [
+        {
+          path: '/transactions',
+          label: 'Transactions',
+          shortLabel: 'Txns',
+          icon: 'transactions',
+          exact: false,
+          tooltip: 'Import and review card/bank transactions.',
+        },
+        {
+          path: '/calendar',
+          label: 'Calendar',
+          shortLabel: 'Calendar',
+          icon: 'calendar',
+          exact: false,
+          tooltip: 'Transaction activity by day.',
         },
       ],
     },
@@ -153,15 +154,23 @@ export class MainLayoutComponent implements OnInit {
       label: 'Planning',
       shortLabel: 'Plan',
       icon: 'trending',
-      tooltip: 'Explore future outcomes without mutating your real ledger or balance sheet.',
+      tooltip: 'Speculative tools — never mutate ledger or balance sheet.',
       items: [
+        {
+          path: '/planning',
+          label: 'Monte Carlo',
+          shortLabel: 'MC',
+          icon: 'trending',
+          exact: false,
+          tooltip: 'Speculative net worth scenarios.',
+        },
         {
           path: '/investment-insights',
           label: 'Investment insights',
           shortLabel: 'Insights',
           icon: 'trending',
           exact: false,
-          tooltip: 'Run client-side investment growth and withdrawal-rate projections.',
+          tooltip: 'Client-side growth and withdrawal projections.',
         },
         {
           path: '/stock-lab',
@@ -169,15 +178,7 @@ export class MainLayoutComponent implements OnInit {
           shortLabel: 'Stocks',
           icon: 'trending',
           exact: false,
-          tooltip: 'Analyze hypothetical stock and ETF ownership without changing real holdings.',
-        },
-        {
-          path: '/planning',
-          label: 'Monte Carlo',
-          shortLabel: 'MC',
-          icon: 'trending',
-          exact: false,
-          tooltip: 'Run speculative net worth scenarios. Planning never writes ledger truth.',
+          tooltip: 'Hypothetical stock/ETF analysis.',
         },
       ],
     },

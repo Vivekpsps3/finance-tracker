@@ -16,7 +16,8 @@ WEB_HOST ?= 0.0.0.0
 WEB_PORT ?= 4200
 
 .PHONY: help install install-backend install-frontend dev backend frontend \
-        test test-backend test-frontend build build-frontend clean reset-db check \
+        test test-backend test-frontend test-fast test-finance test-security test-full test-doc-paths \
+        build build-frontend clean reset-db check \
         docker-up docker-down docker-build docker-rebuild docker-logs docker-ps docker-config reset-docker-db
 
 help:
@@ -27,6 +28,10 @@ help:
 	@echo "  make backend          API only  → http://$(API_HOST):$(API_PORT)"
 	@echo "  make frontend         UI only   → http://localhost:$(WEB_PORT) (proxy → API)"
 	@echo "  make test             Backend + frontend unit tests"
+	@echo "  make test-fast        Doc path checks (OPS-002)"
+	@echo "  make test-finance     Finance invariants + migration matrix"
+	@echo "  make test-security    Vault/auth/openapi + local signal detectors"
+	@echo "  make test-full        Full unit tests + frontend build + docker build"
 	@echo "  make build            Production Angular build"
 	@echo "  make docker-up        Build/start full website → http://127.0.0.1:8080"
 	@echo "  make docker-down      Stop Docker stack"
@@ -84,6 +89,34 @@ test-frontend:
 	else \
 		cd $(FRONTEND_DIR) && npm test -- --watch=false --browsers=ChromeHeadless; \
 	fi
+
+test-doc-paths:
+	./scripts/check-doc-paths.sh
+
+test-fast: test-doc-paths
+
+test-finance:
+	@if [ -x $(PY) ]; then \
+		cd $(BACKEND_DIR) && ../$(PY) -m pytest -q tests/test_balance_sheet.py tests/test_planning.py tests/test_migrations.py; \
+	else \
+		cd $(BACKEND_DIR) && python3 -m pytest -q tests/test_balance_sheet.py tests/test_planning.py tests/test_migrations.py; \
+	fi
+	@if [ "$(SKIP_FRONTEND_TESTS)" = "1" ]; then echo "Skipping frontend finance tests"; \
+	else cd $(FRONTEND_DIR) && npx ng test --no-watch --browsers=ChromeHeadless \
+		--include='**/client-finance.spec.ts' --include='**/planning.service.spec.ts' --include='**/format.util.spec.ts'; fi
+
+test-security:
+	@if [ -x $(PY) ]; then \
+		cd $(BACKEND_DIR) && ../$(PY) -m pytest -q tests/test_vault_encryption.py tests/test_openapi.py tests/test_auth_challenge.py tests/test_api_auth.py; \
+	else \
+		cd $(BACKEND_DIR) && python3 -m pytest -q tests/test_vault_encryption.py tests/test_openapi.py tests/test_auth_challenge.py tests/test_api_auth.py; \
+	fi
+	@if [ "$(SKIP_FRONTEND_TESTS)" = "1" ]; then echo "Skipping frontend security tests"; \
+	else cd $(FRONTEND_DIR) && npx ng test --no-watch --browsers=ChromeHeadless \
+		--include='**/detectors.spec.ts' --include='**/client-finance.spec.ts'; fi
+
+test-full: test-fast test-backend test-frontend build-frontend docker-build
+	@echo "test-full OK"
 
 build: build-frontend
 

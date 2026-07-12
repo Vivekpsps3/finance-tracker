@@ -62,6 +62,7 @@ import {
 export type DashboardLoadResult = [
   Transaction[],
   Holding[],
+  Asset[],
   NetWorth,
   CashflowSummary,
   JobIncome[],
@@ -127,6 +128,7 @@ export class FinanceService {
       this.dashboardLoad$ = forkJoin([
         this.getDashboardTransactions({ limit: 5000 }),
         this.getHoldings(false),
+        this.getAssets(),
         this.getNetWorth(),
         this.getCashflowSummaryForCurrentMonth(),
         this.getJobIncomes(),
@@ -167,6 +169,7 @@ export class FinanceService {
     return forkJoin([
       this.getDashboardTransactions({ limit: 5000 }),
       this.getHoldings(false),
+      this.getAssets(),
       this.getNetWorth(),
       this.getCashflowSummaryForCurrentMonth(),
       this.getJobIncomes(),

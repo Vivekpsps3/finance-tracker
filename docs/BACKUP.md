@@ -35,6 +35,24 @@ FINANCE_DATA_DIR=backend FINANCE_BACKUP_DIR=backend/backups scripts/backup-db.sh
 Stopping the API before backup is still fine, but no longer required by the
 script.
 
+## Integrity check
+
+After backup:
+
+```bash
+./scripts/verify-backup.sh data/backups/finance.db.<timestamp>.bak
+```
+
+Expects `integrity_check=ok` and presence of core tables when the backup is a full app DB.
+
+## Staging restore drill (OPS-001)
+
+1. Run `./scripts/backup-db.sh` and `./scripts/verify-backup.sh` on the backup file.
+2. Stop the stack (`make docker-down` or stop API).
+3. Copy the backup over the live DB path (keep a `.old` rename).
+4. Start the stack; confirm health (`curl` `/api/health` or compose healthcheck).
+5. Sign in and spot-check dashboard loads; record the drill date in ops notes.
+
 ## Restore
 
 1. Stop the API (`Ctrl+C` on `make dev` or `make backend`).

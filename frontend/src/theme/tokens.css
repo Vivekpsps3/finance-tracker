@@ -1,5 +1,6 @@
 /**
- * Design tokens — dark-only v1 (see docs/FRONTEND.md). Sync with tailwind.config.js.
+ * Design tokens — dark default; light via prefers-color-scheme (see docs/FRONTEND.md).
+ * Prefer system typography; named web fonts are fallback only and are not loaded.
  */
 :root {
   color-scheme: dark;
@@ -24,6 +25,8 @@
   --warning: #f59e0b;
   --on-accent: #ffffff;
   --border-strong: #3f3f46;
+  --backdrop-blur: 10px;
+  --navbar-bg: color-mix(in srgb, var(--bg) 72%, transparent);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -58,8 +61,7 @@
   --chart-5: #8b5cf6;
   --chart-6: #ec4899;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Plus Jakarta Sans',
-    'Segoe UI', Roboto, system-ui, sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --motion-fast: 150ms;
   --motion-base: 220ms;
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
@@ -67,4 +69,48 @@
 
   --chart-embed-height: 280px;
   --chart-tall-height: 320px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f4f4f5;
+    --bg-elevated: #ffffff;
+    --card-bg: #ffffff;
+    --surface-2: #f4f4f5;
+    --surface-hover: #e4e4e7;
+    --text: #18181b;
+    --text-secondary: #52525b;
+    --text-tertiary: #71717a;
+    --accent: #0f766e;
+    --accent-hover: #0d9488;
+    --accent-glow: rgba(15, 118, 110, 0.12);
+    --border: #d4d4d8;
+    --border-subtle: #e4e4e7;
+    --surface-elevated: #ffffff;
+    --text-primary: #18181b;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --warning: #d97706;
+    --on-accent: #ffffff;
+    --border-strong: #a1a1aa;
+    --shadow-lg: 0 22px 64px rgba(24, 24, 27, 0.12);
+    --shadow-card: 0 14px 38px rgba(24, 24, 27, 0.08);
+    --navbar-bg: color-mix(in srgb, var(--bg) 86%, transparent);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --backdrop-blur: 0px;
+    --navbar-bg: var(--bg-elevated);
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: var(--border-strong);
+    --text-secondary: var(--text);
+  }
 }

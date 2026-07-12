@@ -11,9 +11,11 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, combineLatest, finalize, takeUntil, tap } from 'rxjs';
 import { FinanceService } from '../services/finance.service';
 import {
+  Asset,
   CashflowSummary,
   DateFilter,
   FixedExpense,
+  Holding,
   JobIncome,
   NetWorth,
   Subscription,
@@ -25,7 +27,6 @@ import {
   UiBadgeVariant,
   UiButtonComponent,
   UiCardComponent,
-  UiEmptyStateComponent,
   UiPageHeaderComponent,
   UiSelectComponent,
   UiSelectOption,
@@ -34,6 +35,9 @@ import {
   UiSourceBadgeComponent,
 } from '../shared/ui';
 import { filterByDate, getDateRange, getDefaultDateFilter } from '../utils/date.util';
+import { buildLocalFinancialSnapshot } from '../signals/build-local-snapshot';
+import { runLocalDetectors } from '../signals/detectors';
+import { FinancialSignal, SignalActionId } from '../signals/financial-signal';
 
 @Component({
   selector: 'app-dashboard',
@@ -48,7 +52,6 @@ import { filterByDate, getDateRange, getDefaultDateFilter } from '../utils/date.
     UiCardComponent,
     UiBadgeComponent,
     UiSkeletonComponent,
-    UiEmptyStateComponent,
     UiSelectComponent,
     UiIconComponent,
     UiSourceBadgeComponent,
@@ -81,6 +84,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   largestCategory = '';
   largestCategoryTotal = 0;
   asOfLabel = '';
+  localSignals: FinancialSignal[] = [];
+  private assets: Asset[] = [];
+  private holdings: Holding[] = [];
 
   filter: DateFilter = getDefaultDateFilter();
   filteredTransactions: Transaction[] = [];
@@ -128,16 +134,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.financeService.jobIncomes$,
       this.financeService.fixedExpenses$,
       this.financeService.subscriptions$,
+      this.financeService.assets$,
+      this.financeService.holdings$,
     ])
       .pipe(takeUntil(this.destroy$))
-      .subscribe(([nw, txs, summary, jobIncomes, fixedExpenses, subscriptions]) => {
+      .subscribe(([nw, txs, summary, jobIncomes, fixedExpenses, subscriptions, assets, holdings]) => {
         this.netWorth = nw;
         this.transactions = txs;
         this.cashflowSummary = summary;
         this.jobIncomes = jobIncomes;
         this.fixedExpenses = fixedExpenses;
         this.subscriptions = subscriptions;
+        this.assets = assets;
+        this.holdings = holdings;
         this.applyDateFilter();
+        this.refreshLocalSignals();
         this.cdr.markForCheck();
       });
 
@@ -339,6 +350,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (label === 'Live prices') return 'success';
     if (label === 'Cached prices' || label === 'Mixed sources' || label === 'Manual / import prices') return 'warning';
     return 'default';
+  }
+
+  private refreshLocalSignals(): void {
+    try {
+      const snap = buildLocalFinancialSnapshot(
+        this.assets,
+        [],
+        this.holdings,
+        this.transactions
+      );
+      this.localSignals = runLocalDetectors(snap);
+    } catch {
+      this.localSignals = [];
+    }
+  }
+
+  signalActionPath(action: SignalActionId): string {
+    if (action === 'review-balance-sheet') return '/balance-sheet';
+    if (action === 'refresh-portfolio-prices') return '/portfolio';
+    if (action === 'open-transactions') return '/transactions';
+    return '/';
+  }
+
+  signalActionLabel(action: SignalActionId): string {
+    if (action === 'review-balance-sheet') return 'Review balance sheet';
+    if (action === 'refresh-portfolio-prices') return 'Refresh portfolio';
+    if (action === 'open-transactions') return 'Open transactions';
+    return 'Dismiss';
   }
 
   netWorthCompleteness(): string {

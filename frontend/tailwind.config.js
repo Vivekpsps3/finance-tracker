@@ -33,7 +33,6 @@ module.exports = {
       },
       fontFamily: {
         sans: [
-          '"Plus Jakarta Sans"',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',

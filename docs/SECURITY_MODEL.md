@@ -76,6 +76,23 @@ Longer-term choices if stricter holdings privacy is required:
 Do not claim ticker symbols are server-blind when an explicit Portfolio refresh
 or Stock Lab request has sent them to the backend.
 
+## Local intelligence privacy gate (SEC-001)
+
+Client-side financial signals, detectors, and local snapshots must obey:
+
+| Rule | Requirement |
+|------|-------------|
+| Network | Detectors and signal modules send **no** requests. No amounts, merchants, shares, account masks, or private evidence leave the browser. |
+| Mutation | Signals never write assets, liabilities, holdings, transactions, or recurring cashflow. Actions are reversible user navigation only. |
+| Evidence | Evidence strings stay in-memory or encrypted vault collections if persisted later; never server plaintext logs. |
+| Ticker exception | Only explicit Portfolio refresh / Stock Lab research may disclose symbols, under the holdings privacy section above. |
+| Versioning | Each detector has a stable `detectorId` + version; fixtures prove deterministic outputs. |
+
+Feature contracts for new analytics must list transmitted fields (default: **none**)
+and ship unit tests that run pure detectors over synthetic fixtures.
+
+Implementation: `frontend/src/app/signals/` (pure TypeScript; no `HttpClient`).
+
 ## Migration ordering
 
 Schema-v1 ciphertext is decrypted locally only after account authentication and

@@ -4,7 +4,7 @@ Angular 19 standalone app under `frontend/src/app/`.
 
 ## Stack
 
-- **Tailwind CSS 3** + `src/theme/tokens.css` (dark only v1)
+- **Tailwind CSS 3** + `src/theme/tokens.css` (dark default; light via `prefers-color-scheme`)
 - **Shared UI** — `shared/ui/*`, selector prefix `ui-`
 - **State** — `FinanceService` over `EncryptedStoreService` after vault unlock (RxJS `BehaviorSubject`s for ledger, balance sheet, recurring cashflow); `PlanningService`; `AuthService`
 - Stock Lab uses `MarketResearchService` for explicit ticker lookups and `EncryptedStoreService` for encrypted `stock_lab_scenarios`.
@@ -31,7 +31,7 @@ Angular 19 standalone app under `frontend/src/app/`.
 | `/admin/users` | Admin user management (admin role only) |
 | `/charts` | Redirects to `/` (legacy path) |
 
-Shell: `MainLayoutComponent` (grouped top nav + subnav, `#main-content`). Top-level groups are Overview, Activity, Cashflow, Net Worth, and Planning; admin/user actions live in the account menu. Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
+Shell: `MainLayoutComponent` (grouped top nav + subnav, `#main-content`). Top-level groups are Overview, Net Worth, Cashflow, Activity, and Planning (position-first order); admin/user actions live in the account menu. Dev API: `apiUrl: '/api'` + `proxy.conf.js` (`/api/**` → FastAPI).
 
 ## Design tokens
 
@@ -50,7 +50,23 @@ Source of truth: `frontend/src/theme/tokens.css` and `frontend/tailwind.config.j
 
 Charts: `src/theme/chart-colors.ts` (prefer CSS vars for axes/tooltips; segment palette in `CHART_COLORS`).
 
-**Product:** dark theme only; no theme toggle in v1.
+**Appearance:** dark is the default token set. Light tokens apply under
+`prefers-color-scheme: light`. Reduced transparency and increased contrast media
+queries are honored. Typography prefers the system stack (no remote font fetch).
+There is no in-app theme toggle. Locale money/date helpers live in
+`utils/format.util.ts`.
+
+## Viewport presentation matrix (PLAT-001)
+
+| Viewport | Navigation | Tables / dense data |
+|----------|------------|---------------------|
+| 390×844 | Icon + short labels, horizontal scroll, 44px targets | Horizontal scroll (dense table); list-cells deferred |
+| 844×390 | Same, landscape | Same |
+| 768×1024 | Short or full labels | Dense tables |
+| 1024×768 | Desktop grid nav | Dense tables |
+| 1280×800+ | Full labels + subnav | Dense tables |
+
+Do **not** add a service worker that caches decrypted finance plaintext.
 
 ## Shared components
 

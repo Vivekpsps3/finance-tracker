@@ -1,7 +1,7 @@
 .navbar {
-  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
-  backdrop-filter: blur(22px) saturate(1.35);
-  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  background: var(--navbar-bg, color-mix(in srgb, var(--bg-elevated) 78%, transparent));
+  backdrop-filter: blur(var(--backdrop-blur, 10px)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--backdrop-blur, 10px)) saturate(1.35);
   border-bottom: 1px solid var(--border-subtle);
   padding: var(--space-3) max(var(--space-6), env(safe-area-inset-right)) var(--space-2)
     max(var(--space-6), env(safe-area-inset-left));
@@ -533,11 +533,21 @@
     flex: 0 0 auto;
     justify-content: center;
     min-width: 44px;
+    min-height: 44px;
+    gap: var(--space-1);
+    padding-inline: var(--space-2);
     scroll-snap-align: start;
   }
 
-  .nav-link__short {
+  /* Labeled compact nav: keep short labels visible on phone widths (PLAT-001). */
+  .nav-link__label {
     display: none;
+  }
+
+  .nav-link__short {
+    display: inline;
+    font-size: var(--text-xs);
+    font-weight: 600;
   }
 
   .tutorial-backdrop {

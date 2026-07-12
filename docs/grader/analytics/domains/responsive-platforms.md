@@ -15,3 +15,10 @@ At 390x844 and 844x390 use labeled compact navigation and list-cell alternatives
 ## Verification
 
 Use physical or emulated iPhone, iPad, and desktop Safari/Chromium matrix with [accessibility](accessibility.md).
+
+## Shipped baseline (2026-07-11)
+
+- Labeled compact top nav at ≤768px (icon + short labels).
+- System appearance via `prefers-color-scheme` light tokens; reduced transparency/contrast hooks.
+- `formatMoney` / `formatDate` locale helpers; system typography; manifest description + maskable SVG.
+- Viewport matrix documented in `docs/FRONTEND.md`. List-cell table alternatives remain a follow-up.

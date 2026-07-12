@@ -1,35 +1,9 @@
 <div class="page dashboard">
-  <ui-page-header title="Dashboard" subtitle="Current position, cashflow, and trends" />
+  <ui-page-header title="Dashboard" subtitle="Current net worth first, then cashflow outlook and local signals" />
 
   @if (!isLoading && !error && netWorth) {
-    @if (showOnboardingChecklist) {
-      <section class="onboarding-card" aria-labelledby="onboarding-heading">
-        <div class="onboarding-card__header">
-          <div>
-            <p class="section-eyebrow">Setup guide</p>
-            <h2 id="onboarding-heading">Finish your first finance pass</h2>
-            <p>
-              A typical U.S. setup works best when paycheck, bills, card spending, balance sheet, and investments are all represented.
-            </p>
-          </div>
-          <div class="onboarding-progress" title="Complete the core app areas used by dashboard, cashflow, and planning.">
-            {{ onboardingCompleteCount }}/6 core areas
-          </div>
-        </div>
-        <div class="onboarding-steps">
-          @for (step of onboardingSteps; track step.label) {
-            <a [routerLink]="step.path" class="onboarding-step" [class.done]="isOnboardingStepDone(step.label)">
-              <span class="onboarding-step__status">{{ isOnboardingStepDone(step.label) ? 'Done' : 'Next' }}</span>
-              <strong>{{ step.label }}</strong>
-              <small>{{ step.detail }}</small>
-            </a>
-          }
-        </div>
-      </section>
-    }
-
     <section class="net-worth-card animate-in" aria-labelledby="nw-heading">
-      <p class="section-eyebrow">Net worth</p>
+      <p class="section-eyebrow">Current position</p>
       <div class="card-header">
         <div>
           <h2 id="nw-heading" class="sr-only">Current net worth</h2>
@@ -68,10 +42,223 @@
       }
       <p class="net-worth-note">
         <a routerLink="/balance-sheet">Edit balance sheet</a>
+        · <a routerLink="/portfolio">Portfolio</a>
         · Transactions do not change this total.
         · Brokerage cash sweeps and manual cash can double-count if both are entered.
       </p>
     </section>
+
+    <section class="cashflow-hero animate-in" aria-labelledby="cashflow-heading">
+      <div class="trends-heading">
+        <div>
+          <p class="section-eyebrow">Cashflow outlook</p>
+          <h2 id="cashflow-heading" class="section-title">Observed + scheduled for this period</h2>
+          @if (filterSummary) {
+            <div class="filter-summary">
+              {{ filterSummary }} · {{ filteredTransactions.length }} imported transactions
+            </div>
+          }
+        </div>
+        <div class="filter-row">
+          <ui-select
+            label="Range"
+            [options]="periodOptions"
+            [(value)]="filter.mode"
+            (valueChange)="onFilterChange()" />
+
+          @switch (filter.mode) {
+            @case ('month') {
+              <label class="filter-native">
+                <span class="filter-native__label">Month</span>
+                <input
+                  type="month"
+                  [(ngModel)]="filter.month"
+                  (ngModelChange)="onFilterChange()"
+                  aria-label="Select month" />
+              </label>
+            }
+            @case ('year') {
+              <label class="filter-native">
+                <span class="filter-native__label">Year</span>
+                <input
+                  type="number"
+                  [(ngModel)]="filter.year"
+                  (ngModelChange)="onFilterChange()"
+                  min="1990"
+                  max="2035"
+                  placeholder="Year"
+                  aria-label="Select year" />
+              </label>
+            }
+            @case ('custom') {
+              <label class="filter-native">
+                <span class="filter-native__label">From</span>
+                <input
+                  type="date"
+                  [(ngModel)]="filter.start"
+                  (ngModelChange)="onFilterChange()"
+                  aria-label="Start date" />
+              </label>
+              <span class="range-sep">to</span>
+              <label class="filter-native">
+                <span class="filter-native__label">To</span>
+                <input
+                  type="date"
+                  [(ngModel)]="filter.end"
+                  (ngModelChange)="onFilterChange()"
+                  aria-label="End date" />
+              </label>
+            }
+          }
+
+          @if (filter.mode !== 'all') {
+            <ui-button variant="ghost" size="sm" (clicked)="resetFilter()">Reset</ui-button>
+          }
+        </div>
+      </div>
+
+      <div class="insight-tiles cashflow-hero-tiles">
+        <div class="insight-tile insight-tile--primary">
+          <span class="insight-tile__label"><ui-source-badge kind="combined" /> Net cashflow</span>
+          <span class="insight-tile__value money" [class.negative]="periodNetCashflow < 0">
+            {{ periodNetCashflow >= 0 ? '+' : '−' }}${{ abs(periodNetCashflow) | number:'1.2-2' }}
+          </span>
+          <small>Observed ${{ periodObservedNetCashflow | number:'1.2-2' }} · scheduled ${{ periodScheduledNetCashflow | number:'1.2-2' }}</small>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label"><ui-source-badge kind="combined" /> Income</span>
+          <span class="insight-tile__value money">${{ periodIncomeTotal | number:'1.2-2' }}</span>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label"><ui-source-badge kind="combined" /> Expenses</span>
+          <span class="insight-tile__value money negative">${{ periodExpenseTotal | number:'1.2-2' }}</span>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label"><ui-source-badge kind="combined" /> Savings rate</span>
+          <span class="insight-tile__value">{{ formatPercent(periodSavingsRate) }}</span>
+        </div>
+      </div>
+
+      @if (cashflowSummary) {
+        <div class="cashflow-strip" aria-label="Cashflow source breakdown">
+          <div>
+            <span><ui-source-badge kind="observed" /> Income</span>
+            <strong class="money">${{ cashflowSummary.observed_income | number:'1.2-2' }}</strong>
+          </div>
+          <div>
+            <span><ui-source-badge kind="scheduled" /> Job net</span>
+            <strong class="money">${{ cashflowSummary.scheduled_income | number:'1.2-2' }}</strong>
+          </div>
+          <div>
+            <span><ui-source-badge kind="observed" /> Expenses</span>
+            <strong class="money negative">${{ cashflowSummary.observed_expenses | number:'1.2-2' }}</strong>
+          </div>
+          <div>
+            <span><ui-source-badge kind="scheduled" /> Bills + subs</span>
+            <strong class="money negative">${{ cashflowSummary.scheduled_expenses | number:'1.2-2' }}</strong>
+          </div>
+        </div>
+        @if (cashflowSummary.possible_income_overlap || cashflowSummary.possible_expense_overlap) {
+          <p class="cashflow-overlap-note" role="status">
+            Combined outlook sums Observed + Scheduled.
+            @if (cashflowSummary.possible_income_overlap) {
+              Income may double-count if job pay is also imported as transactions.
+            }
+            @if (cashflowSummary.possible_expense_overlap) {
+              Expenses may double-count if bills are also imported as transactions.
+            }
+          </p>
+        }
+      }
+    </section>
+
+    @if (localSignals.length) {
+      <section class="signals-card animate-in" aria-labelledby="signals-heading">
+        <p class="section-eyebrow">Local signals</p>
+        <h2 id="signals-heading" class="section-title">Explainable checks (browser-only)</h2>
+        <p class="signals-disclaimer">Deterministic, non-mutating, never sent to the server. Confidence is heuristic.</p>
+        <ul class="signal-list">
+          @for (signal of localSignals; track signal.id) {
+            <li class="signal-item">
+              <div class="signal-item__head">
+                <strong>{{ signal.title }}</strong>
+                <ui-badge [variant]="signal.kind === 'fact' ? 'success' : 'warning'">
+                  {{ signal.kind }} · {{ (signal.confidence * 100) | number:'1.0-0' }}%
+                </ui-badge>
+              </div>
+              <p>{{ signal.summary }}</p>
+              <div class="signal-item__actions">
+                @for (action of signal.reversibleActions; track action) {
+                  @if (action !== 'dismiss') {
+                    <a [routerLink]="signalActionPath(action)" class="signal-link">{{ signalActionLabel(action) }}</a>
+                  }
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <ui-card title="More period detail">
+      <div class="insight-tiles">
+        <div class="insight-tile">
+          <span class="insight-tile__label">Average daily spend</span>
+          <span class="insight-tile__value money">${{ averageDailySpend | number:'1.2-2' }}</span>
+        </div>
+        <div class="insight-tile">
+          <span class="insight-tile__label">Largest expense category</span>
+          <span class="insight-tile__value compact">
+            {{ largestCategory || '—' }}
+            @if (largestCategoryTotal) {
+              <small>${{ largestCategoryTotal | number:'1.2-2' }}</small>
+            }
+          </span>
+        </div>
+        @if (netWorth.total_assets > 0) {
+          <div class="insight-tile">
+            <span class="insight-tile__label">Investments % of assets</span>
+            <span class="insight-tile__value money">
+              {{ (netWorth.portfolio / netWorth.total_assets * 100) | number:'1.1-1' }}%
+            </span>
+          </div>
+        }
+      </div>
+    </ui-card>
+
+    <section class="trends-section">
+      <p class="section-eyebrow">Trends</p>
+      <app-charts
+        [embedded]="true"
+        [dataReady]="chartsReady"
+        [overrideTransactions]="dashboardCashflowTransactions"></app-charts>
+    </section>
+
+    @if (showOnboardingChecklist) {
+      <section class="onboarding-card" aria-labelledby="onboarding-heading">
+        <div class="onboarding-card__header">
+          <div>
+            <p class="section-eyebrow">Setup guide</p>
+            <h2 id="onboarding-heading">Finish your first finance pass</h2>
+            <p>
+              Best when paycheck, bills, card spending, balance sheet, and investments are all represented.
+            </p>
+          </div>
+          <div class="onboarding-progress">
+            {{ onboardingCompleteCount }}/6 core areas
+          </div>
+        </div>
+        <div class="onboarding-steps">
+          @for (step of onboardingSteps; track step.label) {
+            <a [routerLink]="step.path" class="onboarding-step" [class.done]="isOnboardingStepDone(step.label)">
+              <span class="onboarding-step__status">{{ isOnboardingStepDone(step.label) ? 'Done' : 'Next' }}</span>
+              <strong>{{ step.label }}</strong>
+              <small>{{ step.detail }}</small>
+            </a>
+          }
+        </div>
+      </section>
+    }
   } @else if (isLoading) {
     <ui-card class="loading-card">
       <ui-skeleton variant="block" height="1.25rem" width="120px" />
@@ -84,175 +271,4 @@
       <ui-button variant="primary" (clicked)="retryLoad()">Retry</ui-button>
     </ui-card>
   }
-
-  <ui-card title="Insights">
-    @if (filteredTransactions.length || periodJobNetIncomeTotal || periodFixedExpenseTotal || (netWorth && netWorth.total_assets > 0)) {
-      <div class="insight-tiles">
-        <div class="insight-tile">
-          <span class="insight-tile__label" title="Observed imported income plus scheduled job-income assumptions. This is an outlook, not actual-only income.">
-            <ui-source-badge kind="combined" /> Income
-          </span>
-          <span class="insight-tile__value money">${{ periodIncomeTotal | number:'1.2-2' }}</span>
-          @if (periodJobNetIncomeTotal) {
-            <small>${{ periodJobNetIncomeTotal | number:'1.2-2' }} scheduled job net</small>
-          }
-        </div>
-        <div class="insight-tile">
-          <span class="insight-tile__label" title="Observed imported expenses plus scheduled bills and subscriptions. This is an outlook, not actual-only spending.">
-            <ui-source-badge kind="combined" /> Expenses
-          </span>
-          <span class="insight-tile__value money negative">${{ periodExpenseTotal | number:'1.2-2' }}</span>
-          @if (periodFixedExpenseTotal) {
-            <small>${{ periodFixedExpenseTotal | number:'1.2-2' }} fixed + subscriptions</small>
-          }
-        </div>
-        <div class="insight-tile">
-          <span class="insight-tile__label" title="Observed activity plus scheduled assumptions. Review the observed and scheduled amounts below before using this as a forecast.">
-            <ui-source-badge kind="combined" /> Cashflow
-          </span>
-          <span class="insight-tile__value money" [class.negative]="periodNetCashflow < 0">
-            {{ periodNetCashflow >= 0 ? '+' : '−' }}${{ abs(periodNetCashflow) | number:'1.2-2' }}
-          </span>
-          <small>Observed ${{ periodObservedNetCashflow | number:'1.2-2' }} · scheduled ${{ periodScheduledNetCashflow | number:'1.2-2' }}</small>
-        </div>
-        <div class="insight-tile">
-          <span class="insight-tile__label" title="Combined outlook net cashflow divided by combined outlook income for the selected period.">
-            <ui-source-badge kind="combined" /> Savings rate
-          </span>
-          <span class="insight-tile__value">
-            {{ formatPercent(periodSavingsRate) }}
-          </span>
-        </div>
-        <div class="insight-tile">
-          <span class="insight-tile__label" title="Combined outlook expenses divided by days in the selected period.">
-            <ui-source-badge kind="combined" /> Daily spend
-          </span>
-          <span class="insight-tile__value money">${{ averageDailySpend | number:'1.2-2' }}</span>
-        </div>
-        <div class="insight-tile">
-          <span class="insight-tile__label">Largest expense category</span>
-          <span class="insight-tile__value compact">
-            {{ largestCategory || '—' }}
-            @if (largestCategoryTotal) {
-              <small>${{ largestCategoryTotal | number:'1.2-2' }}</small>
-            }
-          </span>
-        </div>
-        @if (netWorth && netWorth.total_assets > 0) {
-          <div class="insight-tile">
-            <span class="insight-tile__label">Investments % of assets</span>
-            <span class="insight-tile__value money">
-              {{ (netWorth.portfolio / netWorth.total_assets * 100) | number:'1.1-1' }}%
-            </span>
-          </div>
-        }
-      </div>
-    } @else {
-      <ui-empty-state icon="transactions" message="Add transactions in this period to see insights." />
-    }
-  </ui-card>
-
-  <section class="trends-section">
-    <div class="trends-heading">
-      <div>
-        <p class="section-eyebrow">Cashflow period</p>
-        @if (filterSummary) {
-          <div class="filter-summary">
-            {{ filterSummary }} · {{ filteredTransactions.length }} imported transactions
-          </div>
-        }
-      </div>
-      <div class="filter-row">
-        <ui-select
-          label="Range"
-          [options]="periodOptions"
-          [(value)]="filter.mode"
-          (valueChange)="onFilterChange()" />
-
-        @switch (filter.mode) {
-          @case ('month') {
-            <label class="filter-native">
-              <span class="filter-native__label">Month</span>
-              <input
-                type="month"
-                [(ngModel)]="filter.month"
-                (ngModelChange)="onFilterChange()"
-                aria-label="Select month" />
-            </label>
-          }
-          @case ('year') {
-            <label class="filter-native">
-              <span class="filter-native__label">Year</span>
-              <input
-                type="number"
-                [(ngModel)]="filter.year"
-                (ngModelChange)="onFilterChange()"
-                min="1990"
-                max="2035"
-                placeholder="Year"
-                aria-label="Select year" />
-            </label>
-          }
-          @case ('custom') {
-            <label class="filter-native">
-              <span class="filter-native__label">From</span>
-              <input
-                type="date"
-                [(ngModel)]="filter.start"
-                (ngModelChange)="onFilterChange()"
-                aria-label="Start date" />
-            </label>
-            <span class="range-sep">to</span>
-            <label class="filter-native">
-              <span class="filter-native__label">To</span>
-              <input
-                type="date"
-                [(ngModel)]="filter.end"
-                (ngModelChange)="onFilterChange()"
-                aria-label="End date" />
-            </label>
-          }
-        }
-
-        @if (filter.mode !== 'all') {
-          <ui-button variant="ghost" size="sm" (clicked)="resetFilter()">Reset</ui-button>
-        }
-      </div>
-    </div>
-    @if (cashflowSummary) {
-      <div class="cashflow-strip" aria-label="Cashflow source breakdown">
-        <div>
-          <span><ui-source-badge kind="observed" /> Income</span>
-          <strong class="money">${{ cashflowSummary.observed_income | number:'1.2-2' }}</strong>
-        </div>
-        <div>
-          <span><ui-source-badge kind="scheduled" /> Job net</span>
-          <strong class="money">${{ cashflowSummary.scheduled_income | number:'1.2-2' }}</strong>
-        </div>
-        <div>
-          <span><ui-source-badge kind="observed" /> Expenses</span>
-          <strong class="money negative">${{ cashflowSummary.observed_expenses | number:'1.2-2' }}</strong>
-        </div>
-        <div>
-          <span><ui-source-badge kind="scheduled" /> Bills + subs</span>
-          <strong class="money negative">${{ cashflowSummary.scheduled_expenses | number:'1.2-2' }}</strong>
-        </div>
-      </div>
-      @if (cashflowSummary.possible_income_overlap || cashflowSummary.possible_expense_overlap) {
-        <p class="cashflow-overlap-note" role="status">
-          Combined outlook sums Observed + Scheduled.
-          @if (cashflowSummary.possible_income_overlap) {
-            Income may double-count if job pay is also imported as transactions.
-          }
-          @if (cashflowSummary.possible_expense_overlap) {
-            Expenses may double-count if bills are also imported as transactions.
-          }
-        </p>
-      }
-    }
-    <app-charts
-      [embedded]="true"
-      [dataReady]="chartsReady"
-      [overrideTransactions]="dashboardCashflowTransactions"></app-charts>
-  </section>
 </div>

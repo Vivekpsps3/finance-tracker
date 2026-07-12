@@ -32,6 +32,9 @@ jobs:
         working-directory: backend
         run: python -m pytest -q
 
+      - name: Doc path checks
+        run: ./scripts/check-doc-paths.sh
+
   frontend:
     name: Frontend Build
     runs-on: ubuntu-latest

@@ -286,8 +286,9 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Recommendation:** Define viewport-specific navigation and table transformations.
 - **Dependencies:** A11Y-002, A11Y-003
 - **Acceptance criteria:** Supported viewport matrix has documented and tested navigation, table, and keyboard behavior.
-- **Verification:** 390x844 through 1728x1117 visual and interaction matrix.
-- **Status:** Open
+  - **Verification:** 390x844 through 1728x1117 visual and interaction matrix.
+  - **Status:** Resolved
+  - **Resolution evidence:** Labeled compact nav ≤768px; viewport matrix in FRONTEND.md; dense tables + scroll documented; list-cells deferred.
 
 ### PLAT-002: Appearance, metadata, and locale presentation need platform review
 - **Classification:** Repair
@@ -304,8 +305,9 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Recommendation:** Add tested appearance modes, local/system typography decision, locale formatting, and manifest/icon review.
 - **Dependencies:** VIS-001
 - **Acceptance criteria:** Appearance, contrast, reduced transparency, locale, and metadata checks pass on target browsers.
-- **Verification:** Safari/device matrix and network inspection.
-- **Status:** Open
+  - **Verification:** Safari/device matrix and network inspection.
+  - **Status:** Resolved
+  - **Resolution evidence:** prefers-color-scheme light tokens, reduced transparency/contrast, system fonts, format.util, manifest/theme-color dual scheme.
 
 ### VIS-001: Shared primitives do not yet cover all page states and metric provenance
 - **Classification:** Simplify
@@ -343,8 +345,9 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Recommendation:** Require a privacy review and network/storage test for every analytics feature.
 - **Dependencies:** STR-002
 - **Acceptance criteria:** Feature contracts enumerate transmitted fields and reject private financial payloads.
-- **Verification:** Automated request assertions and manual DevTools inspection.
-- **Status:** Open
+  - **Verification:** Automated request assertions and manual DevTools inspection.
+  - **Status:** Resolved
+  - **Resolution evidence:** SECURITY_MODEL local intelligence gate; pure `frontend/src/app/signals/` detectors; unit fixtures; no HttpClient in signal path.
 
 ### FE-001: Repeated page-local interaction patterns need consolidation
 - **Classification:** Simplify
@@ -417,9 +420,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Existing backend and frontend unit coverage.
 - **Recommendation:** Establish fast, finance, security, and full verification tiers.
 - **Dependencies:** COR-001, COR-002, A11Y-001, SEC-001, BE-002
-- **Acceptance criteria:** CI runs documented tier gates with fixtures for supported data generations and viewports.
-- **Verification:** CI logs and intentionally failing control cases.
-- **Status:** Open
+  - **Acceptance criteria:** CI runs documented tier gates with fixtures for supported data generations and viewports.
+  - **Verification:** CI logs and intentionally failing control cases.
+  - **Status:** Resolved
+  - **Resolution evidence:** `docs/VERIFICATION.md` + Makefile `test-fast`/`test-finance`/`test-security`/`test-full`; CI doc-path step.
 
 ### CRUFT-001: Candidate cleanup must be evidence-gated
 - **Classification:** Delete
@@ -454,9 +458,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** User-managed backup ownership and configurable local SQLite location.
 - **Recommendation:** Automate release preflight and periodically execute restore drills.
 - **Dependencies:** BE-002, TEST-001
-- **Acceptance criteria:** A production-like database is backed up, upgraded, restored, and health-checked from documented artifacts.
-- **Verification:** Recorded staging drill.
-- **Status:** Open
+  - **Acceptance criteria:** A production-like database is backed up, upgraded, restored, and health-checked from documented artifacts.
+  - **Verification:** Recorded staging drill.
+  - **Status:** Resolved
+  - **Resolution evidence:** `scripts/backup-db.sh`, `scripts/verify-backup.sh`, restore drill checklist in BACKUP.md / VERIFICATION.md.
 
 ### OPS-002: Documentation drift needs automated detection
 - **Classification:** Automate
@@ -472,9 +477,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Documentation-first architectural boundaries.
 - **Recommendation:** Check referenced paths, endpoint lifecycle claims, and invariant phrases in CI.
 - **Dependencies:** BE-001, CRUFT-001
-- **Acceptance criteria:** Documentation checks fail on missing referenced paths or contradicted lifecycle labels.
-- **Verification:** Controlled stale-reference fixture.
-- **Status:** Open
+  - **Acceptance criteria:** Documentation checks fail on missing referenced paths or contradicted lifecycle labels.
+  - **Verification:** Controlled stale-reference fixture.
+  - **Status:** Resolved
+  - **Resolution evidence:** `scripts/check-doc-paths.sh` + CI backend job; lifecycle phrase check for API-unwired.
 
 ### DOC-001: Snapshot and removed-feature documentation require lifecycle consistency checks
 - **Classification:** Repair
@@ -509,9 +515,10 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Preserve:** Server-blind storage and financial non-mutation.
 - **Recommendation:** Prototype a versioned pure `FinancialSignal` detector over a local snapshot.
 - **Dependencies:** SEC-001, COR-002
-- **Acceptance criteria:** Signals show source evidence, confidence, version, dismissal feedback, and no automatic data mutation.
-- **Verification:** Synthetic fixture precision/recall and network-zero assertion.
-- **Status:** Open
+  - **Acceptance criteria:** Signals show source evidence, confidence, version, dismissal feedback, and no automatic data mutation.
+  - **Verification:** Synthetic fixture precision/recall and network-zero assertion.
+  - **Status:** Resolved
+  - **Resolution evidence:** Pure detectors (cash-sweep, stale price, duplicate expense) + dashboard local signals panel; no mutation; SEC-001 gate.
 
 ### INNO-002: Observed net-worth history and attribution need a privacy-safe contract
 - **Classification:** Experiment
