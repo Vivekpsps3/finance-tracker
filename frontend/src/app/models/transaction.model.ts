@@ -20,11 +20,26 @@ export interface ImportPreviewRow {
   status: 'new' | 'duplicate';
 }
 
+export interface ImportRowNote {
+  line: number;
+  reason: string;
+}
+
 export interface ImportPreviewResult {
   bank: string;
   filename: string;
   rows: ImportPreviewRow[];
-  summary: { total_parsed: number; new: number; duplicate: number };
+  /** Rows the importer intentionally ignored (credits, payments, non-cleared, etc.). */
+  skipped: ImportRowNote[];
+  /** Rows that could not be parsed (bad date, missing account) and need fixing. */
+  errors: ImportRowNote[];
+  summary: {
+    total_parsed: number;
+    new: number;
+    duplicate: number;
+    skipped: number;
+    errors: number;
+  };
 }
 
 export interface BankImportOption {

@@ -25,7 +25,7 @@ describe('bank-import util', () => {
     const preview = await buildBankImportPreview('capital_one', 'capital.csv', csv, new Set());
 
     expect(preview.bank).toBe('Capital One');
-    expect(preview.summary).toEqual({ total_parsed: 1, new: 1, duplicate: 0 });
+    expect(preview.summary).toEqual({ total_parsed: 1, new: 1, duplicate: 0, skipped: 1, errors: 0 });
     expect(preview.rows[0]).toEqual(
       jasmine.objectContaining({
         date: '2026-01-02',
@@ -38,6 +38,7 @@ describe('bank-import util', () => {
       })
     );
     expect(preview.rows[0].dedupe_key).toMatch(/^[a-f0-9]{64}$/);
+    expect(preview.skipped).toEqual([{ line: 3, reason: 'credit of $42.12 is not imported' }]);
   });
 
   it('marks existing and same-file duplicate rows during preview', async () => {
@@ -51,8 +52,24 @@ describe('bank-import util', () => {
 
     const second = await buildBankImportPreview('chase', 'chase.csv', csv, existing);
 
-    expect(first.summary).toEqual({ total_parsed: 2, new: 1, duplicate: 1 });
-    expect(second.summary).toEqual({ total_parsed: 2, new: 0, duplicate: 2 });
+    expect(first.summary).toEqual({ total_parsed: 2, new: 1, duplicate: 1, skipped: 0, errors: 0 });
+    expect(second.summary).toEqual({ total_parsed: 2, new: 0, duplicate: 2, skipped: 0, errors: 0 });
+  });
+
+  it('reports malformed rows as errors and by-design rows as skipped without aborting the preview', async () => {
+    const csv = [
+      'Transaction Date,Posted Date,Card No.,Description,Category,Debit,Credit',
+      '2026-01-02,2026-01-03,1234,COSTCO GAS,Gas,42.12,',
+      'not-a-date,2026-01-03,1234,BAD DATE,Gas,10.00,',
+      '2026-01-04,2026-01-05,1234,PAYMENT,Payment,,42.12',
+    ].join('\n');
+
+    const preview = await buildBankImportPreview('capital_one', 'capital.csv', csv, new Set());
+
+    expect(preview.summary).toEqual({ total_parsed: 1, new: 1, duplicate: 0, skipped: 1, errors: 1 });
+    expect(preview.errors).toEqual([{ line: 3, reason: 'Unrecognized date: "not-a-date"' }]);
+    expect(preview.skipped).toEqual([{ line: 4, reason: 'credit of $42.12 is not imported' }]);
+    expect(preview.rows.map(row => row.description)).toEqual(['COSTCO GAS']);
   });
 
   it('commits only non-duplicate preview rows as encrypted expense transactions', async () => {

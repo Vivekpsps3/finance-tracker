@@ -333,7 +333,16 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: preview => {
           this.importParsing = false;
-          this.importPreview = preview;
+          this.importPreview = {
+            ...preview,
+            skipped: preview.skipped ?? [],
+            errors: preview.errors ?? [],
+            summary: {
+              ...preview.summary,
+              skipped: preview.summary.skipped ?? 0,
+              errors: preview.summary.errors ?? 0,
+            },
+          };
           this.importStep = 'preview';
           this.importSelected.clear();
           for (const row of preview.rows) {

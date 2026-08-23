@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any, Dict
 
 from sqlalchemy import func

@@ -1,9 +1,8 @@
 """Unit tests for MarketDataService (no live yfinance)."""
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
-from sqlalchemy import delete
 
 from models import Base, MarketResearchCache, TickerQuote
 from services.market_data import MarketDataService
@@ -93,7 +92,7 @@ def test_sqlite_naive_fetched_at_does_not_crash(svc):
                 symbol="AAPL",
                 close_price=100.0,
                 quote_date=date.today(),
-                fetched_at=datetime.utcnow(),
+                fetched_at=datetime.now(UTC).replace(tzinfo=None),
                 source="sqlite_eod",
             )
         )
@@ -145,7 +144,7 @@ def test_research_cache_cold_insert_uses_winning_row_after_savepoint_collision(s
         def rollback(self):
             self.rolled_back = True
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC).replace(tzinfo=None)
     winner = MarketResearchCache(
         symbol="VOO", period="10y", payload_json="{}", source="yfinance",
         fetched_at=now, expires_at=now,
