@@ -5,7 +5,6 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 from datetime import date
 
 import pytest
-from fastapi.testclient import TestClient
 from conftest import authenticated_client
 
 from sqlalchemy import delete

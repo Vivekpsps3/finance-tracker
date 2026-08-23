@@ -20,6 +20,21 @@
           · Spending <strong>${{ expenseTotal | number:'1.2-2' }}</strong>
           · Net <strong>${{ netCashflow | number:'1.2-2' }}</strong>
         </p>
+        <div class="chart-fallback">
+          <table aria-label="Monthly cashflow data table">
+            <thead><tr><th>Month</th><th>Income</th><th>Spending</th><th>Net</th></tr></thead>
+            <tbody>
+              @for (row of monthlyRows; track row.label) {
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td>${{ row.income | number:'1.2-2' }}</td>
+                  <td>${{ row.expense | number:'1.2-2' }}</td>
+                  <td [class.positive]="row.net >= 0">{{ row.net >= 0 ? '+' : '−' }}${{ (row.net < 0 ? -row.net : row.net) | number:'1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       } @else {
         <ui-empty-state icon="transactions" message="Add transactions in the selected period." />
       }

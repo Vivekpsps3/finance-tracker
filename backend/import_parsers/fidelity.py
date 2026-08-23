@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import csv
 import io
-from dataclasses import dataclass
 from typing import List
 
 from import_parsers.types import ParsedFidelityRow  # will add if not present

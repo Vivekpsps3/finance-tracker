@@ -1,5 +1,5 @@
 import enum
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,

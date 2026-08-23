@@ -263,6 +263,12 @@
         {{ importPreview?.summary?.new }} new,
         {{ importPreview?.summary?.duplicate }} duplicate
         ({{ importPreview?.summary?.total_parsed }} parsed).
+        @if (importPreview && importPreview.summary.skipped) {
+          {{ importPreview.summary.skipped }} skipped.
+        }
+        @if (importPreview && importPreview.summary.errors) {
+          <span class="import-summary-error">{{ importPreview.summary.errors }} need fixing.</span>
+        }
         Selected {{ selectedImportCount }} · ${{ selectedImportExpenseTotal | number: '1.2-2' }}.
       </p>
       @if (importError) {
@@ -306,6 +312,37 @@
           </tbody>
         </ui-data-table>
       </div>
+      @if (importPreview && (importPreview.errors.length || importPreview.skipped.length)) {
+        <div class="import-notes">
+          @if (importPreview.errors.length) {
+            <details class="import-notes-block import-notes-block--error" open>
+              <summary class="import-notes-title">
+                {{ importPreview.errors.length }} row(s) could not be parsed
+              </summary>
+              <ul class="import-notes-list">
+                @for (note of importPreview.errors; track $index) {
+                  <li class="import-note">Line {{ note.line }}: {{ note.reason }}</li>
+                }
+              </ul>
+            </details>
+          }
+          @if (importPreview.skipped.length) {
+            <details class="import-notes-block">
+              <summary class="import-notes-title">
+                Skipped {{ importPreview.skipped.length }} row(s)
+              </summary>
+              <ul class="import-notes-list">
+                @for (note of importPreview.skipped; track $index) {
+                  <li class="import-note">Line {{ note.line }}: {{ note.reason }}</li>
+                }
+              </ul>
+            </details>
+          }
+          <p class="import-notes-hint">
+            Valid rows can still be imported. Fix flagged rows in the CSV and use Back to re-preview.
+          </p>
+        </div>
+      }
       <div class="form-actions">
         <ui-button variant="secondary" (clicked)="importStep = 'upload'">Back</ui-button>
         <ui-button

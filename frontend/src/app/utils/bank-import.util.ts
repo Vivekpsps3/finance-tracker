@@ -3,6 +3,7 @@ import {
   ImportCommitResult,
   ImportPreviewResult,
   ImportPreviewRow,
+  ImportRowNote,
   Transaction,
 } from '../models/transaction.model';
 
@@ -15,12 +16,18 @@ interface ParsedBankRow {
   dedupe_key: string;
 }
 
+interface ParsedBankResult {
+  rows: ParsedBankRow[];
+  skipped: ImportRowNote[];
+  errors: ImportRowNote[];
+}
+
 interface BankImporter {
   slug: string;
   name: string;
   hint: string;
   file_extensions: string[];
-  parse(content: string): Promise<ParsedBankRow[]>;
+  parse(content: string): Promise<ParsedBankResult>;
 }
 
 interface EncryptedImportStore {
@@ -92,7 +99,7 @@ export async function buildBankImportPreview(
   const seenInFile = new Set<string>();
   let newCount = 0;
   let duplicateCount = 0;
-  const rows: ImportPreviewRow[] = parsed.map(row => {
+  const rows: ImportPreviewRow[] = parsed.rows.map(row => {
     const duplicate = existingDedupeKeys.has(row.dedupe_key) || seenInFile.has(row.dedupe_key);
     if (duplicate) {
       duplicateCount += 1;
@@ -110,10 +117,14 @@ export async function buildBankImportPreview(
     bank: importer.name,
     filename,
     rows,
+    skipped: parsed.skipped,
+    errors: parsed.errors,
     summary: {
       total_parsed: rows.length,
       new: newCount,
       duplicate: duplicateCount,
+      skipped: parsed.skipped.length,
+      errors: parsed.errors.length,
     },
   };
 }
@@ -149,7 +160,7 @@ export async function commitBankImportRows(
   return { inserted, skipped, batch_id: 0 };
 }
 
-async function parseCapitalOne(content: string): Promise<ParsedBankRow[]> {
+async function parseCapitalOne(content: string): Promise<ParsedBankResult> {
   const { header, rows } = readCsvWithHeader(content, [
     'transaction date',
     'card no.',
@@ -158,23 +169,38 @@ async function parseCapitalOne(content: string): Promise<ParsedBankRow[]> {
     'debit',
     'credit',
   ]);
-  const out: ParsedBankRow[] = [];
+  const result: ParsedBankResult = { rows: [], skipped: [], errors: [] };
   for (const { row, lineNo } of rows) {
     const debit = parseAmount(row[header['debit']]);
     const credit = parseAmount(row[header['credit']]);
-    if (debit <= 0 && credit > 0) continue;
-    if (debit <= 0) continue;
-    const date = parseDate(row[header['transaction date']], lineNo);
+    if (debit <= 0 && credit > 0) {
+      result.skipped.push({ line: lineNo, reason: `credit of $${credit.toFixed(2)} is not imported` });
+      continue;
+    }
+    if (debit <= 0) {
+      result.skipped.push({ line: lineNo, reason: 'no debit amount' });
+      continue;
+    }
     const accountMask = row[header['card no.']].trim();
-    if (!accountMask) throw new Error(`Line ${lineNo}: missing card number`);
-    const description = normalizeDescription(row[header['description']]);
-    const category = resolveCategory(description, row[header['category']]);
-    out.push(await parsedRow('capital_one', accountMask, date, description, category, debit));
+    if (!accountMask) {
+      result.errors.push({ line: lineNo, reason: 'missing card number' });
+      continue;
+    }
+    try {
+      const date = parseDate(row[header['transaction date']]);
+      const description = normalizeDescription(row[header['description']]);
+      const category = resolveCategory(description, row[header['category']]);
+      result.rows.push(
+        await parsedRow('capital_one', accountMask, date, description, category, debit)
+      );
+    } catch (error) {
+      result.errors.push({ line: lineNo, reason: errorMessage(error) });
+    }
   }
-  return out;
+  return result;
 }
 
-async function parseChase(content: string): Promise<ParsedBankRow[]> {
+async function parseChase(content: string): Promise<ParsedBankResult> {
   const { header, rows } = readCsvWithHeader(content, [
     'transaction date',
     'post date',
@@ -184,41 +210,65 @@ async function parseChase(content: string): Promise<ParsedBankRow[]> {
     'amount',
     'memo',
   ]);
-  const out: ParsedBankRow[] = [];
+  const result: ParsedBankResult = { rows: [], skipped: [], errors: [] };
   for (const { row, lineNo } of rows) {
     const rowType = row[header['type']].trim().toLowerCase();
     const amountRaw = parseAmount(row[header['amount']]);
-    if (rowType !== 'sale' || amountRaw >= 0) continue;
-    const date = parseDate(row[header['transaction date']], lineNo);
-    const description = normalizeDescription(row[header['description']]);
-    const category = resolveCategory(description, row[header['category']]);
-    out.push(await parsedRow('chase', 'chase', date, description, category, Math.abs(amountRaw)));
+    if (rowType !== 'sale' || amountRaw >= 0) {
+      const reason =
+        rowType !== 'sale'
+          ? `${rowType || 'unknown'} rows are not imported`
+          : 'non-negative amounts are not imported as expenses';
+      result.skipped.push({ line: lineNo, reason });
+      continue;
+    }
+    try {
+      const date = parseDate(row[header['transaction date']]);
+      const description = normalizeDescription(row[header['description']]);
+      const category = resolveCategory(description, row[header['category']]);
+      result.rows.push(
+        await parsedRow('chase', 'chase', date, description, category, Math.abs(amountRaw))
+      );
+    } catch (error) {
+      result.errors.push({ line: lineNo, reason: errorMessage(error) });
+    }
   }
-  return out;
+  return result;
 }
 
-async function parseAmex(content: string): Promise<ParsedBankRow[]> {
+async function parseAmex(content: string): Promise<ParsedBankResult> {
   const { header, rows } = readCsvWithHeader(content, [
     'date',
     'description',
     'account #',
     'amount',
   ]);
-  const out: ParsedBankRow[] = [];
+  const result: ParsedBankResult = { rows: [], skipped: [], errors: [] };
   for (const { row, lineNo } of rows) {
     const amount = parseAmount(row[header['amount']]);
-    if (amount <= 0) continue;
-    const date = parseDate(row[header['date']], lineNo);
-    const accountMask = (row[header['account #']] || '').trim().replace(/^-+/, '') || 'amex';
-    const description = normalizeDescription(row[header['description']]);
-    const categoryIndex = header['category'];
-    const category = resolveCategory(description, categoryIndex == null ? '' : row[categoryIndex]);
-    out.push(await parsedRow('amex', accountMask, date, description, category, amount));
+    if (amount <= 0) {
+      const reason =
+        amount < 0
+          ? `credit of $${Math.abs(amount).toFixed(2)} is not imported`
+          : 'zero amount is not imported';
+      result.skipped.push({ line: lineNo, reason });
+      continue;
+    }
+    try {
+      const date = parseDate(row[header['date']]);
+      const accountMask = (row[header['account #']] || '').trim().replace(/^-+/, '') || 'amex';
+      const description = normalizeDescription(row[header['description']]);
+      const categoryIndex = header['category'];
+      const category = resolveCategory(description, categoryIndex == null ? '' : row[categoryIndex]);
+      result.rows.push(await parsedRow('amex', accountMask, date, description, category, amount));
+    } catch (error) {
+      result.errors.push({ line: lineNo, reason: errorMessage(error) });
+    }
   }
-  return out;
+  return result;
 }
 
-async function parseCiti(content: string): Promise<ParsedBankRow[]> {
+async function parseCiti(content: string): Promise<ParsedBankResult> {
   const { header, rows } = readCsvWithHeader(content, [
     'status',
     'date',
@@ -227,23 +277,38 @@ async function parseCiti(content: string): Promise<ParsedBankRow[]> {
     'credit',
     'member name',
   ]);
-  const out: ParsedBankRow[] = [];
+  const result: ParsedBankResult = { rows: [], skipped: [], errors: [] };
   for (const { row, lineNo } of rows) {
     const status = row[header['status']].trim().toLowerCase();
-    if (status && status !== 'cleared') continue;
+    if (status && status !== 'cleared') {
+      result.skipped.push({ line: lineNo, reason: `${status} status is not imported` });
+      continue;
+    }
     const debit = parseAmount(row[header['debit']]);
     const credit = parseAmount(row[header['credit']]);
-    if (debit <= 0 && credit > 0) continue;
-    if (debit <= 0) continue;
-    const date = parseDate(row[header['date']], lineNo);
-    const accountMask = row[header['member name']].trim() || 'citi';
-    const description = normalizeDescription(row[header['description']]);
-    out.push(await parsedRow('citi', accountMask, date, description, resolveCategory(description), debit));
+    if (debit <= 0 && credit > 0) {
+      result.skipped.push({ line: lineNo, reason: `credit of $${credit.toFixed(2)} is not imported` });
+      continue;
+    }
+    if (debit <= 0) {
+      result.skipped.push({ line: lineNo, reason: 'no debit amount' });
+      continue;
+    }
+    try {
+      const date = parseDate(row[header['date']]);
+      const accountMask = row[header['member name']].trim() || 'citi';
+      const description = normalizeDescription(row[header['description']]);
+      result.rows.push(
+        await parsedRow('citi', accountMask, date, description, resolveCategory(description), debit)
+      );
+    } catch (error) {
+      result.errors.push({ line: lineNo, reason: errorMessage(error) });
+    }
   }
-  return out;
+  return result;
 }
 
-async function parseXMoney(content: string): Promise<ParsedBankRow[]> {
+async function parseXMoney(content: string): Promise<ParsedBankResult> {
   const { header, rows } = readCsvWithHeader(content, [
     'date',
     'account',
@@ -253,20 +318,38 @@ async function parseXMoney(content: string): Promise<ParsedBankRow[]> {
     'amount',
     'status',
   ]);
-  const out: ParsedBankRow[] = [];
+  const result: ParsedBankResult = { rows: [], skipped: [], errors: [] };
   for (const { row, lineNo } of rows) {
     const rowType = row[header['type']].trim().toLowerCase();
     const status = row[header['status']].trim().toLowerCase();
     const amountRaw = parseAmount(row[header['amount']]);
-    if (rowType !== 'card purchase' || status !== 'completed' || amountRaw >= 0) continue;
-    const date = parseDate(row[header['date']], lineNo);
+    if (rowType !== 'card purchase' || status !== 'completed' || amountRaw >= 0) {
+      const reason =
+        rowType !== 'card purchase'
+          ? `${rowType || 'unknown'} rows are not imported`
+          : status !== 'completed'
+            ? `${status || 'unknown'} status is not imported`
+            : 'non-negative amounts are not imported as expenses';
+      result.skipped.push({ line: lineNo, reason });
+      continue;
+    }
     const accountMask = row[header['account']].trim();
-    if (!accountMask) throw new Error(`Line ${lineNo}: missing account`);
-    const description = normalizeDescription(row[header['description']]) || 'Card purchase';
-    const category = resolveCategory(description, row[header['category']]);
-    out.push(await parsedRow('x_money', accountMask, date, description, category, Math.abs(amountRaw)));
+    if (!accountMask) {
+      result.errors.push({ line: lineNo, reason: 'missing account' });
+      continue;
+    }
+    try {
+      const date = parseDate(row[header['date']]);
+      const description = normalizeDescription(row[header['description']]) || 'Card purchase';
+      const category = resolveCategory(description, row[header['category']]);
+      result.rows.push(
+        await parsedRow('x_money', accountMask, date, description, category, Math.abs(amountRaw))
+      );
+    } catch (error) {
+      result.errors.push({ line: lineNo, reason: errorMessage(error) });
+    }
   }
-  return out;
+  return result;
 }
 
 async function parsedRow(
@@ -348,7 +431,7 @@ function padRow(row: string[], length: number): string[] {
   return row.length >= length ? row : [...row, ...Array.from({ length: length - row.length }, () => '')];
 }
 
-function parseDate(raw: string, lineNo: number): string {
+function parseDate(raw: string): string {
   const value = (raw || '').trim();
   let match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (match) return `${match[1]}-${match[2]}-${match[3]}`;
@@ -356,7 +439,11 @@ function parseDate(raw: string, lineNo: number): string {
   if (match) {
     return `${match[3]}-${match[1].padStart(2, '0')}-${match[2].padStart(2, '0')}`;
   }
-  throw new Error(`Line ${lineNo}: Unrecognized date: ${JSON.stringify(value)}`);
+  throw new Error(`Unrecognized date: ${JSON.stringify(value)}`);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function parseAmount(raw: string): number {

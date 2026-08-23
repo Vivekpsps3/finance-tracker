@@ -5,7 +5,6 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 from datetime import date
 
 import pytest
-from fastapi.testclient import TestClient
 from conftest import authenticated_client
 from sqlalchemy import delete
 
@@ -196,7 +195,7 @@ def test_fidelity_second_commit_replaces_not_appends(client, monkeypatch):
     )
 
     def commit_symbol(symbol: str):
-        preview = client.post(
+        client.post(
             "/api/imports/fidelity/preview",
             files={
                 "file": (
@@ -206,7 +205,7 @@ def test_fidelity_second_commit_replaces_not_appends(client, monkeypatch):
                     "text/csv",
                 ),
             },
-        ).json()
+        )
         return client.post(
             "/api/imports/fidelity/commit",
             json={

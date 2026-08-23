@@ -152,7 +152,6 @@ def compute_portfolio(db: Session, user_id: int) -> Tuple[float, Dict[str, str],
     total = 0.0
     sources: Dict[str, str] = {}
     breakdown: Dict[str, float] = {}
-    displays = brokerage_account_display_map(db, user_id, [h.brokerage_account_id for h in holdings if h.brokerage_account_id])
     price_cache: Dict[str, Tuple[float, str, Optional[datetime]]] = {}
     for h in holdings:
         resp = holding_to_response(h, db=db, price_cache=price_cache)

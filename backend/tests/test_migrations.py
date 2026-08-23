@@ -4,7 +4,6 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
@@ -343,7 +342,6 @@ def test_supported_db_generation_matrix_is_documented():
 
 def test_market_research_cache_create_all_has_expected_columns():
     from sqlalchemy import create_engine, inspect
-    from sqlalchemy.orm import sessionmaker
 
     from models import Base, MarketResearchCache
 

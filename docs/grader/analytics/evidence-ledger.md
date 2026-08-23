@@ -177,6 +177,7 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Acceptance criteria:** Each supported importer displays accepted schema, rejected rows, totals, and a retry path.
 - **Verification:** Malformed and duplicate CSV journey tests.
 - **Status:** Open
+- **Progress:** Bank CSV preview now keeps valid rows and lists `skipped`/`errors` per line. Fidelity portfolio import still silently drops bad rows, and journey tests cover Capital One only.
 
 ### UX-003: Route state and empty-state next actions are inconsistent
 - **Classification:** Repair
@@ -251,7 +252,8 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Dependencies:** IA-001
 - **Acceptance criteria:** Navigation exposes link semantics and route changes move focus to the destination heading.
 - **Verification:** Accessibility-tree and keyboard route test.
-- **Status:** Open
+- **Status:** Resolved
+- **Resolution evidence:** Top-level nav uses `<a routerLink>` links with `aria-current="page"` on the active group (`frontend/src/app/core/layout/main-layout.component.html:12-26`); `NavigationEnd` focuses the destination heading (or `#main-content`) via `focusMainContent()` with `tabindex=-1` (`frontend/src/app/core/layout/main-layout.component.ts:192-212`).
 
 ### A11Y-003: Charts and sortable data need non-pointer alternatives
 - **Classification:** Repair
@@ -270,6 +272,7 @@ Strengths: STR-001 to STR-004. Actionable findings: COR-001 to COR-003, SEC-001,
 - **Acceptance criteria:** Every chart has a complete text/table alternative and every sortable header is keyboard operable with sort state.
 - **Verification:** Keyboard-only, screen-reader, touch, and 400% zoom tests.
 - **Status:** Open
+- **Progress:** Dashboard monthly cashflow now has a `chart-fallback` table alongside category and allocation. Monte Carlo and investment-insights charts still lack a complete table alternative.
 
 ### PLAT-001: Adaptive navigation and dense-table alternatives are incomplete
 - **Classification:** Redesign
