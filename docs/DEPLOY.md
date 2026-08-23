@@ -76,11 +76,7 @@ finance.vivekpanchagnula.com {
 }
 ```
 
-Create the first admin by opening `/login` after the API starts, or use open self-signup at `/signup`. Admins cannot reset another user's vault access. The CLI command is available for automation:
-
-```bash
-docker compose exec api python manage.py create-admin --email you@example.com --display-name "Your Name"
-```
+Create the first admin by opening `/login` after the API starts, or use open self-signup at `/signup`. Admins cannot reset another user's vault access.
 
 ## GitHub Actions production deployment
 

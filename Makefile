@@ -97,9 +97,9 @@ test-fast: test-doc-paths
 
 test-finance:
 	@if [ -x $(PY) ]; then \
-		cd $(BACKEND_DIR) && ../$(PY) -m pytest -q tests/test_balance_sheet.py tests/test_planning.py tests/test_migrations.py; \
+		cd $(BACKEND_DIR) && ../$(PY) -m pytest -q tests/test_migrations.py; \
 	else \
-		cd $(BACKEND_DIR) && python3 -m pytest -q tests/test_balance_sheet.py tests/test_planning.py tests/test_migrations.py; \
+		cd $(BACKEND_DIR) && python3 -m pytest -q tests/test_migrations.py; \
 	fi
 	@if [ "$(SKIP_FRONTEND_TESTS)" = "1" ]; then echo "Skipping frontend finance tests"; \
 	else cd $(FRONTEND_DIR) && npx ng test --no-watch --browsers=ChromeHeadless \

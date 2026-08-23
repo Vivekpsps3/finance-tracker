@@ -23,35 +23,19 @@ def _b64(n: int = 32) -> str:
     return base64.b64encode(b"x" * n).decode("ascii")
 
 
-def test_admin_sql_disabled():
-    client = authenticated_client(app, email="admin-sql@example.com", role=UserRole.admin)
-    res = client.post("/api/admin/sql", json={"sql": "SELECT 1"})
-    assert res.status_code == 403
-    assert "disabled" in res.json()["detail"].lower()
-
-
-def test_legacy_finance_api_gone_when_not_explicitly_allowed(monkeypatch):
-    monkeypatch.delenv("ALLOW_LEGACY_FINANCE", raising=False)
-    monkeypatch.setenv("ALLOW_LEGACY_FINANCE", "0")
+def test_legacy_finance_api_unmounted():
     client = authenticated_client(app, email="legacy-gone@example.com")
     retired_gets = [
         "/api/assets/",
-        "/api/cashflow/summary?start_date=2026-01-01&end_date=2026-01-31",
-        "/api/fixed-expenses/",
         "/api/holdings/",
         "/api/imports/banks",
-        "/api/imports/brokerages",
-        "/api/income/",
-        "/api/liabilities/",
-        "/api/net-worth/",
-        "/api/planning/v1/inputs",
-        "/api/subscriptions/",
         "/api/transactions/",
+        "/api/planning/v1/inputs",
+        "/api/admin/sql",
     ]
     for path in retired_gets:
         res = client.get(path)
-        assert res.status_code == 410, path
-        assert "vault" in res.json()["detail"].lower()
+        assert res.status_code == 404, path
 
 
 def test_vault_setup_and_record_roundtrip():

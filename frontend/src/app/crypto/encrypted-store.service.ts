@@ -33,7 +33,6 @@ type CollectionName =
   | 'brokerage_accounts'
   | 'import_batches'
   | 'planning_profiles'
-  | 'planning_runs'
   | 'stock_lab_scenarios';
 
 interface StoredEnvelope<T> {
@@ -63,7 +62,6 @@ export class EncryptedStoreService {
     brokerage_accounts: new Map(),
     import_batches: new Map(),
     planning_profiles: new Map(),
-    planning_runs: new Map(),
     stock_lab_scenarios: new Map(),
   };
 

@@ -55,11 +55,6 @@ export class VaultService {
     return this.unlockedSubject.value && !!this.dek;
   }
 
-  get usesEncryptedStore(): boolean {
-    // All users are on the encrypted path once the vault is unlocked.
-    return this.isUnlocked;
-  }
-
   get currentStatus(): VaultStatus | null {
     return this.statusSubject.value;
   }

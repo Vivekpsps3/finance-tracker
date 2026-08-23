@@ -250,12 +250,10 @@ def test_bootstrap_rejects_a_non_p256_authentication_key():
     assert response.status_code == 400
 
 
-def test_password_login_is_retired_in_favor_of_the_bounded_migration_endpoint():
+def test_password_login_is_unmounted():
     client = TestClient(app)
-
     response = client.post("/api/auth/login", json={"email": "legacy@example.com", "password": "legacy-password"})
-
-    assert response.status_code == 410
+    assert response.status_code == 404
 
 
 def test_passwordless_bootstrap_creates_first_admin_and_vault():

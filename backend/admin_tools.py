@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import HTTPException
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
@@ -86,14 +85,6 @@ def admin_metrics(db: Session) -> dict[str, Any]:
             count = None
         tables.append({"name": table, "rows": count})
     return {"totals": totals, "finance_rows": finance_rows, "per_user": per_user, "tables": tables}
-
-
-def execute_admin_sql(db: Session, sql: str) -> dict[str, Any]:
-    # Server-blind storage: admins must not query finance plaintext or ciphertext payloads.
-    raise HTTPException(
-        status_code=403,
-        detail="Admin SQL console is disabled. Use metrics counts and account tools only.",
-    )
 
 
 def reset_user_contents(db: Session, user: User, *, actor_user_id: int, revoke_sessions: bool = True) -> None:

@@ -6,8 +6,7 @@ Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** per
 
 - Active browser finance storage is `/api/vault/*`: the backend stores ciphertext, sync revisions, and blind indexes only.
 - Active non-finance plaintext surfaces are auth/admin account management, health, and public market quote/research cache.
-- Retired plaintext finance routers still exist behind `ALLOW_LEGACY_FINANCE=1` for backend regression tests and old DB service coverage. Normal deployments return `410` and these routes are hidden from OpenAPI.
-- Full surface ownership and retirement conditions: [LIFECYCLE.md](./LIFECYCLE.md).
+- Plaintext finance HTTP is gone. Full surface ownership: [LIFECYCLE.md](./LIFECYCLE.md).
 
 ## Data planes (do not mix)
 
@@ -63,14 +62,13 @@ There is **no** `routers/analytics.py`. Net-worth Monte Carlo still lives under 
 - **Monte Carlo tool:** `mc_net_worth_paths` — read-only ledger snapshot → MC paths (ephemeral; **not** written to `planning_scenario_runs`).
 - **MC saved inputs:** `planning_assumption_profiles` (named presets).
 - API prefix: `/api/planning/v1` (`tools`, `inputs`, `profiles`, `POST /runs`).
-- Responses include a **speculative disclaimer** (Pydantic defaults in `schemas_planning.py`).
 - UI: `frontend/src/app/planning/` + `PlanningService`; route `/planning`.
 - **Stock Lab:** `/stock-lab` is a speculative stock/ETF planning page. It saves encrypted scenario inputs in the vault and uses `/api/market/research/*` for public ticker research. Ticker symbols, including selected owned symbols, are intentionally disclosed for this feature; purchase assumptions remain encrypted client data.
 
 ## Imports
 
-- **Banks:** browser-side parsers in `frontend/src/app/utils/bank-import.util.ts` preview and commit CSV rows into encrypted transaction records. Backend parsers remain for regression tests only.
-- **Brokerage:** client-side Fidelity CSV parse/preview/replace-commit into encrypted holdings; server plaintext Fidelity import remains retired (410) except tests.
+- **Banks:** browser-side parsers in `frontend/src/app/utils/bank-import.util.ts` preview and commit CSV rows into encrypted transaction records.
+- **Brokerage:** client-side Fidelity CSV parse/preview/replace-commit into encrypted holdings.
 
 **SimpleFIN later:** the user wants SimpleFIN eventually. **Plaid is not the intended integration** even if placeholder env vars exist. CSV only today.
 
@@ -80,7 +78,7 @@ There is **no** `routers/analytics.py`. Net-worth Monte Carlo still lives under 
 - Vault routes (auth only, outside shell): `/vault/setup`, `/vault/unlock`.
 - State: `FinanceService` / `PlanningService` use the encrypted client store after vault unlock; `VaultService` / `EncryptedStoreService`; `AuthService`.
 - Prices: manual/imported prices remain local. An explicit Portfolio refresh and Stock Lab/typed lookup disclose only ticker symbols to `/api/market` and yfinance; shares, values, account details, and other holding fields remain encrypted.
-- Server-blind storage: `/api/vault/*` stores wraps + ciphertext only; backend never decrypts. Legacy plaintext finance routes always return `410`.
+- Server-blind storage: `/api/vault/*` stores wraps + ciphertext only; backend never decrypts. Plaintext finance HTTP is unmounted.
 
 ## Where to read more
 

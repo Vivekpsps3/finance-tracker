@@ -17,11 +17,3 @@
 | [../AGENTS.md](../AGENTS.md) | Fast handoff for future AI agents |
 
 Project overview: [../README.md](../README.md).
-
-## Grader analytics
-
-| Doc | Purpose |
-|-----|---------|
-| [grader/analytics/README.md](./grader/analytics/README.md) | Reusable repository review package and baseline scorecard |
-
-Prefer ARCHITECTURE, DATA_MODEL, FRONTEND, SECURITY_MODEL, and AGENTS.md for product truth.

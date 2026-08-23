@@ -42,7 +42,6 @@ ALLOWED_COLLECTIONS = frozenset(
         "fixed_expenses",
         "subscriptions",
         "planning_profiles",
-        "planning_runs",
         "stock_lab_scenarios",
     }
 )
@@ -64,7 +63,6 @@ LEGACY_COLLECTIONS = {
     "fixed_expenses": FixedExpense,
     "subscriptions": Subscription,
     "planning_profiles": PlanningAssumptionProfile,
-    "planning_runs": PlanningScenarioRun,
 }
 
 # Delete dependent rows first so this remains valid on databases enforcing foreign keys.
@@ -100,27 +98,6 @@ def _b64_decode(value: str) -> bytes:
 
 def _b64_len(value: str) -> int:
     return len(_b64_decode(value))
-
-
-def _validate_recovery_wrap(value: str) -> None:
-    """
-    Recovery-key path is retired. Empty means unused.
-    Legacy non-empty wraps are still stored opaquely for old rows.
-    """
-    packed = (value or "").strip()
-    if not packed:
-        return
-    if "." not in packed:
-        if _b64_len(packed) < 32:
-            raise HTTPException(status_code=400, detail="Recovery wrap too short")
-        return
-    salt_b64, wrapped_b64 = packed.split(".", 1)
-    if not salt_b64 or not wrapped_b64:
-        raise HTTPException(status_code=400, detail="Invalid recovery wrap format")
-    if _b64_len(salt_b64) < 16:
-        raise HTTPException(status_code=400, detail="Recovery salt too short")
-    if _b64_len(wrapped_b64) < 32:
-        raise HTTPException(status_code=400, detail="Recovery wrap too short")
 
 
 def validate_collection(collection: str) -> str:
@@ -175,7 +152,6 @@ def create_vault(
         raise HTTPException(status_code=400, detail="KDF salt too short")
     if _b64_len(wrapped_dek_b64) < 32:
         raise HTTPException(status_code=400, detail="Wrapped DEK too short")
-    _validate_recovery_wrap(recovery_wrapped_dek_b64)
     vault = UserVault(
         user_id=user_id,
         kdf_algorithm=kdf_algorithm,
@@ -223,7 +199,6 @@ def update_vault_wraps(
             raise HTTPException(status_code=400, detail="Wrapped DEK too short")
         vault.wrapped_dek_b64 = wrapped_dek_b64
     if recovery_wrapped_dek_b64 is not None:
-        _validate_recovery_wrap(recovery_wrapped_dek_b64)
         vault.recovery_wrapped_dek_b64 = recovery_wrapped_dek_b64
     if key_version is not None:
         if key_version < vault.key_version:

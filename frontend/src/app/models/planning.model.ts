@@ -5,11 +5,9 @@ export const PLANNING_DISCLAIMER =
 
 export const MC_TOOL_ID = 'mc_net_worth_paths' as const;
 
-/** Matches backend schemas_planning MC_N_PATHS_* / FAN_PATHS_PERSIST_MAX */
 export const MC_N_PATHS_MIN = 100;
 export const MC_N_PATHS_MAX = 5000;
 export const MC_FAN_PATHS_PERSIST_MAX = 500;
-export const MC_RUN_HTTP_TIMEOUT_MS = 120_000;
 
 export interface ProfilePayload {
   annual_income_growth: number;

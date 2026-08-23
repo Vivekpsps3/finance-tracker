@@ -13,13 +13,6 @@ interface AdminMetrics {
   tables: Array<{ name: string; rows: number | null }>;
 }
 
-interface SqlResult {
-  columns: string[];
-  rows: Array<Record<string, unknown>>;
-  row_count: number;
-  truncated: boolean;
-}
-
 @Component({
   selector: 'app-admin-users',
   standalone: true,
@@ -42,9 +35,6 @@ export class AdminUsersComponent implements OnInit {
   error = '';
   message = '';
   metrics: AdminMetrics | null = null;
-  sql = 'SELECT email, role, is_active FROM users ORDER BY email';
-  sqlResult: SqlResult | null = null;
-  sqlRunning = false;
   username = '';
   displayName = '';
   role: UserRole = 'user';
@@ -89,28 +79,6 @@ export class AdminUsersComponent implements OnInit {
     this.http.get<AdminMetrics>(apiUrl('/admin/metrics')).subscribe({
       next: metrics => { this.metrics = metrics; this.cdr.markForCheck(); },
       error: err => { this.error = err?.error?.detail || 'Could not load metrics'; this.cdr.markForCheck(); },
-    });
-  }
-
-  runSql(): void {
-    if (!this.sql.trim()) return;
-    this.sqlRunning = true;
-    this.error = '';
-    this.message = '';
-    this.cdr.markForCheck();
-    this.http.post<SqlResult>(apiUrl('/admin/sql'), { sql: this.sql }).subscribe({
-      next: result => {
-        this.sqlResult = result;
-        this.sqlRunning = false;
-        this.message = 'Read-only query executed';
-        this.loadMetrics();
-        this.cdr.markForCheck();
-      },
-      error: err => {
-        this.error = err?.error?.detail || 'SQL failed';
-        this.sqlRunning = false;
-        this.cdr.markForCheck();
-      },
     });
   }
 

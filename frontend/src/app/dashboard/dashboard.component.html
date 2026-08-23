@@ -176,23 +176,16 @@
       <section class="signals-card animate-in" aria-labelledby="signals-heading">
         <p class="section-eyebrow">Local signals</p>
         <h2 id="signals-heading" class="section-title">Explainable checks (browser-only)</h2>
-        <p class="signals-disclaimer">Deterministic, non-mutating, never sent to the server. Confidence is heuristic.</p>
+        <p class="signals-disclaimer">Deterministic, non-mutating, never sent to the server.</p>
         <ul class="signal-list">
           @for (signal of localSignals; track signal.id) {
             <li class="signal-item">
               <div class="signal-item__head">
                 <strong>{{ signal.title }}</strong>
-                <ui-badge [variant]="signal.kind === 'fact' ? 'success' : 'warning'">
-                  {{ signal.kind }} · {{ (signal.confidence * 100) | number:'1.0-0' }}%
-                </ui-badge>
               </div>
               <p>{{ signal.summary }}</p>
               <div class="signal-item__actions">
-                @for (action of signal.reversibleActions; track action) {
-                  @if (action !== 'dismiss') {
-                    <a [routerLink]="signalActionPath(action)" class="signal-link">{{ signalActionLabel(action) }}</a>
-                  }
-                }
+                <a [routerLink]="signal.href" class="signal-link">{{ signal.hrefLabel }}</a>
               </div>
             </li>
           }

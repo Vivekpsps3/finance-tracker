@@ -6,7 +6,7 @@ all users are on the encrypted path.
 - Vault + encrypted records + blind indexes
 - Browser WebCrypto (AES-GCM + PBKDF2) vault setup/unlock/recovery
 - Finance/planning use the encrypted client store after vault unlock
-- Legacy plaintext finance APIs always return `410`
+- Legacy plaintext finance HTTP is unmounted
 - Admin SQL console disabled
 
 Historical implementation sequence for the move to browser-owned plaintext and

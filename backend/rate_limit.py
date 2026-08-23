@@ -45,10 +45,6 @@ def _is_limited(request: Request) -> bool:
         "/api/auth/passwordless/verify",
     }:
         return True
-    if path == "/api/planning/v1/runs":
-        return True
-    if path.startswith("/api/imports/") and ("/preview" in path or "/commit" in path):
-        return True
     return False
 
 

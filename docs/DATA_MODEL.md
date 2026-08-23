@@ -1,7 +1,7 @@
 # Data model
 
-Code truth: `backend/models.py`, `backend/services/finance.py`, `backend/services/cashflow.py`,
-`backend/services/planning/`.
+Code truth: `backend/models.py`, `frontend/src/app/crypto/client-finance.ts`,
+`frontend/src/app/services/planning.service.ts`.
 
 ## Users and ownership
 
@@ -39,7 +39,7 @@ asset/liability value is updated.
 
 ### Avoid double-counting cash
 
-`compute_net_worth()` in `services/finance.py` **adds** `other_assets` (all manual `assets` rows) and **portfolio** (all `holdings` rows valued at market or purchase fallback). There is **no** deduplication between a manual cash/checking asset and brokerage sweep or money-market positions (e.g. **SPAXX**, **SWVXX**, **VMFXX**) that appear in Fidelity or other imports.
+`computeNetWorth()` in `frontend/src/app/crypto/client-finance.ts` **adds** `other_assets` (all manual `assets` rows) and **portfolio** (all `holdings` rows valued at market or purchase fallback). There is **no** deduplication between a manual cash/checking asset and brokerage sweep or money-market positions (e.g. **SPAXX**, **SWVXX**, **VMFXX**) that appear in Fidelity or other imports.
 
 | User mistake | Effect on net worth |
 |--------------|---------------------|
@@ -76,7 +76,7 @@ SimpleFIN is the likely future aggregation path. Plaid placeholders may exist in
 
 ## Recurring cashflow (not net worth)
 
-Separate from the transaction ledger and balance sheet. Code: `models.py`, `services/cashflow.py`, routers `income`, `fixed_expenses`, `subscriptions`, `cashflow`.
+Separate from the transaction ledger and balance sheet. Code: `models.py`, `frontend/src/app/crypto/client-finance.ts`.
 
 | Table | Purpose |
 |-------|---------|
@@ -93,7 +93,7 @@ spending estimates when useful.
 
 ## Planning lab (speculative)
 
-Separate from net worth and the transaction ledger. Code: `backend/models.py`, `backend/services/planning/`.
+Separate from net worth and the transaction ledger. Code: `backend/models.py`, `frontend/src/app/services/planning.service.ts`.
 
 | Table | Purpose |
 |-------|---------|

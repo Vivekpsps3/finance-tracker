@@ -25,7 +25,7 @@ def test_openapi_excludes_retired_plaintext_finance_paths(monkeypatch):
     assert res.status_code == 200
     paths = res.json()["paths"]
     assert "/api/vault/status" in paths
-    assert "/api/auth/login" in paths
+    assert "/api/auth/login/migrate" in paths
     assert "/api/transactions/" not in paths
     assert "/api/assets/" not in paths
     assert "/api/imports/{bank_slug}/preview" not in paths

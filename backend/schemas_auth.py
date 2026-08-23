@@ -106,11 +106,6 @@ class MeResponse(BaseModel):
     csrf_token: Optional[str] = None
 
 
-class ChangePasswordRequest(BaseModel):
-    current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=12, max_length=256)
-
-
 class AdminUserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_.-]+$")
     display_name: str = Field(..., min_length=1, max_length=160)
@@ -125,12 +120,6 @@ class AdminUserUpdate(BaseModel):
     display_name: Optional[str] = Field(None, min_length=1, max_length=160)
     role: Optional[UserRoleValue] = None
     is_active: Optional[bool] = None
-    must_change_password: Optional[bool] = None
-
-
-class AdminPasswordReset(BaseModel):
-    new_password: str = Field(..., min_length=12, max_length=256)
-    must_change_password: bool = True
 
 
 class AdminUserContentReset(BaseModel):
@@ -143,17 +132,3 @@ class SelfDataResetRequest(BaseModel):
 
 class BootstrapStatusResponse(BaseModel):
     needs_setup: bool
-
-
-class BootstrapRequest(EmailMixin):
-    display_name: str = Field(..., min_length=1, max_length=160)
-    password: str = Field(..., min_length=12, max_length=256)
-
-
-class SignupRequest(EmailMixin):
-    display_name: str = Field(..., min_length=1, max_length=160)
-    password: str = Field(..., min_length=12, max_length=256)
-
-
-class AdminSqlRequest(BaseModel):
-    sql: str = Field(..., min_length=1, max_length=10000)

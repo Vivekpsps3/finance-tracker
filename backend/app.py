@@ -11,11 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from logging_config import get_logger, redact_database_url, setup_logging, uvicorn_log_config
-from price_cache import EOD_MAX_AGE_HOURS, REDIS_URL
 from api_auth import ApiKeyMiddleware
 from rate_limit import RateLimitMiddleware
 from request_logging import RequestLoggingMiddleware
-from routers import assets, auth_routes, cashflow, fixed_expenses, health, holdings, imports, income, liabilities, market, net_worth, planning, subscriptions, transactions, vault
+from routers import auth_routes, health, market, vault
 
 setup_logging()
 logger = get_logger()
@@ -34,12 +33,11 @@ async def lifespan(app: FastAPI):
         if o.strip()
     ]
     logger.info(
-        "startup version=2.0.0 database=%s cors_origins=%s price_cache_ttl_s=%s eod_cache_hours=%s redis_configured=%s",
+        "startup version=2.0.0 database=%s cors_origins=%s price_cache_ttl_s=%s eod_cache_hours=%s",
         redact_database_url(SQLALCHEMY_DATABASE_URL),
         cors,
         int(os.getenv("PRICE_CACHE_TTL", "120")),
-        EOD_MAX_AGE_HOURS,
-        bool(REDIS_URL),
+        int(os.getenv("EOD_CACHE_HOURS", "24")),
     )
     yield
     logger.info("shutdown complete")
@@ -98,19 +96,7 @@ def create_app() -> FastAPI:
     application.include_router(health.router, prefix=api_prefix)
     application.include_router(auth_routes.router, prefix=api_prefix)
     application.include_router(vault.router, prefix=api_prefix)
-    legacy_schema = False
-    application.include_router(imports.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(transactions.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(cashflow.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(income.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(fixed_expenses.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(subscriptions.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(assets.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(liabilities.router, prefix=api_prefix, include_in_schema=legacy_schema)
     application.include_router(market.router, prefix=api_prefix)
-    application.include_router(holdings.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(net_worth.router, prefix=api_prefix, include_in_schema=legacy_schema)
-    application.include_router(planning.router, prefix=api_prefix, include_in_schema=legacy_schema)
 
     return application
 

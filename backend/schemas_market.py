@@ -36,6 +36,14 @@ class MarketQuoteSummary(BaseModel):
     dividend_yield: Optional[float] = None
 
 
+class MarketPriceResponse(BaseModel):
+    symbol: str
+    price: float
+    price_source: str
+    price_as_of: datetime | None = None
+    valid: bool
+
+
 class MarketPricePoint(BaseModel):
     date: str
     open: Optional[float] = None

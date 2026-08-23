@@ -65,12 +65,10 @@ Optional: `backend/.env` from **`backend/.env.example`**
 | `CORS_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200` |
 | `PRICE_CACHE_TTL` | `120` (seconds, in-memory) |
 | `EOD_CACHE_HOURS` | `24` |
-| `REDIS_URL` | unset (SQLite `ticker_quotes` still used) |
 | `LOG_LEVEL` | `INFO` |
 | `API_KEY` / `FINANCE_API_KEY` | unset. Optional extra gate for non-browser clients; browser app uses session cookies |
 | `SESSION_COOKIE_SECURE` | set `1` on HTTPS |
 | `ALEMBIC_STRICT` | `1` (default): fail startup if Alembic upgrade fails on file DB |
-| `PLAID_*` | **Not implemented** — reserved in `.env.example`; bank data via CSV import only |
 
 ## Data model
 

@@ -56,8 +56,7 @@ Do not blur these data planes:
 - `docs/DEPLOY.md`: production/domain deployment checklist.
 - `docs/ADDING_A_BANK_IMPORT.md`: add a new CSV bank importer.
 - `backend/models.py`: ORM tables.
-- `backend/services/finance.py`: net worth, imports, response mappers.
-- `backend/services/cashflow.py`: job income / fixed expense / subscription math.
+- `frontend/src/app/crypto/client-finance.ts`: net worth and cashflow math.
 - `frontend/src/app/services/finance.service.ts`: frontend API contract.
 - `frontend/src/app/app.routes.ts`: routes.
 - `frontend/src/app/stock-lab/`: Stock Lab UI; `backend/services/market_data.py` +
@@ -82,8 +81,8 @@ The user clarified:
 - tax document storage no longer makes sense for this app and has been removed
 - user-level encryption is server-blind storage: browser-owned plaintext
   (WebCrypto AES-GCM + PBKDF2 vault), backend-owned ciphertext only via
-  `/api/vault/*`. All users use the encrypted path; legacy finance endpoints
-  always return 410. See `docs/SECURITY_MODEL.md`.
+  `/api/vault/*`. All users use the encrypted path; plaintext finance HTTP is
+  unmounted. See `docs/SECURITY_MODEL.md`.
 - Stock Lab (`/stock-lab`) is shipping: speculative stock/ETF analysis with
   public market research and encrypted scenario inputs; it must not mutate
   holdings or net worth. Spec: `docs/superpowers/specs/2026-07-09-stock-lab-design.md`.

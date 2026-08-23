@@ -6,8 +6,6 @@
 - **Node.js 20+** and npm
 - **make** (GNU Make)
 
-Optional: Redis for shared EOD price cache (`REDIS_URL` in `backend/.env`).
-
 ## Quick start
 
 From the repo root:
@@ -60,13 +58,10 @@ backend/
   app.py           # FastAPI app
   database.py      # engine, get_db
   models.py        # SQLAlchemy
-  schemas.py       # Pydantic (finance)
-  schemas_auth.py / schemas_planning.py
+  schemas_auth.py / schemas_vault.py / schemas_market.py
   auth.py / api_auth.py
-  routers/         # active HTTP routes (auth/admin, vault, health, market) plus
-                   # retired plaintext finance routers gated for regression tests
-  services/        # encrypted storage, market_data, legacy finance/cashflow/planning helpers
-  import_parsers/  # legacy bank + Fidelity CSV parsers; active bank import is client-side
+  routers/         # health, auth/admin, vault, market
+  services/        # encrypted storage, market_data, challenge_auth
   .env.example     # copy to .env (optional)
 ```
 

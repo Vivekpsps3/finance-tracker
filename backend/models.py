@@ -253,7 +253,7 @@ class Holding(Base):
 
 
 class TickerQuote(Base):
-    """Cached EOD close per symbol (SQLite); mirrored to Redis when configured."""
+    """Cached EOD close per symbol."""
 
     __tablename__ = "ticker_quotes"
     symbol = Column(String, primary_key=True, index=True)

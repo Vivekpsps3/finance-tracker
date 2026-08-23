@@ -1,11 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, from, timeout } from 'rxjs';
-import { apiUrl } from '../core/api-url';
+import { Observable, from } from 'rxjs';
 import { EncryptedStoreService } from '../crypto/encrypted-store.service';
-import { VaultService } from '../crypto/vault.service';
 import {
-  MC_RUN_HTTP_TIMEOUT_MS,
   MC_FAN_PATHS_PERSIST_MAX,
   MC_N_PATHS_MAX,
   MC_N_PATHS_MIN,
@@ -21,107 +17,81 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class PlanningService {
-  private readonly base = apiUrl('/planning/v1');
-
-  constructor(
-    private http: HttpClient,
-    private vault: VaultService,
-    private encStore: EncryptedStoreService
-  ) {}
+  constructor(private encStore: EncryptedStoreService) {}
 
   getInputs(): Observable<PlanningInputsPreview> {
-    if (this.vault.usesEncryptedStore) {
-      return from(this.clientInputs());
-    }
-    return this.http.get<PlanningInputsPreview>(`${this.base}/inputs`);
+    return from(this.clientInputs());
   }
 
   listProfiles(): Observable<PlanningProfile[]> {
-    if (this.vault.usesEncryptedStore) {
-      return from(
-        this.encStore.listPlanningProfiles().then(rows =>
-          rows.map(row => ({
-            id: row.id,
-            name: row.name,
-            base_currency: row.base_currency || 'USD',
-            payload: typeof row.payload_json === 'string' ? JSON.parse(row.payload_json) : row.payload || row,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-          }))
-        )
-      );
-    }
-    return this.http.get<PlanningProfile[]>(`${this.base}/profiles`);
+    return from(
+      this.encStore.listPlanningProfiles().then(rows =>
+        rows.map(row => ({
+          id: row.id,
+          name: row.name,
+          base_currency: row.base_currency || 'USD',
+          payload: typeof row.payload_json === 'string' ? JSON.parse(row.payload_json) : row.payload || row,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        }))
+      )
+    );
   }
 
   createProfile(body: PlanningProfileCreate): Observable<PlanningProfile> {
-    if (this.vault.usesEncryptedStore) {
-      return from(
-        (async () => {
-          const now = new Date().toISOString();
-          const row = await this.encStore.savePlanningProfile({
-            name: body.name,
-            base_currency: (body as any).base_currency || 'USD',
-            payload_json: JSON.stringify((body as any).payload || body),
-            created_at: now,
-            updated_at: now,
-          });
-          return {
-            id: row.id,
-            name: row.name,
-            base_currency: row.base_currency,
-            payload: (body as any).payload || (body as any),
-            created_at: now,
-            updated_at: now,
-          } as PlanningProfile;
-        })()
-      );
-    }
-    return this.http.post<PlanningProfile>(`${this.base}/profiles`, body);
+    return from(
+      (async () => {
+        const now = new Date().toISOString();
+        const row = await this.encStore.savePlanningProfile({
+          name: body.name,
+          base_currency: (body as any).base_currency || 'USD',
+          payload_json: JSON.stringify((body as any).payload || body),
+          created_at: now,
+          updated_at: now,
+        });
+        return {
+          id: row.id,
+          name: row.name,
+          base_currency: row.base_currency,
+          payload: (body as any).payload || (body as any),
+          created_at: now,
+          updated_at: now,
+        } as PlanningProfile;
+      })()
+    );
   }
 
   updateProfile(id: number, body: Partial<PlanningProfileCreate>): Observable<PlanningProfile> {
-    if (this.vault.usesEncryptedStore) {
-      return from(
-        (async () => {
-          const now = new Date().toISOString();
-          const row = await this.encStore.savePlanningProfile(
-            {
-              name: (body as any).name || 'Profile',
-              base_currency: (body as any).base_currency || 'USD',
-              payload_json: JSON.stringify((body as any).payload || body),
-              updated_at: now,
-            },
-            id
-          );
-          return {
-            id: row.id,
-            name: row.name,
-            base_currency: row.base_currency,
-            payload: (body as any).payload || {},
-            created_at: row.created_at || now,
+    return from(
+      (async () => {
+        const now = new Date().toISOString();
+        const row = await this.encStore.savePlanningProfile(
+          {
+            name: (body as any).name || 'Profile',
+            base_currency: (body as any).base_currency || 'USD',
+            payload_json: JSON.stringify((body as any).payload || body),
             updated_at: now,
-          } as PlanningProfile;
-        })()
-      );
-    }
-    return this.http.patch<PlanningProfile>(`${this.base}/profiles/${id}`, body);
+          },
+          id
+        );
+        return {
+          id: row.id,
+          name: row.name,
+          base_currency: row.base_currency,
+          payload: (body as any).payload || {},
+          created_at: row.created_at || now,
+          updated_at: now,
+        } as PlanningProfile;
+      })()
+    );
   }
 
   deleteProfile(id: number): Observable<void> {
-    if (this.vault.usesEncryptedStore) {
-      return from(this.encStore.deletePlanningProfile(id));
-    }
-    return this.http.delete<void>(`${this.base}/profiles/${id}`);
+    return from(this.encStore.deletePlanningProfile(id));
   }
 
   createRun(body: PlanningRunCreate): Observable<PlanningRun> {
-    if (this.vault.usesEncryptedStore) {
-      return from(this.clientMonteCarlo(body));
-    }
-    return this.http
-      .post<PlanningRun>(`${this.base}/runs`, body)
-      .pipe(timeout(MC_RUN_HTTP_TIMEOUT_MS));
+    return from(this.clientMonteCarlo(body));
   }
 
   private async clientInputs(): Promise<PlanningInputsPreview> {

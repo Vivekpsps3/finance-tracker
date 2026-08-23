@@ -13,7 +13,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from admin_tools import admin_metrics, delete_user_account, execute_admin_sql, reset_user_contents
+from admin_tools import admin_metrics, delete_user_account, reset_user_contents
 from auth import (
     audit_event,
     clear_session_cookie,
@@ -23,7 +23,6 @@ from auth import (
     get_current_admin,
     get_current_migration_user,
     get_current_user,
-    hash_password,
     normalize_email,
     public_user,
     utc_now_naive,
@@ -35,20 +34,15 @@ from models import AuthEnrollment, User, UserRole, UserSession
 from services.challenge_auth import CHALLENGE_TTL, PROTOCOL, issue_challenge, verify_challenge
 from services import encrypted_storage as vault_store
 from schemas_auth import (
-    AdminPasswordReset,
-    AdminSqlRequest,
     AdminUserContentReset,
-    BootstrapRequest,
     BootstrapStatusResponse,
     AdminUserCreate,
     AdminInvitationResponse,
     AdminUserUpdate,
-    ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
     MeResponse,
     SelfDataResetRequest,
-    SignupRequest,
     PasswordlessChallengeRequest,
     PasswordlessChallengeResponse,
     PasswordlessEnrollRequest,
@@ -142,11 +136,6 @@ def bootstrap_status(db: Session = Depends(get_db)):
     return {"needs_setup": db.query(User).count() == 0}
 
 
-@router.post("/auth/bootstrap", response_model=LoginResponse)
-def bootstrap_first_admin(body: BootstrapRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    raise HTTPException(status_code=410, detail="Password bootstrap is retired; use passwordless bootstrap")
-
-
 @router.post("/auth/bootstrap/passwordless", response_model=LoginResponse)
 def passwordless_bootstrap_first_admin(
     body: PasswordlessBootstrapRequest, request: Request, response: Response, db: Session = Depends(get_db)
@@ -176,11 +165,6 @@ def passwordless_bootstrap_first_admin(
     csrf = create_session(db, user, request, response)
     db.refresh(user)
     return {"user": _user_response(user), "csrf_token": csrf}
-
-
-@router.post("/auth/signup", response_model=LoginResponse)
-def signup(body: SignupRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    raise HTTPException(status_code=410, detail="Password signup is retired; use passwordless signup")
 
 
 @router.post("/auth/signup/passwordless", response_model=LoginResponse)
@@ -214,11 +198,6 @@ def passwordless_signup(
     csrf = create_session(db, user, request, response)
     db.refresh(user)
     return {"user": _user_response(user), "csrf_token": csrf}
-
-
-@router.post("/auth/login", response_model=LoginResponse)
-def login(body: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    raise HTTPException(status_code=410, detail="Password login is available only for passwordless migration")
 
 
 @router.post("/auth/login/migrate", response_model=LoginResponse)
@@ -379,23 +358,6 @@ def me(current_user: User = Depends(get_current_user)):
     return {"user": _user_response(current_user), "csrf_token": None}
 
 
-@router.post("/auth/change-password")
-def change_password(
-    body: ChangePasswordRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    if not verify_password(body.current_password, current_user.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    current_user.password_hash = hash_password(body.new_password)
-    current_user.must_change_password = False
-    current_user.updated_at = utc_now_naive()
-    revoke_user_sessions(db, current_user.id)
-    audit_event(db, "password_changed", actor_user_id=current_user.id, target_user_id=current_user.id)
-    db.commit()
-    return {"ok": True}
-
-
 @router.post("/auth/reset-data")
 def reset_my_data(
     body: SelfDataResetRequest,
@@ -491,8 +453,6 @@ def admin_update_user(
         target.is_active = body.is_active
         if not body.is_active:
             revoke_user_sessions(db, target.id)
-    if body.must_change_password is not None:
-        target.must_change_password = body.must_change_password
     target.updated_at = utc_now_naive()
     audit_event(db, "user_updated", actor_user_id=admin.id, target_user_id=target.id)
     db.commit()
@@ -513,25 +473,6 @@ def admin_delete_user(
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     _ensure_not_last_admin(db, target, "user", False)
     delete_user_account(db, target, actor_user_id=admin.id)
-    db.commit()
-    return {"ok": True}
-
-
-@router.post("/admin/users/{user_id}/reset-password")
-def admin_reset_password(
-    user_id: int,
-    body: AdminPasswordReset,
-    db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
-):
-    target = db.query(User).filter(User.id == user_id).first()
-    if not target:
-        raise HTTPException(status_code=404, detail="User not found")
-    target.password_hash = hash_password(body.new_password)
-    target.must_change_password = body.must_change_password
-    target.updated_at = utc_now_naive()
-    revoke_user_sessions(db, target.id)
-    audit_event(db, "password_reset", actor_user_id=admin.id, target_user_id=target.id)
     db.commit()
     return {"ok": True}
 
@@ -557,11 +498,3 @@ def admin_reset_user_contents(
 @router.get("/admin/metrics")
 def get_admin_metrics(db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
     return admin_metrics(db)
-
-
-@router.post("/admin/sql")
-def run_admin_sql(body: AdminSqlRequest, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    result = execute_admin_sql(db, body.sql)
-    audit_event(db, "admin_sql", actor_user_id=admin.id, target_user_id=admin.id, detail=body.sql[:500])
-    db.commit()
-    return result

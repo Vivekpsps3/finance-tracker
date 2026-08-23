@@ -37,7 +37,7 @@ import {
 import { filterByDate, getDateRange, getDefaultDateFilter } from '../utils/date.util';
 import { buildLocalFinancialSnapshot } from '../signals/build-local-snapshot';
 import { runLocalDetectors } from '../signals/detectors';
-import { FinancialSignal, SignalActionId } from '../signals/financial-signal';
+import { FinancialSignal } from '../signals/financial-signal';
 
 @Component({
   selector: 'app-dashboard',
@@ -364,20 +364,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } catch {
       this.localSignals = [];
     }
-  }
-
-  signalActionPath(action: SignalActionId): string {
-    if (action === 'review-balance-sheet') return '/balance-sheet';
-    if (action === 'refresh-portfolio-prices') return '/portfolio';
-    if (action === 'open-transactions') return '/transactions';
-    return '/';
-  }
-
-  signalActionLabel(action: SignalActionId): string {
-    if (action === 'review-balance-sheet') return 'Review balance sheet';
-    if (action === 'refresh-portfolio-prices') return 'Refresh portfolio';
-    if (action === 'open-transactions') return 'Open transactions';
-    return 'Dismiss';
   }
 
   netWorthCompleteness(): string {

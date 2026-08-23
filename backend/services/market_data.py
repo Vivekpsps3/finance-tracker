@@ -11,7 +11,6 @@ from sqlalchemy.exc import IntegrityError
 
 from logging_config import get_logger
 from models import MarketResearchCache, TickerQuote
-from price_cache import get_redis_eod, set_redis_eod
 from schemas_market import (
     MarketDividendEvent,
     MarketInstrumentProfile,
@@ -53,7 +52,7 @@ def _compact_dict(data: dict[str, Any], keys: list[str]) -> dict[str, Any]:
 
 
 class MarketDataService:
-    """In-memory hot cache + Redis/SQLite EOD close + yfinance on miss.
+    """In-memory hot cache + SQLite EOD close + yfinance on miss.
 
     Skips yfinance entirely for obvious non-tickers (CUSIPs, long codes, cash sweeps)
     to avoid log spam and useless API calls. Falls back to purchase_price.
@@ -382,11 +381,6 @@ class MarketDataService:
                 return price, source, _ensure_utc(ts)
 
         if not force_refresh:
-            redis_hit = get_redis_eod(symbol)
-            if redis_hit:
-                price, _quote_date, fetched, source = redis_hit
-                self._memory[symbol] = (price, fetched, source)
-                return price, source, fetched
             if db is not None:
                 sqlite_hit = self._sqlite_get(db, symbol)
                 if sqlite_hit:
@@ -402,7 +396,6 @@ class MarketDataService:
         fetched = now
         self._memory[symbol] = (price, fetched, source)
         self._failed.pop(symbol, None)
-        set_redis_eod(symbol, price, quote_date, source)
         if db is not None:
             self._sqlite_set(db, symbol, price, quote_date, source)
         return price, source, fetched

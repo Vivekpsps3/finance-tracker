@@ -29,7 +29,7 @@ def test_health_is_public():
 
 def test_finance_api_requires_login():
     client = TestClient(app)
-    r = client.get("/api/transactions/")
+    r = client.get("/api/vault/status")
     assert r.status_code == 401
 
 
@@ -41,16 +41,13 @@ def test_login_me_and_logout():
 
     logout = client.post("/api/auth/logout")
     assert logout.status_code == 200
-    assert client.get("/api/transactions/").status_code == 401
+    assert client.get("/api/vault/status").status_code == 401
 
 
 def test_mutations_require_csrf_header():
     client = authenticated_client(app, email="csrf@example.com")
     client.headers.pop("X-CSRF-Token", None)
-    r = client.post(
-        "/api/transactions/",
-        json={"date": "2026-01-01", "type": "income", "category": "Salary", "amount": 1},
-    )
+    r = client.post("/api/auth/reset-data", json={"confirm": "CLEAR MY DATA"})
     assert r.status_code == 403
 
 
@@ -92,24 +89,26 @@ def test_inactive_user_cannot_login():
 
 def test_admin_can_delete_user_and_owned_data_is_removed():
     admin = authenticated_client(app, email="owner-admin@example.com", role=UserRole.admin)
-    # Use a separate authenticated account to give the deletion target data.
     login = authenticated_client(app, email="delete-me@example.com")
     created = login.get("/api/auth/me").json()["user"]
-    tx = login.post(
-        "/api/transactions/",
-        json={"date": "2026-01-01", "type": "income", "category": "Salary", "amount": 100},
-    )
-    assert tx.status_code == 200
-
-    delete = admin.delete(f"/api/admin/users/{created['id']}")
-    assert delete.status_code == 200
-    assert all(u["email"] != "delete-me@example.com" for u in admin.get("/api/admin/users").json())
-
     db = next(__import__("database").get_db())
     try:
-        from models import Transaction, User
+        from models import EncryptedRecord, User
+        db.add(EncryptedRecord(
+            user_id=created["id"],
+            collection="transactions",
+            client_id="tx-delete-me-01",
+            ciphertext_b64="Y2lwaGVy",
+            schema_version=2,
+            key_version=1,
+            revision=1,
+        ))
+        db.commit()
+        delete = admin.delete(f"/api/admin/users/{created['id']}")
+        assert delete.status_code == 200
+        assert all(u["email"] != "delete-me@example.com" for u in admin.get("/api/admin/users").json())
         assert db.query(User).filter(User.email == "delete-me@example.com").first() is None
-        assert db.query(Transaction).filter(Transaction.user_id == created["id"]).count() == 0
+        assert db.query(EncryptedRecord).filter(EncryptedRecord.user_id == created["id"]).count() == 0
     finally:
         db.close()
 
@@ -117,32 +116,31 @@ def test_admin_can_delete_user_and_owned_data_is_removed():
 def test_user_can_reset_own_data_without_affecting_other_users():
     owner = authenticated_client(app, email="reset-owner@example.com")
     other = authenticated_client(app, email="reset-other@example.com")
+    owner_id = owner.get("/api/auth/me").json()["user"]["id"]
+    other_id = other.get("/api/auth/me").json()["user"]["id"]
+    db = next(__import__("database").get_db())
+    try:
+        from models import EncryptedRecord
+        db.add(EncryptedRecord(
+            user_id=owner_id, collection="transactions", client_id="tx-owner-01",
+            ciphertext_b64="Y2lwaGVy", schema_version=2, key_version=1, revision=1,
+        ))
+        db.add(EncryptedRecord(
+            user_id=other_id, collection="transactions", client_id="tx-other-01",
+            ciphertext_b64="Y2lwaGVy", schema_version=2, key_version=1, revision=1,
+        ))
+        db.commit()
 
-    owner_tx = owner.post(
-        "/api/transactions/",
-        json={"date": "2026-01-01", "type": "income", "category": "Salary", "amount": 100},
-    )
-    assert owner_tx.status_code == 200
-    owner_asset = owner.post(
-        "/api/assets/",
-        json={"name": "Cash", "category": "cash", "current_value": 500, "as_of_date": "2026-01-01"},
-    )
-    assert owner_asset.status_code == 200
-    other_tx = other.post(
-        "/api/transactions/",
-        json={"date": "2026-01-01", "type": "expense", "category": "Food", "amount": 25},
-    )
-    assert other_tx.status_code == 200
+        denied = owner.post("/api/auth/reset-data", json={"confirm": "CLEAR"})
+        assert denied.status_code == 422
 
-    denied = owner.post("/api/auth/reset-data", json={"confirm": "CLEAR"})
-    assert denied.status_code == 422
-
-    reset = owner.post("/api/auth/reset-data", json={"confirm": "CLEAR MY DATA"})
-    assert reset.status_code == 200
-    assert owner.get("/api/auth/me").status_code == 200
-    assert owner.get("/api/transactions/").json() == []
-    assert owner.get("/api/assets/").json() == []
-    assert len(other.get("/api/transactions/").json()) == 1
+        reset = owner.post("/api/auth/reset-data", json={"confirm": "CLEAR MY DATA"})
+        assert reset.status_code == 200
+        assert owner.get("/api/auth/me").status_code == 200
+        assert db.query(EncryptedRecord).filter(EncryptedRecord.user_id == owner_id).count() == 0
+        assert db.query(EncryptedRecord).filter(EncryptedRecord.user_id == other_id).count() == 1
+    finally:
+        db.close()
 
 
 def test_admin_cannot_delete_self_or_final_admin():
@@ -180,20 +178,20 @@ def test_admin_can_delete_inactive_admin_when_another_admin_is_active():
     assert all(u["email"] != "inactive-admin@example.com" for u in admin.get("/api/admin/users").json())
 
 
-def test_public_password_signup_is_retired():
+def test_public_password_signup_is_unmounted():
     authenticated_client(app, email="setup-admin@example.com", role=UserRole.admin)
     client = TestClient(app)
     res = client.post(
         "/api/auth/signup",
         json={"email": "signup@example.com", "display_name": "Signup User", "password": "signup-password"},
     )
-    assert res.status_code == 410
+    assert res.status_code == 404
 
 
-def test_public_password_bootstrap_is_retired():
+def test_public_password_bootstrap_is_unmounted():
     client = TestClient(app)
     res = client.post(
         "/api/auth/bootstrap",
         json={"email": "first@example.com", "display_name": "First", "password": "first-password"},
     )
-    assert res.status_code == 410
+    assert res.status_code == 404

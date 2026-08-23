@@ -6,7 +6,7 @@ Named quality gates for local development and CI (TEST-001).
 |------|---------|--------|-------|
 | **fast** | `make test-fast` | Doc path/lifecycle checks (OPS-002) | docs |
 | **finance** | `make test-finance` | Balance sheet, planning non-mutation, client-finance, migrations matrix | finance |
-| **security** | `make test-security` | Vault/410/openapi/auth + pure local signal detectors | privacy |
+| **security** | `make test-security` | Vault/openapi/auth + local signal detectors | privacy |
 | **full** | `make test-full` | Backend + frontend unit tests + frontend build + Docker compose build | release |
 
 ## Migration matrix (BE-002)
