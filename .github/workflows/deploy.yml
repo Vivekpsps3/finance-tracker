@@ -44,7 +44,7 @@ jobs:
         run: |
           test -f "$ENV_FILE"
           git -C "$MONOREPO" fetch origin
-          git -C "$MONOREPO" checkout --force "${{ steps.sha.outputs.sha }}"
+          git -C "$MONOREPO" checkout -B main "${{ steps.sha.outputs.sha }}"
 
       - name: Prepare data directories
         run: |
