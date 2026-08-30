@@ -1,0 +1,46 @@
+.ui-skeleton__block,
+.ui-skeleton__line,
+.ui-skeleton__circle {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface-hover) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: ui-skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+.ui-skeleton__circle {
+  border-radius: 50%;
+}
+
+.ui-skeleton__lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.ui-skeleton__line {
+  height: 14px;
+}
+
+@keyframes ui-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton__block,
+  .ui-skeleton__line,
+  .ui-skeleton__circle {
+    animation: none;
+    background: var(--surface-2);
+  }
+}

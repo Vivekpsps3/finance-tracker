@@ -1,0 +1,118 @@
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<nav class="navbar" aria-label="Main navigation">
+  <div class="nav-content">
+    <a routerLink="/" class="logo" aria-label="Finance home" title="Home">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="var(--accent-glow)" stroke="var(--accent)" stroke-width="1"/>
+        <path d="M8 22V10M14 22V6M20 22v-6M26 22H6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text">Finance</span>
+    </a>
+    <div class="nav-tabs" aria-label="Finance sections">
+      @for (group of visibleNavGroups; track group.label) {
+        <a
+          [routerLink]="group.items[0].path"
+          class="nav-tab"
+          [class.active]="isActiveGroup(group)"
+          [attr.aria-current]="isActiveGroup(group) ? 'page' : null"
+          [attr.aria-label]="group.label"
+          [attr.title]="group.tooltip"
+          >
+          <ui-icon [name]="group.icon" size="sm" />
+          <span class="nav-link__label">{{ group.label }}</span>
+          <span class="nav-link__short">{{ group.shortLabel }}</span>
+        </a>
+      }
+    </div>
+    <div class="account-menu">
+      <ui-button variant="secondary" size="sm" tooltip="How to add your data." (clicked)="openTutorial()">Guide</ui-button>
+      <details class="account-actions">
+        <summary [attr.title]="user ? 'Signed in as ' + user.email : 'Open account actions'">
+          <span class="account-avatar" aria-hidden="true">{{ user?.email?.charAt(0)?.toUpperCase() || 'U' }}</span>
+          <span class="account-email">{{ user?.email || 'Account' }}</span>
+        </summary>
+        <div class="account-popover">
+            @if (user) {
+            <p class="account-popover__email" [attr.title]="'Signed in as ' + user.email">{{ user.email }}</p>
+          }
+          <div class="theme-split" role="group" aria-label="Color mode">
+            <button type="button" [class.on]="theme === 'light'" (click)="setTheme('light')">Light</button>
+            <button type="button" [class.on]="theme === 'dark'" (click)="setTheme('dark')">Dark</button>
+          </div>
+          @if (isAdmin) {
+            <a routerLink="/admin/users" title="Manage users and sessions.">Users</a>
+          }
+          <button type="button" title="Lock the vault. This clears finance data from memory." (click)="lockVault()">Lock vault</button>
+          <button type="button" title="End this session." (click)="logout()">Sign out</button>
+          <button type="button" class="danger" title="Remove your finance records. Your account stays." [disabled]="isResettingData" (click)="clearMyData()">Clear data</button>
+        </div>
+      </details>
+    </div>
+  </div>
+</nav>
+
+@if (apiOffline) {
+  <div class="api-banner-wrap">
+    <ui-card class="api-banner-card" padding="none">
+      <div class="api-banner" role="alert">
+        <ui-icon name="spark" size="sm" />
+        <strong class="api-banner__title">The API is not available</strong>
+        <span class="api-banner__detail">Start the backend. Then try again.</span>
+        <ui-button variant="secondary" size="sm" tooltip="Try the API again." (clicked)="refreshApiStatus()">Try again</ui-button>
+      </div>
+    </ui-card>
+  </div>
+}
+
+<main id="main-content" class="main-content" tabindex="-1">
+  <router-outlet />
+</main>
+
+@if (showTutorial) {
+  <div class="tutorial-backdrop" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+    <section class="tutorial-panel">
+      <div class="tutorial-header">
+        <div>
+          <p class="section-eyebrow">Guide</p>
+          <h2 id="tutorial-title">How to add your data</h2>
+          <p>Home shows three numbers. Open a page to add or change records.</p>
+        </div>
+        <ui-button variant="ghost" size="sm" tooltip="Close this guide." (clicked)="closeTutorial()">Close</ui-button>
+      </div>
+
+      <div class="tutorial-grid">
+        <article class="tutorial-step tutorial-step--primary">
+          <span class="tutorial-step__number">1</span>
+          <h3>What you have</h3>
+          <p>Add cash, property, debts, and holdings first.</p>
+          <a routerLink="/have" (click)="closeTutorial()">Open What you have</a>
+        </article>
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">2</span>
+          <h3>Spending</h3>
+          <p>Import card and bank files. This list does not change net worth.</p>
+          <a routerLink="/spending" (click)="closeTutorial()">Open Spending</a>
+        </article>
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">3</span>
+          <h3>Recurring</h3>
+          <p>Add pay, bills, and subscriptions.</p>
+          <a routerLink="/recurring" (click)="closeTutorial()">Open Recurring</a>
+        </article>
+        <article class="tutorial-step">
+          <span class="tutorial-step__number">4</span>
+          <h3>Planning</h3>
+          <p>Try what-if numbers. This does not change real balances.</p>
+          <a routerLink="/planning" (click)="closeTutorial()">Open Planning</a>
+        </article>
+      </div>
+
+      <div class="tutorial-rules" aria-label="Rules">
+        <span>Card activity does not change net worth</span>
+        <span>Planning does not change real balances</span>
+        <span>Do not enter the same cash twice</span>
+      </div>
+    </section>
+  </div>
+}

@@ -1,0 +1,79 @@
+.net-worth-hero .stat-display {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-4);
+}
+
+.breakdown-row {
+  margin-top: var(--space-2);
+}
+
+.breakdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.breakdown-item ui-icon {
+  color: var(--text-tertiary);
+}
+
+.summary-card .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.summary-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.summary-grid .hero {
+  font-size: 1.25rem;
+}
+
+.hint {
+  margin-top: 0.75rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.form-card label {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.form-card input {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 720px) {
+  .summary-card .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions ui-button,
+  .modal-actions ::ng-deep .ui-btn {
+    width: 100%;
+  }
+}

@@ -1,0 +1,25 @@
+<div class="ui-skeleton" role="status" aria-busy="true" aria-label="Loading">
+  @switch (variant()) {
+    @case ('circle') {
+      <div
+        class="ui-skeleton__circle"
+        [style.width]="width() ?? '48px'"
+        [style.height]="height() ?? width() ?? '48px'"></div>
+    }
+    @case ('lines') {
+      <div class="ui-skeleton__lines">
+        @for (i of lineIndices(); track i) {
+          <div
+            class="ui-skeleton__line"
+            [style.width]="i === lineIndices().length - 1 ? '70%' : '100%'"></div>
+        }
+      </div>
+    }
+    @default {
+      <div
+        class="ui-skeleton__block"
+        [style.width]="width() ?? '100%'"
+        [style.height]="height() ?? '120px'"></div>
+    }
+  }
+</div>

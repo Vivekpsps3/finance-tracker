@@ -1,0 +1,18 @@
+<nav class="vivek-nav" aria-label="Main">
+  <div class="vivek-nav__inner">
+    <a class="vivek-nav__logo" routerLink="/home">Vivek</a>
+    <div class="vivek-nav__tabs">
+      <a routerLink="/home" routerLinkActive="on">Home</a>
+      <a routerLink="/about" routerLinkActive="on">About</a>
+      <a routerLink="/blog" routerLinkActive="on">Blog</a>
+      <a routerLink="/secrets" routerLinkActive="on">Secrets</a>
+    </div>
+    <div class="vivek-nav__end">
+      <div class="vivek-nav__theme" role="group" aria-label="Color mode">
+        <button type="button" [class.on]="theme() !== 'dark'" (click)="setTheme('light')">Light</button>
+        <button type="button" [class.on]="theme() === 'dark'" (click)="setTheme('dark')">Dark</button>
+      </div>
+    </div>
+  </div>
+</nav>
+<router-outlet />

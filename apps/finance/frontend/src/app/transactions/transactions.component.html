@@ -1,0 +1,405 @@
+<div [class.page]="!embedded" [class.embed]="embedded">
+  <ui-page-header
+    [embedded]="embedded"
+    [title]="typeFilter === 'income' ? 'Pay' : typeFilter === 'expense' ? 'Spend' : 'Spending'"
+    subtitle="Card and bank activity. This list does not change net worth.">
+    <div uiPageActions class="header-actions">
+      <ui-button variant="secondary" (clicked)="openImportModal()">Import from bank</ui-button>
+      <ui-button variant="primary" (clicked)="openAddModal()">Add transaction</ui-button>
+    </div>
+  </ui-page-header>
+
+  @if (!embedded) {
+  <section class="import-guide-card" aria-labelledby="import-guide-heading">
+    <div>
+      <p class="section-eyebrow">First import</p>
+      <h2 id="import-guide-heading">Bring in card and bank CSVs safely</h2>
+      <p>
+        Download CSV activity from your bank, choose the matching importer, preview every row, then import only the new transactions.
+        This ledger is for spending review and cashflow; it never changes your current net worth.
+      </p>
+    </div>
+    <div class="import-guide-steps">
+      <span title="Most banks expose CSV export from activity, statements, or download transactions.">1. Export CSV</span>
+      <span title="Preview catches duplicates before anything is saved.">2. Preview</span>
+      <span title="Uncheck any transfer, payment, or duplicate you do not want in the ledger.">3. Select rows</span>
+      <span title="Use Category tools after import to normalize merchant categories.">4. Clean categories</span>
+    </div>
+  </section>
+  }
+
+  <section class="month-hero">
+    <p class="section-eyebrow">This month</p>
+    <div class="month-summary-row">
+      <label class="month-picker">
+        <input
+          type="month"
+          [(ngModel)]="summaryMonth"
+          (ngModelChange)="onSummaryMonthChange()"
+          aria-label="Month for totals" />
+        <span class="month-picker__caption">{{ summaryMonthLabel }}</span>
+      </label>
+      <div class="month-totals">
+        @if (typeFilter !== 'income') {
+          <div class="month-total month-total--expense">
+            <span class="month-total__label">{{ hasMore ? 'Loaded spend' : 'Spend' }}</span>
+            <strong class="money">${{ monthExpenseTotal | number: '1.2-2' }}</strong>
+          </div>
+        }
+        @if (typeFilter !== 'expense') {
+          <div class="month-total month-total--income">
+            <span class="month-total__label">{{ hasMore ? 'Loaded pay' : 'Pay' }}</span>
+            <strong class="money">${{ monthIncomeTotal | number: '1.2-2' }}</strong>
+          </div>
+        }
+        @if (typeFilter === 'all') {
+          <div class="month-total month-total--net">
+            <span class="month-total__label">{{ hasMore ? 'Loaded net' : 'Net' }}</span>
+            <strong class="money">${{ monthIncomeTotal - monthExpenseTotal | number: '1.2-2' }}</strong>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <ui-card title="History">
+    <div uiCardActions class="table-actions table-actions--toolbar">
+      <input
+        type="search"
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()"
+        placeholder="Search category or description..."
+        class="search-input"
+        aria-label="Search transactions"
+      />
+      <ui-button variant="secondary" size="sm" (clicked)="exportToCsv()">Export CSV</ui-button>
+    </div>
+
+    <details class="category-tools">
+      <summary>Category tools</summary>
+      <div class="category-merge-grid">
+        <label class="form-group">
+          <span>Rename</span>
+          <input
+            type="text"
+            list="category-options"
+            [(ngModel)]="categoryMergeFrom"
+            placeholder="Current category"
+            aria-label="Current category" />
+        </label>
+        <label class="form-group">
+          <span>To</span>
+          <input
+            type="text"
+            list="category-options"
+            [(ngModel)]="categoryMergeTo"
+            placeholder="Target category"
+            aria-label="Target category" />
+        </label>
+        <div class="category-merge-action">
+          <ui-button
+            variant="secondary"
+            size="sm"
+            (clicked)="mergeCategory()"
+            [disabled]="!canMergeCategory">
+            {{ categoryMergeSaving ? 'Merging' : 'Merge categories' }}
+          </ui-button>
+          @if (loadedCategoryMergeCount > 0) {
+            <span class="category-merge-count">{{ loadedCategoryMergeCount }} loaded match(es)</span>
+          }
+        </div>
+      </div>
+      <div class="category-bulk-rename">
+        <div class="category-bulk-rename__header">
+          <div>
+            <strong>Bulk rename</strong>
+            <p>Rename several categories in one save. Duplicate sources and no-op rows are ignored.</p>
+          </div>
+          <ui-button variant="ghost" size="sm" (clicked)="addBulkRenameRow()">Add row</ui-button>
+        </div>
+        @for (row of categoryBulkRows; track $index) {
+          <div class="category-bulk-rename__row">
+            <label class="form-group">
+              <span>From</span>
+              <input
+                type="text"
+                list="category-options"
+                [(ngModel)]="row.fromCategory"
+                placeholder="Current category"
+                [attr.aria-label]="'Bulk rename source ' + ($index + 1)" />
+            </label>
+            <label class="form-group">
+              <span>To</span>
+              <input
+                type="text"
+                list="category-options"
+                [(ngModel)]="row.toCategory"
+                placeholder="New category"
+                [attr.aria-label]="'Bulk rename target ' + ($index + 1)" />
+            </label>
+            <ui-button variant="ghost" size="sm" (clicked)="removeBulkRenameRow($index)">Remove</ui-button>
+          </div>
+        }
+        <div class="category-bulk-rename__actions">
+          <ui-button
+            variant="secondary"
+            size="sm"
+            (clicked)="bulkRenameCategories()"
+            [disabled]="!canBulkRenameCategories">
+            {{ categoryMergeSaving ? 'Renaming' : 'Apply bulk rename' }}
+          </ui-button>
+          @if (validBulkRenameRows.length > 0) {
+            <span class="category-merge-count">{{ validBulkRenameRows.length }} valid rename(s)</span>
+          }
+        </div>
+      </div>
+      <datalist id="category-options">
+        @for (category of categoryOptions; track category) {
+          <option [value]="category"></option>
+        }
+      </datalist>
+    </details>
+
+    <div *ngIf="loading || listLoading" class="loading-overlay" role="status">
+      <span class="spinner-inline" aria-hidden="true"></span> Loading transactions…
+    </div>
+
+    @if (hasMore && filteredTransactions.length > 0) {
+      <p class="list-hint" role="status">Loaded subtotal only. Monthly totals and this table use currently loaded rows. Load more for older history.</p>
+    }
+
+    <div class="tx-table-wrap" *ngIf="filteredTransactions.length > 0; else empty">
+      <ui-data-table ariaLabel="Transactions history">
+        <thead>
+          <tr>
+            <th scope="col" [attr.aria-sort]="sortColumn === 'date' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'" class="sortable">
+              <button type="button" (click)="toggleSort('date')">Date {{ sortIcon('date') }}</button>
+            </th>
+            <th scope="col">Type</th>
+            <th scope="col">Account</th>
+            <th scope="col" [attr.aria-sort]="sortColumn === 'category' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'" class="sortable">
+              <button type="button" (click)="toggleSort('category')">Category {{ sortIcon('category') }}</button>
+            </th>
+            <th scope="col">Description</th>
+            <th scope="col" [attr.aria-sort]="sortColumn === 'amount' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'" class="sortable amount-col">
+              <button type="button" (click)="toggleSort('amount')">Amount {{ sortIcon('amount') }}</button>
+            </th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let tx of filteredTransactions; trackBy: trackByTxId">
+            <td>{{ tx.date }}</td>
+            <td>
+              <ui-badge [variant]="tx.type === 'income' ? 'success' : 'danger'">{{ tx.type }}</ui-badge>
+              <span class="import-tag" *ngIf="tx.source === 'import'">import</span>
+            </td>
+            <td class="account-cell">{{ tx.account_display || '—' }}</td>
+            <td>{{ tx.category }}</td>
+            <td class="desc">{{ tx.description || '—' }}</td>
+            <td class="amount-col" [class.positive]="tx.type === 'income'">
+              {{ tx.type === 'income' ? '+' : '−' }}${{ tx.amount | number: '1.2-2' }}
+            </td>
+            <td class="actions actions--row">
+              <ui-button variant="ghost" size="sm" (clicked)="editTransaction(tx)">Edit</ui-button>
+              <ui-button variant="ghost" size="sm" (clicked)="deleteTransaction(tx)">Delete</ui-button>
+            </td>
+          </tr>
+        </tbody>
+      </ui-data-table>
+    </div>
+
+    @if (hasMore && filteredTransactions.length > 0) {
+      <div class="load-more-row">
+        <ui-button variant="secondary" size="sm" (clicked)="loadMoreTransactions()" [disabled]="loadingMore">
+          {{ loadingMore ? 'Loading…' : 'Load more' }}
+        </ui-button>
+      </div>
+    }
+
+    <ng-template #empty>
+      @if (!loading) {
+        <ui-empty-state title="No transactions yet">
+          <ui-icon name="transactions" size="lg" style="margin-bottom: 8px; opacity: 0.6;" />
+          <p class="empty-import-copy">Start with a bank CSV if you want the fastest and most accurate history.</p>
+          <ui-button variant="secondary" (clicked)="openImportModal()">Import from bank</ui-button>
+          <ui-button variant="primary" (clicked)="openAddModal()">Add income or expense</ui-button>
+        </ui-empty-state>
+      }
+    </ng-template>
+  </ui-card>
+</div>
+
+<ui-dialog [open]="showImportModal" labelledBy="import-modal-title" panelClass="ui-dialog-panel--wide" (closed)="closeImportModal()">
+    <h3 id="import-modal-title">Import bank statement</h3>
+
+    @if (importStep === 'upload') {
+      <div class="import-instructions">
+        <strong>How to import without surprises</strong>
+        <ol>
+          <li>In your bank website, export posted transactions as CSV. Avoid PDF statements.</li>
+          <li>Select the matching bank here. Supported importers: {{ supportedImporterNames }}.</li>
+          <li>Upload the CSV and use Preview import. Nothing is saved until you confirm selected rows.</li>
+          <li>Review duplicate badges, transfers, card payments, refunds, and account labels before importing.</li>
+        </ol>
+      </div>
+      <ui-select
+        selectId="import-bank"
+        label="Bank"
+        [(value)]="selectedImportBankSlug"
+        [options]="importBankSelectOptions"
+        (valueChange)="onImportBankChange()"
+      />
+      @if (selectedImportBank) {
+        <p class="import-hint">{{ selectedImportBank.hint }}</p>
+      }
+      <div class="form-group">
+        <label for="import-file">CSV file</label>
+        <input id="import-file" type="file" accept=".csv" (change)="onImportFileSelected($event)" />
+        @if (importFile) {
+          <p class="file-name">{{ importFile.name }}</p>
+        }
+      </div>
+      @if (importError) {
+        <p class="import-error" role="alert">{{ importError }}</p>
+      }
+      <div class="form-actions">
+        <ui-button variant="primary" (clicked)="runImportPreview()" [disabled]="!importFile || importParsing">
+          Preview import
+        </ui-button>
+        <ui-button variant="secondary" (clicked)="closeImportModal()">Cancel</ui-button>
+      </div>
+    } @else {
+      <p class="import-summary">
+        {{ importPreview?.summary?.new }} new,
+        {{ importPreview?.summary?.duplicate }} duplicate
+        ({{ importPreview?.summary?.total_parsed }} parsed).
+        @if (importPreview && importPreview.summary.skipped) {
+          {{ importPreview.summary.skipped }} skipped.
+        }
+        @if (importPreview && importPreview.summary.errors) {
+          <span class="import-summary-error">{{ importPreview.summary.errors }} need fixing.</span>
+        }
+        Selected {{ selectedImportCount }} · ${{ selectedImportExpenseTotal | number: '1.2-2' }}.
+      </p>
+      @if (importError) {
+        <p class="import-error" role="alert">{{ importError }}</p>
+      }
+      <div class="import-preview-actions">
+        <ui-button variant="secondary" size="sm" (clicked)="selectAllNewImportRows()">Select all new</ui-button>
+        <ui-button variant="ghost" size="sm" (clicked)="clearImportSelection()">Clear selection</ui-button>
+      </div>
+      <div class="import-table-scroll">
+        <ui-data-table ariaLabel="Import preview">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Date</th>
+              <th>Account</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of importPreview?.rows; track row.dedupe_key) {
+              <tr [class.duplicate-row]="row.status === 'duplicate'" (click)="toggleImportRow(row)">
+                <td>
+                  @if (row.status === 'new') {
+                    <input type="checkbox" [checked]="isImportRowSelected(row)" (click)="$event.stopPropagation()" (change)="toggleImportRow(row)" />
+                  }
+                </td>
+                <td>{{ row.date }}</td>
+                <td>{{ row.account_display }}</td>
+                <td>{{ row.category }}</td>
+                <td>{{ row.description }}</td>
+                <td>${{ row.amount | number: '1.2-2' }}</td>
+                <td>
+                  <ui-badge [variant]="row.status === 'duplicate' ? 'default' : 'success'">{{ row.status }}</ui-badge>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </ui-data-table>
+      </div>
+      @if (importPreview && (importPreview.errors.length || importPreview.skipped.length)) {
+        <div class="import-notes">
+          @if (importPreview.errors.length) {
+            <details class="import-notes-block import-notes-block--error" open>
+              <summary class="import-notes-title">
+                {{ importPreview.errors.length }} row(s) could not be parsed
+              </summary>
+              <ul class="import-notes-list">
+                @for (note of importPreview.errors; track $index) {
+                  <li class="import-note">Line {{ note.line }}: {{ note.reason }}</li>
+                }
+              </ul>
+            </details>
+          }
+          @if (importPreview.skipped.length) {
+            <details class="import-notes-block">
+              <summary class="import-notes-title">
+                Skipped {{ importPreview.skipped.length }} row(s)
+              </summary>
+              <ul class="import-notes-list">
+                @for (note of importPreview.skipped; track $index) {
+                  <li class="import-note">Line {{ note.line }}: {{ note.reason }}</li>
+                }
+              </ul>
+            </details>
+          }
+          <p class="import-notes-hint">
+            Valid rows can still be imported. Fix flagged rows in the CSV and use Back to re-preview.
+          </p>
+        </div>
+      }
+      <div class="form-actions">
+        <ui-button variant="secondary" (clicked)="importStep = 'upload'">Back</ui-button>
+        <ui-button
+          variant="primary"
+          (clicked)="commitImport()"
+          [disabled]="importCommitting || importSelected.size === 0">
+          Import {{ importSelected.size }} transaction(s)
+        </ui-button>
+        <ui-button variant="secondary" (clicked)="closeImportModal()">Cancel</ui-button>
+      </div>
+    }
+</ui-dialog>
+
+<ui-dialog [open]="showModal" labelledBy="tx-modal-title" (closed)="closeModal()">
+    <h3 id="tx-modal-title">{{ editingTxId ? 'Edit transaction' : 'Add transaction' }}</h3>
+    <form (ngSubmit)="saveTransaction()" #txForm="ngForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="tx-date">Date</label>
+          <input id="tx-date" type="date" [(ngModel)]="newTx.date" name="date" required data-dialog-initial-focus />
+        </div>
+        <div class="form-group">
+          <label for="tx-type">Type</label>
+          <select id="tx-type" [(ngModel)]="newTx.type" name="type">
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="tx-category">Category</label>
+          <input id="tx-category" type="text" [(ngModel)]="newTx.category" name="category" required />
+        </div>
+        <div class="form-group">
+          <label for="tx-amount">Amount</label>
+          <input id="tx-amount" type="number" [(ngModel)]="newTx.amount" name="amount" step="0.01" min="0.01" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="tx-desc">Description (optional)</label>
+        <input id="tx-desc" type="text" [(ngModel)]="newTx.description" name="description" />
+      </div>
+      <div class="form-actions">
+        <ui-button type="submit" variant="primary" [disabled]="!txForm.form.valid || saving">Save</ui-button>
+        <ui-button variant="secondary" (clicked)="closeModal()">Cancel</ui-button>
+      </div>
+    </form>
+</ui-dialog>

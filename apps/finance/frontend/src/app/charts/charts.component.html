@@ -1,0 +1,108 @@
+<div [class.page]="!embedded" [class.embedded]="embedded" class="charts-section">
+  @if (!embedded) {
+    <h1>Charts &amp; Insights</h1>
+  }
+
+  @if (loading) {
+    <div class="loading-overlay" role="status">
+      <span class="spinner-inline" aria-hidden="true"></span> Loading chart data…
+    </div>
+  }
+
+  <div class="charts-grid">
+    <ui-card class="chart-wide">
+      <button type="button" class="section-toggle" (click)="toggleSection('cashflow')">
+        <span>Monthly cashflow</span>
+        <span>{{ sectionOpen.cashflow ? 'Hide' : 'Show' }}</span>
+      </button>
+      @if (sectionOpen.cashflow && monthlyRows.length) {
+        <div class="chart-wrap tall" [class.chart-dim]="chartDimmed">
+          <canvas #incomeExpenseChart role="img" aria-label="Monthly income, spending, and net cashflow chart"></canvas>
+        </div>
+        <p class="chart-note">
+          Income <strong>${{ incomeTotal | number:'1.2-2' }}</strong>
+          · Spending <strong>${{ expenseTotal | number:'1.2-2' }}</strong>
+          · Net <strong>${{ netCashflow | number:'1.2-2' }}</strong>
+        </p>
+        <div class="chart-fallback">
+          <table aria-label="Monthly cashflow data table">
+            <thead><tr><th>Month</th><th>Income</th><th>Spending</th><th>Net</th></tr></thead>
+            <tbody>
+              @for (row of monthlyRows; track row.label) {
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td>${{ row.income | number:'1.2-2' }}</td>
+                  <td>${{ row.expense | number:'1.2-2' }}</td>
+                  <td [class.positive]="row.net >= 0">{{ row.net >= 0 ? '+' : '−' }}${{ (row.net < 0 ? -row.net : row.net) | number:'1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else if (sectionOpen.cashflow) {
+        <ui-empty-state icon="transactions" message="Add pay or card activity to see cashflow over time." />
+      }
+    </ui-card>
+
+    <ui-card>
+      <button type="button" class="section-toggle" (click)="toggleSection('category')">
+        <span>Spending by category</span>
+        <span>{{ sectionOpen.category ? 'Hide' : 'Show' }}</span>
+      </button>
+      @if (sectionOpen.category && categoryRows.length) {
+        <div class="chart-wrap" [class.chart-dim]="chartDimmed">
+          <canvas #categoryChart role="img" aria-label="Spending by category chart"></canvas>
+        </div>
+        <div class="chart-fallback">
+          <table aria-label="Spending category data table">
+            <thead><tr><th>Category</th><th>Amount</th><th>%</th></tr></thead>
+            <tbody>
+              @for (row of categoryRows; track row.label) {
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td>${{ row.value | number:'1.2-2' }}</td>
+                  <td>{{ row.pct | number:'1.1-1' }}%</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (canCollapseCategories) {
+          <button type="button" class="text-link" (click)="toggleCategories()">
+            {{ collapsedCategories ? 'Show all categories' : 'Collapse categories' }}
+          </button>
+        }
+      } @else if (sectionOpen.category) {
+        <ui-empty-state icon="transactions" message="Add expense transactions to see category mix." />
+      }
+    </ui-card>
+
+    <ui-card>
+      <button type="button" class="section-toggle" (click)="toggleSection('allocation')">
+        <span>Holdings mix</span>
+        <span>{{ sectionOpen.allocation ? 'Hide' : 'Show' }}</span>
+      </button>
+      @if (sectionOpen.allocation && allocationRows.length) {
+        <div class="chart-wrap" [class.chart-dim]="chartDimmed">
+          <canvas #portfolioChart role="img" aria-label="Portfolio allocation by symbol"></canvas>
+        </div>
+        <div class="chart-fallback">
+          <table aria-label="Portfolio allocation data table">
+            <thead><tr><th>Symbol</th><th>Value</th><th>%</th></tr></thead>
+            <tbody>
+              @for (row of allocationRows; track row.label) {
+                <tr>
+                  <td [title]="row.companyName || row.label">{{ row.label }}</td>
+                  <td>${{ row.value | number:'1.2-2' }}</td>
+                  <td>{{ row.pct | number:'1.1-1' }}%</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else if (sectionOpen.allocation) {
+        <ui-empty-state icon="portfolio" message="Add holdings to see allocation." />
+      }
+    </ui-card>
+  </div>
+</div>

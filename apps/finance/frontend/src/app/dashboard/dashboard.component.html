@@ -1,0 +1,87 @@
+<div class="page dashboard">
+  @if (!isLoading && !error && netWorth) {
+    <nav class="home-grid" aria-label="Home">
+      <a routerLink="/have" class="home-tile">
+        <span class="home-tile__label">What you have</span>
+        <span class="home-tile__value money">${{ have | number: '1.2-2' }}</span>
+        <span class="home-tile__hint">
+          Holdings ${{ netWorth.portfolio | number: '1.0-0' }}
+          · Assets ${{ netWorth.other_assets | number: '1.0-0' }}
+          · Debts ${{ netWorth.liabilities | number: '1.0-0' }}
+        </span>
+      </a>
+      <a routerLink="/spending" class="home-tile">
+        <span class="home-tile__label">This month</span>
+        <span class="home-split">
+          <span>
+            <small>Pay</small>
+            <strong class="money">${{ monthPay | number: '1.2-2' }}</strong>
+          </span>
+          <span>
+            <small>Spend</small>
+            <strong class="money negative">${{ monthSpend | number: '1.2-2' }}</strong>
+          </span>
+        </span>
+        <span class="home-tile__hint">Card and bank activity</span>
+      </a>
+      <a routerLink="/recurring" class="home-tile">
+        <span class="home-tile__label">What repeats</span>
+        <span class="home-split">
+          <span>
+            <small>Pay</small>
+            <strong class="money">${{ repeatPay | number: '1.2-2' }}</strong>
+          </span>
+          <span>
+            <small>Spend</small>
+            <strong class="money negative">${{ repeatSpend | number: '1.2-2' }}</strong>
+          </span>
+        </span>
+        <span class="home-tile__hint">Pay, bills, and subscriptions</span>
+      </a>
+    </nav>
+
+    <section class="holdings-panel" aria-labelledby="holdings-heading">
+      <div class="holdings-panel__head">
+        <div>
+          <h2 id="holdings-heading">Holdings</h2>
+          <p class="home-tile__hint">${{ portfolioValue | number: '1.2-2' }} market value</p>
+        </div>
+        <div class="holdings-panel__actions">
+          <button type="button" class="text-link" (click)="holdingsOpen = !holdingsOpen">
+            {{ holdingsOpen ? 'Hide' : 'Show' }}
+          </button>
+          <a routerLink="/have" [queryParams]="{ t: 'holdings' }">Open holdings</a>
+        </div>
+      </div>
+      @if (holdingsOpen && topHoldings.length) {
+        <ul class="holding-list">
+          @for (row of topHoldings; track row.id) {
+            <li>
+              <span class="holding-list__symbol">{{ row.symbol }}</span>
+              <span class="holding-list__name">{{ row.company_name || row.account_display || '—' }}</span>
+              <span class="money">${{ holdingValue(row) | number: '1.2-2' }}</span>
+              <span class="holding-list__meta">{{ holdingShare(row) | number: '1.0-0' }}%</span>
+              <span class="money" [class.negative]="gain(row) < 0">
+                {{ gain(row) >= 0 ? '+' : '−' }}${{ abs(gain(row)) | number: '1.0-0' }}
+                ({{ gainPct(row) | number: '1.1-1' }}%)
+              </span>
+            </li>
+          }
+        </ul>
+      } @else if (holdingsOpen) {
+        <p class="home-tile__hint">Add holdings on What you have.</p>
+      }
+    </section>
+
+    <app-charts [embedded]="true" [dataReady]="!isLoading" [overrideTransactions]="transactions" />
+  } @else if (isLoading) {
+    <ui-card class="loading-card">
+      <ui-skeleton variant="block" height="6rem" />
+    </ui-card>
+  } @else if (error) {
+    <ui-card>
+      <p class="error-text">{{ error }}</p>
+      <ui-button variant="primary" (clicked)="retryLoad()">Try again</ui-button>
+    </ui-card>
+  }
+</div>

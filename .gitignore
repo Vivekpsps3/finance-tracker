@@ -1,0 +1,87 @@
+# --- Python / backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/.venv/
+backend/venv/
+apps/*/*/.venv/
+apps/*/.venv/
+.venv/
+venv/
+ENV/
+.env
+.env.*
+!.env.example
+backend/.env
+!backend/.env.example
+apps/**/.env
+!apps/**/.env.example
+*.egg-info/
+.eggs/
+dist/
+build/
+backend/.pytest_cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# SQLite (local data — never commit)
+data/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Backups / scratch
+backups/
+*.bak
+*.swp
+*~
+
+# --- Node / frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+apps/**/node_modules/
+apps/**/dist/
+apps/**/.angular/
+apps/**/coverage/
+apps/**/playwright-report/
+apps/**/test-results/
+packages/**/node_modules/
+packages/**/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# --- Logs & temp ---
+*.log
+/tmp/
+.cache/
+inline/
+.agents/
+.codex/
+
+# Git worktrees
+.worktrees/
+.superpowers/

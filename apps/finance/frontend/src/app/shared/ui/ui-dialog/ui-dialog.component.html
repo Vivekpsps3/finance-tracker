@@ -1,0 +1,16 @@
+@if (open()) {
+  <div class="ui-dialog-backdrop" role="presentation" (click)="onBackdrop()">
+    <div
+      #panel
+      class="ui-dialog-panel"
+      [attr.class]="'ui-dialog-panel ' + panelClass()"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="labelledBy() || null"
+      [attr.aria-describedby]="describedBy() || null"
+      (click)="$event.stopPropagation()"
+      (keydown)="onKeydown($event)">
+      <ng-content />
+    </div>
+  </div>
+}

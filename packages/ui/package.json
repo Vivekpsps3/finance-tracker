@@ -1,0 +1,15 @@
+{
+  "name": "@vivek/ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/public-api.ts",
+  "types": "src/public-api.ts",
+  "peerDependencies": {
+    "@angular/common": "^19",
+    "@angular/core": "^19",
+    "@angular/forms": "^19",
+    "@angular/router": "^19",
+    "tslib": "^2.8.1"
+  }
+}

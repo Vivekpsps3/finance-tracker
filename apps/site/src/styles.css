@@ -1,0 +1,35 @@
+@import '../../../packages/ui/kit.css';
+
+html { min-height: 100%; background: var(--bg); }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+a { color: inherit; }
+.page {
+  box-sizing: border-box;
+  width: min(100%, 72rem);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.page p, .page ul, .page ol { margin: 0 0 var(--space-3); color: var(--text-secondary); }
+.page .details { color: var(--text-tertiary); font-size: var(--text-sm); }
+.links { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.links a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.links a:hover { text-decoration: underline; }
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text);
+}

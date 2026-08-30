@@ -1,0 +1,68 @@
+.ui-data-table {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--card-bg);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+  -webkit-overflow-scrolling: touch;
+}
+
+.ui-data-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.ui-data-table__caption {
+  caption-side: top;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.ui-data-table__table ::ng-deep thead th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--surface-2) 82%, var(--card-bg));
+  white-space: nowrap;
+}
+
+.ui-data-table__table ::ng-deep tbody td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.ui-data-table__table ::ng-deep tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ui-data-table__table ::ng-deep tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.ui-data-table__table ::ng-deep tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.ui-data-table--sticky ::ng-deep thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+@media (max-width: 720px) {
+  .ui-data-table {
+    border-radius: var(--radius-lg);
+  }
+
+  .ui-data-table__table {
+    min-width: 680px;
+  }
+}

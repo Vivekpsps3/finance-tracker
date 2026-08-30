@@ -1,0 +1,64 @@
+@import '../../../../packages/ui/kit.css';
+
+:root {
+  --wall: var(--bg);
+  --tile: var(--card-bg);
+  --ink: var(--text);
+  --mute: var(--text-secondary);
+  --hurt: var(--danger);
+  --label: 600 16px/1.2 ui-sans-serif, system-ui, sans-serif;
+  --body: 400 20px/1.5 ui-sans-serif, system-ui, sans-serif;
+  --heading: 600 28px/1.2 ui-sans-serif, system-ui, sans-serif;
+  --display: 600 40px/1.2 ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--wall);
+  color: var(--ink);
+  font: var(--body);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.hit {
+  box-sizing: border-box;
+  min-height: 48px;
+  min-width: 48px;
+  border: 0;
+  background: var(--tile);
+  color: var(--ink);
+  font: var(--label);
+  outline: none;
+}
+
+.hit:focus-visible,
+.hit:active {
+  outline: 2px solid var(--accent);
+}
+
+.chip {
+  display: inline-flex;
+  min-height: 48px;
+  min-width: 48px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 16px 8px 0;
+  padding: 0 16px;
+  border: 0;
+  background: var(--tile);
+  font: var(--label);
+}
+
+.text-mute { color: var(--mute); }
+.text-ink { color: var(--ink); }
+.text-hurt { color: var(--hurt); }

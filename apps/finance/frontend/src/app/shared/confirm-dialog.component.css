@@ -1,0 +1,52 @@
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: var(--space-4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+}
+
+.confirm-panel {
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.confirm-message {
+  margin: 0 0 var(--space-6);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 520px) {
+  .confirm-backdrop {
+    align-items: flex-end;
+  }
+
+  .confirm-actions ui-button {
+    flex: 1 1 100%;
+  }
+
+  .confirm-actions ::ng-deep .ui-btn {
+    width: 100%;
+  }
+}

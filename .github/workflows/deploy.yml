@@ -1,0 +1,102 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vivek-monorepo-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy All Apps
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on:
+      - self-hosted
+      - linux
+      - finance-prod
+    environment: production
+    env:
+      MONOREPO: /home/vivek/Deployments/vivek-monorepo
+      ENV_FILE: /home/vivek/Deployments/vivek-monorepo/.env
+      CONTROL: /home/vivek/Deployments/_control
+    steps:
+      - name: Resolve SHA
+        id: sha
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync live tree to deployed SHA
+        run: |
+          test -f "$ENV_FILE"
+          git -C "$MONOREPO" fetch origin
+          git -C "$MONOREPO" checkout --force "${{ steps.sha.outputs.sha }}"
+
+      - name: Prepare data directories
+        run: |
+          set -a
+          # shellcheck disable=SC1090
+          . "$ENV_FILE"
+          set +a
+          mkdir -p "$FINANCE_DATA_DIR" "$FINANCE_BACKUP_DIR" "$ME_DATA_DIR" "$ME_VAULT_DIR"
+
+      - name: Verify Docker access
+        run: sudo -n docker compose version
+
+      - name: Backup SQLite database
+        run: |
+          set -a
+          # shellcheck disable=SC1090
+          . "$ENV_FILE"
+          set +a
+          "$MONOREPO/scripts/backup-db.sh"
+
+      - name: Build images
+        run: |
+          make -C "$CONTROL" build STACK=finance-tracker
+          make -C "$CONTROL" build STACK=me-app
+
+      - name: Restart stacks
+        run: |
+          make -C "$CONTROL" up STACK=finance-tracker
+          make -C "$CONTROL" up STACK=me-app
+
+      - name: Deploy personal site
+        run: make -C "$CONTROL" site-deploy
+
+      - name: Health check finance
+        run: |
+          for attempt in {1..30}; do
+            if curl -fsS "http://127.0.0.1:8085/api/health"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          sudo -n docker ps --format 'table {{.Names}}\t{{.Status}}'
+          sudo -n docker logs finance_tracker-api-1 --tail=100
+          exit 1
+
+      - name: Health check me-app
+        run: |
+          for attempt in {1..30}; do
+            if curl -fsS -o /dev/null "http://127.0.0.1:8090/login"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          sudo -n docker logs me-app --tail=80
+          exit 1

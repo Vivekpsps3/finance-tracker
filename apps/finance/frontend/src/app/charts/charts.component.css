@@ -1,0 +1,78 @@
+.section-heading {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.charts-section.embedded,
+.charts-section:not(.page) {
+  margin-top: var(--space-6);
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-6);
+}
+
+.chart-wide {
+  grid-column: 1 / -1;
+}
+
+.chart-wrap {
+  height: var(--chart-embed-height);
+  min-height: var(--chart-embed-height);
+  transition: opacity 150ms var(--ease-standard);
+}
+
+.chart-wrap.chart-dim {
+  opacity: 0.55;
+}
+
+.chart-wrap.tall {
+  height: var(--chart-tall-height);
+  min-height: var(--chart-tall-height);
+}
+
+.chart-note {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.section-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.section-toggle span:last-child {
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.text-link {
+  margin-top: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.chart-sub {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  margin-top: 0;
+}
