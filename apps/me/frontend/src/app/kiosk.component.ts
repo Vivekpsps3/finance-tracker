@@ -1,12 +1,11 @@
-import { Component, ElementRef, ViewChild, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Api, Standing, Timeline } from './api';
 import { OpsComponent } from './ops.component';
 import { MemoryComponent } from './memory.component';
 import { AgentComponent } from './agent.component';
 
-const WINDOWS = ['ops', 'memory', 'agent'] as const;
-type WindowId = (typeof WINDOWS)[number];
+type WindowId = 'ops' | 'memory' | 'agent';
 
 @Component({
   selector: 'app-kiosk',
@@ -15,50 +14,51 @@ type WindowId = (typeof WINDOWS)[number];
     .shell { position:relative; height:100dvh; overflow:hidden; background:var(--wall); }
     nav {
       position:fixed; inset:0 0 auto 0; z-index:10; display:flex; height:64px; align-items:center;
-      gap:16px; padding:0 24px; background:var(--tile);
+      gap:8px; padding:0 24px; background:var(--tile); border-bottom:1px solid var(--border-subtle);
     }
-    nav button { border-bottom:4px solid transparent; background:transparent; color:var(--mute); }
-    nav button.on { border-bottom-color:var(--accent); color:var(--ink); }
-    nav button.theme { margin-left:auto; border-bottom:0; }
-    .track {
-      display:flex; height:100dvh; overflow-x:auto; overflow-y:hidden;
-      scroll-snap-type:x mandatory; touch-action:pan-x; overscroll-behavior:none;
-    }
-    section { flex:0 0 100%; width:100%; height:100%; scroll-snap-align:start; scroll-snap-stop:always; padding-top:64px; box-sizing:border-box; }
+    nav button.hit { background:transparent; border-radius:var(--radius-md); padding:0 var(--space-3); color:var(--mute); }
+    nav button.hit.on { background:var(--surface-2); color:var(--ink); }
+    nav .theme { margin-left:auto; }
+    main { height:100dvh; padding-top:64px; box-sizing:border-box; }
+    main > * { display:block; height:100%; }
   `],
   template: `
     <div class="shell">
       <nav>
-        <button class="hit" [class.on]="active==='ops'" (click)="go('ops')">Ops</button>
-        <button class="hit" [class.on]="active==='memory'" (click)="go('memory')">Memory</button>
-        <button class="hit" [class.on]="active==='agent'" (click)="go('agent')">Agent</button>
-        <button class="hit theme" type="button" (click)="toggleTheme()">{{ theme === 'dark' ? 'Light' : 'Dark' }}</button>
+        <button class="hit" [class.on]="active==='ops'" (click)="active='ops'">Ops</button>
+        <button class="hit" [class.on]="active==='memory'" (click)="active='memory'">Memory</button>
+        <button class="hit" [class.on]="active==='agent'" (click)="active='agent'">Agent</button>
+        <div class="vivek-nav__theme theme" role="group" aria-label="Color mode">
+          <button type="button" [class.on]="theme !== 'dark'" (click)="setTheme('light')">Light</button>
+          <button type="button" [class.on]="theme === 'dark'" (click)="setTheme('dark')">Dark</button>
+        </div>
       </nav>
-      <div class="track" #track (scroll)="onScroll()">
-        <section><app-ops [standing]="standing" /></section>
-        <section><app-memory [timeline]="timeline" /></section>
-        <section><app-agent /></section>
-      </div>
+      <main>
+        @switch (active) {
+          @case ('ops') { <app-ops [standing]="standing" /> }
+          @case ('memory') { <app-memory [timeline]="timeline" /> }
+          @case ('agent') { <app-agent /> }
+        }
+      </main>
     </div>
   `,
 })
 export class KioskComponent {
   private api = inject(Api);
   private router = inject(Router);
-  @ViewChild('track') track?: ElementRef<HTMLDivElement>;
   active: WindowId = 'ops';
   theme: 'light' | 'dark' = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   timeline: Timeline | null = null;
   standing: Standing = { status: 'idle', question: '', qid: '', pending: null };
 
-  toggleTheme() {
-    this.theme = this.theme === 'dark' ? 'light' : 'dark';
+  setTheme(theme: 'light' | 'dark') {
+    this.theme = theme;
     try {
-      localStorage.setItem('me-theme', this.theme);
+      localStorage.setItem('me-theme', theme);
     } catch {
       /* private mode */
     }
-    document.documentElement.setAttribute('data-theme', this.theme);
+    document.documentElement.setAttribute('data-theme', theme);
   }
 
   async ngOnInit() {
@@ -69,20 +69,5 @@ export class KioskComponent {
     } catch {
       await this.router.navigateByUrl('/login');
     }
-  }
-
-  go(id: WindowId) {
-    const el = this.track?.nativeElement;
-    if (!el) return;
-    const i = WINDOWS.indexOf(id);
-    this.active = id;
-    el.scrollTo({ left: i * el.clientWidth, behavior: 'auto' });
-  }
-
-  onScroll() {
-    const el = this.track?.nativeElement;
-    if (!el || el.clientWidth <= 0) return;
-    const i = Math.min(2, Math.max(0, Math.round(el.scrollLeft / el.clientWidth)));
-    this.active = WINDOWS[i];
   }
 }

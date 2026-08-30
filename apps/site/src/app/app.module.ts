@@ -9,7 +9,6 @@ import { AboutComponent } from './components/about/about.component';
 import { RouterModule } from '@angular/router';
 import { BlogComponent } from './components/blog/blog.component';
 import { AppRoutingModule } from './app.routes'; // Import the routing module
-import { HeaderComponent } from './components/header/header.component'; // Import the header component
 import { SecretsComponent } from './components/secrets/secrets.component';
 
 @NgModule({
@@ -17,7 +16,6 @@ import { SecretsComponent } from './components/secrets/secrets.component';
     AppComponent,
     AboutComponent,
     BlogComponent,
-    HeaderComponent, // Declare the header component
     SecretsComponent
   ],
   imports: [

@@ -19,6 +19,7 @@ a { color: inherit; }
   gap: var(--space-6);
 }
 .page p, .page ul, .page ol { margin: 0 0 var(--space-3); color: var(--text-secondary); }
+.page ul, .page ol { padding-left: 1.25rem; }
 .page .details { color: var(--text-tertiary); font-size: var(--text-sm); }
 .links { display: flex; gap: var(--space-4); flex-wrap: wrap; }
 .links a { color: var(--accent); font-weight: 600; text-decoration: none; }

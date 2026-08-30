@@ -12,7 +12,7 @@ import { Api, Standing } from './api';
       border-left:4px solid var(--accent); background:var(--tile); color:var(--ink);
       font:var(--display); text-decoration:none;
     }
-    .card { margin-top:16px; width:calc(100% - 48px); background:var(--tile); padding:16px; overflow-y:auto; }
+    .card { margin-top:16px; background:var(--tile); padding:16px; overflow-y:auto; }
     textarea { width:100%; min-height:48px; max-height:64px; margin-top:8px; resize:none; border:0; background:var(--tile); color:var(--ink); }
     .row { display:flex; gap:16px; margin-top:8px; }
     .mute { color:var(--mute); }
