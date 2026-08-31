@@ -17,7 +17,6 @@ COPY backend/ ./
 COPY --from=ui /ui/dist/frontend/browser /app/static
 ENV STATIC_DIR=/app/static
 ENV PI_CODING_AGENT_DIR=/data/pi
-ENV AGENT_CWD=/data
 ENV PI_SKIP_VERSION_CHECK=1
 ENV PI_TELEMETRY=0
 EXPOSE 8090

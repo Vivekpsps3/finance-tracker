@@ -16,8 +16,11 @@ ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 ATX = re.compile(r"^#\s+(.+)$", re.M)
 
 
-def copy_root() -> Path:
-    root = Path(os.environ.get("VAULT_PATH") or os.environ.get("VAULT_COPY_PATH", "vault")).resolve()
+VAULT = "/home/vivek/Deployments/Vault"
+
+
+def vault_root() -> Path:
+    root = Path(VAULT).resolve()
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -26,7 +29,7 @@ def assert_inside(root: Path, candidate: Path) -> Path:
     full_root = root.resolve()
     full = candidate.resolve()
     if full != full_root and not str(full).startswith(str(full_root) + os.sep):
-        raise ValueError(f"path escapes copy root: {candidate}")
+        raise ValueError(f"path escapes vault root: {candidate}")
     return full
 
 
@@ -119,7 +122,7 @@ def render_body(body: str, missing: set[str]) -> str:
 
 
 def rebuild() -> dict:
-    root = copy_root()
+    root = vault_root()
     notes = [{**parse_note(f["raw"], f["relPath"]), "mtimeMs": f["mtimeMs"]} for f in walk_md(root)]
     db = open_db()
     from datetime import datetime, timezone

@@ -5,13 +5,13 @@ import shutil
 from pathlib import Path
 
 DIR = Path(os.environ.get("PI_CODING_AGENT_DIR", "/data/pi"))
-CWD = Path(os.environ.get("AGENT_CWD") or os.environ.get("VAULT_PATH", "/data/vault"))
+CWD = Path("/home/vivek/Deployments/Vault")
 SESSION_DIR = DIR / "sessions"
 AGENTS = DIR / "AGENTS.md"
 
-SYSTEM = """You live in this container. Your working directory is the Obsidian vault at /data/vault.
+SYSTEM = """You live in this container. Your working directory is the Obsidian vault at /home/vivek/Deployments/Vault.
 Read and mutate that folder freely — notes, folders, .obsidian, inbox, anything in the vault.
-Do not modify /app (the website image). No SpaceX or company content.
+Do not modify /app (the website image).
 Use read, write, edit, and bash. Keep wall answers short.
 """
 

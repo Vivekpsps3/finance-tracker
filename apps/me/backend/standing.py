@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from db import meta_del, meta_get, meta_set
-from vault import assert_inside, copy_root, rebuild
+from vault import assert_inside, rebuild, vault_root
 
 FALLBACK = ["What should I remember?"]
 INBOX = re.compile(r"^inbox/[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9a-f]{8}\.md$")
@@ -19,7 +19,7 @@ def refused(text: str) -> bool:
 
 
 def load_bank() -> list[str]:
-    root = copy_root()
+    root = vault_root()
     path = assert_inside(root, root / "questions.md")
     try:
         raw = path.read_text(encoding="utf-8")
@@ -86,7 +86,7 @@ def answer(text: str) -> dict:
 def apply(rel: str, body: str) -> None:
     if not INBOX.match(rel):
         raise ValueError(f"not an inbox note: {rel}")
-    root = copy_root()
+    root = vault_root()
     full = assert_inside(root, root / rel)
     if full.is_symlink() or Path(str(full) + ".tmp").is_symlink():
         raise ValueError(f"symlink refused: {full}")

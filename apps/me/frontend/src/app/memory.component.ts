@@ -29,7 +29,7 @@ import { DossierComponent } from './dossier.component';
     } @else if (view === 'eras') {
       <h1>Memory</h1>
       @if (!timeline.eras.length) {
-        <p class="text-mute">No eras yet. Add an era span in the vault copy, then Rebuild.</p>
+        <p class="text-mute">No eras yet. Add an era span in the vault, then Rebuild.</p>
       } @else {
         <div class="eras">
           @for (e of timeline.eras; track e.slug) {

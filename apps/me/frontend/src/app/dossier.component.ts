@@ -29,7 +29,7 @@ import { Dossier } from './api';
           </div>
         }
         <div class="fields" (click)="onBody($event)">
-          @if (dossier.missing) { <p class="text-mute">Not in the vault copy.</p> }
+          @if (dossier.missing) { <p class="text-mute">Not in the vault.</p> }
           @else if (!dossier.bodyHtml.trim()) { <p class="text-mute">Nothing written yet.</p> }
           @else { <div [innerHTML]="safeBody"></div> }
         </div>

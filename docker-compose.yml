@@ -58,10 +58,8 @@ services:
       HOST: 127.0.0.1
       PORT: "8090"
       ORIGIN: ${ME_ORIGIN:-https://me.vivekpanchagnula.com}
-      VAULT_PATH: /data/vault
       SQLITE_PATH: /data/app.db
       STATIC_DIR: /app/static
-      AGENT_CWD: /data/vault
       PI_CODING_AGENT_DIR: /data/pi
       PI_SKIP_VERSION_CHECK: "1"
       PI_TELEMETRY: "0"
@@ -71,7 +69,7 @@ services:
       OPENAI_CONTEXT_LENGTH: ${OPENAI_CONTEXT_LENGTH:-131072}
     volumes:
       - ${ME_DATA_DIR:-./data/me}:/data
-      - ${ME_VAULT_DIR:-./data/me-vault}:/data/vault
+      - /home/vivek/Deployments/Vault:/home/vivek/Deployments/Vault
     restart: unless-stopped
     profiles:
       - apps

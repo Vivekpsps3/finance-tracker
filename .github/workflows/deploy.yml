@@ -52,7 +52,7 @@ jobs:
           # shellcheck disable=SC1090
           . "$ENV_FILE"
           set +a
-          mkdir -p "$FINANCE_DATA_DIR" "$FINANCE_BACKUP_DIR" "$ME_DATA_DIR" "$ME_VAULT_DIR"
+          mkdir -p "$FINANCE_DATA_DIR" "$FINANCE_BACKUP_DIR" "$ME_DATA_DIR"
 
       - name: Verify Docker access
         run: sudo -n docker compose version
