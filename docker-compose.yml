@@ -69,7 +69,7 @@ services:
       OPENAI_CONTEXT_LENGTH: ${OPENAI_CONTEXT_LENGTH:-131072}
     volumes:
       - ${ME_DATA_DIR:-./data/me}:/data
-      - /home/vivek/Deployments/Vault:/home/vivek/Deployments/Vault
+      - /home/vivek/Deployments/Vault:/data/vault
     restart: unless-stopped
     profiles:
       - apps

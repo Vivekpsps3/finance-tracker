@@ -1,4 +1,4 @@
-"""One wall session. History parses messages; extras are pruned; reset wipes."""
+"""Sessions stay; history renders markdown; reset deletes one."""
 import json
 import os
 import tempfile
@@ -12,15 +12,17 @@ import agent  # noqa: E402
 
 tmp = Path(tempfile.mkdtemp(prefix="agent-"))
 agent.DIR = tmp
+agent.CWD = tmp / "vault"
 agent.SESSION_DIR = tmp / "sessions"
 agent.SESSION_DIR.mkdir()
+agent.CWD.mkdir()
 
 wall = agent.SESSION_DIR / "wall.jsonl"
 other = agent.SESSION_DIR / "other.jsonl"
 wall.write_text(
     "\n".join(
         [
-            json.dumps({"type": "session", "id": "w"}),
+            json.dumps({"type": "session", "id": "wall-id"}),
             json.dumps({"type": "session_info", "name": "wall"}),
             json.dumps(
                 {
@@ -39,7 +41,7 @@ wall.write_text(
                         "content": [
                             {"type": "thinking", "thinking": "nope"},
                             {"type": "toolCall", "name": "bash"},
-                            {"type": "text", "text": "hello"},
+                            {"type": "text", "text": "hello **world**"},
                         ],
                     },
                 }
@@ -50,20 +52,28 @@ wall.write_text(
     encoding="utf-8",
 )
 other.write_text(
-    json.dumps({"type": "session_info", "name": "ask"}) + "\n",
+    json.dumps({"type": "session", "id": "ask-id"})
+    + "\n"
+    + json.dumps({"type": "session_info", "name": "ask"})
+    + "\n",
     encoding="utf-8",
 )
 
+assert agent.md("**x**") == "<p><strong>x</strong></p>"
+assert "<script" not in agent.md("<script>alert(1)</script>**ok**")
+
 lines = agent.history()
 assert [l["kind"] for l in lines] == ["user", "tool", "assistant"], lines
-assert lines[0]["text"] == "hi"
-assert lines[1]["name"] == "bash"
-assert lines[2]["text"] == "hello"
+assert lines[2]["html"] == agent.md("hello **world**")
+assert "<strong>world</strong>" in lines[2]["html"]
+assert other.exists()
+assert agent.resolve("ask-id") == other
+assert agent.resolve(None) == wall
+assert {s["id"] for s in agent.sessions()} == {"wall-id", "ask-id"}
+
+agent.reset("ask-id")
 assert not other.exists()
 assert wall.exists()
-assert agent.wall() == wall
-
 agent.reset()
 assert agent.history() == []
-assert agent.wall() is None
-print("agent history/prune/reset: ok")
+print("agent sessions/markdown/reset: ok")

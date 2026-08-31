@@ -7,12 +7,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 os.environ["SQLITE_PATH"] = ":memory:"
 
 import passwordless  # noqa: E402
-import standing  # noqa: E402
-
-async def _noop_ensure(**_k):
-    return standing.current()
-
-standing.ensure = _noop_ensure  # noqa: E402
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app import app  # noqa: E402
@@ -32,15 +26,15 @@ assert r.status_code == 200, (r.status_code, r.text)
 assert client.get("/api/bootstrap").status_code == 401
 
 # POST without CSRF header: 403
-r = client.post("/api/standing/skip", cookies=cookies)
+r = client.post("/api/auth/logout", cookies=cookies)
 assert r.status_code == 403, (r.status_code, r.text)
 
 # POST with wrong CSRF header: 403
-r = client.post("/api/standing/skip", cookies=cookies, headers={"X-CSRF-Token": "nope"})
+r = client.post("/api/auth/logout", cookies=cookies, headers={"X-CSRF-Token": "nope"})
 assert r.status_code == 403, (r.status_code, r.text)
 
 # POST with correct CSRF header: passes the gate (whatever the handler returns, not 401/403)
-r = client.post("/api/standing/skip", cookies=cookies, headers={"X-CSRF-Token": session["csrf"]})
+r = client.post("/api/auth/logout", cookies=cookies, headers={"X-CSRF-Token": session["csrf"]})
 assert r.status_code not in (401, 403), (r.status_code, r.text)
 
 # Public auth endpoints stay CSRF-exempt

@@ -2,14 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
-export type Standing = {
-  status: 'idle' | 'pending' | 'empty' | 'error' | 'refuse';
-  question: string;
-  qid: string;
-  pending: { id: string; path: string; body: string } | null;
-  message?: string;
-};
-
 export type Timeline = {
   currentWeek: string;
   birthday: string;
@@ -33,19 +25,7 @@ export class Api {
   constructor(private http: HttpClient) {}
 
   bootstrap() {
-    return firstValueFrom(this.http.get<{ timeline: Timeline | null; standing: Standing }>('/api/bootstrap'));
-  }
-  standing() {
-    return firstValueFrom(this.http.get<Standing>('/api/standing'));
-  }
-  standingPost(answer: string) {
-    return firstValueFrom(this.http.post<Standing>('/api/standing', { answer }));
-  }
-  skip() {
-    return firstValueFrom(this.http.post<Standing>('/api/standing/skip', {}));
-  }
-  decide(id: string, decision: 'approve' | 'reject') {
-    return firstValueFrom(this.http.post<Standing>('/api/standing/decide', { id, decision }));
+    return firstValueFrom(this.http.get<{ timeline: Timeline | null }>('/api/bootstrap'));
   }
   notes(n: string) {
     return firstValueFrom(this.http.get<any>(`/api/notes?n=${encodeURIComponent(n)}`));
@@ -53,19 +33,20 @@ export class Api {
   week(id: string) {
     return firstValueFrom(this.http.get<any>(`/api/timeline/week/${id}`));
   }
-  agentHistory() {
-    return firstValueFrom(this.http.get<{ lines: any[] }>('/api/agent'));
+  agentHistory(id = '') {
+    const q = id ? `?id=${encodeURIComponent(id)}` : '';
+    return firstValueFrom(this.http.get<{ session: any; sessions: any[]; lines: any[] }>(`/api/agent${q}`));
   }
-  agentReset() {
-    return firstValueFrom(this.http.post<{ lines: any[] }>('/api/agent/reset', {}));
+  agentReset(id = '') {
+    return firstValueFrom(this.http.post<{ session: any; sessions: any[]; lines: any[] }>('/api/agent/reset', { id }));
   }
-  async *agent(message: string): AsyncGenerator<any> {
+  async *agent(message: string, opts: { id?: string; fresh?: boolean; name?: string } = {}): AsyncGenerator<any> {
     const csrf = document.cookie.match(/(?:^|;\s*)me_csrf=([^;]*)/)?.[1] ?? '';
     const res = await fetch('/api/agent', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) },
       credentials: 'same-origin',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, id: opts.id || '', fresh: !!opts.fresh, name: opts.name || 'wall' }),
     });
     if (!res.ok || !res.body) throw new Error('agent');
     const reader = res.body.getReader();

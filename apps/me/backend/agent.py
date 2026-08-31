@@ -1,15 +1,17 @@
 import asyncio
 import json
 import os
+import re
 import shutil
-import tempfile
 from pathlib import Path
 
+import markdown
+
 DIR = Path(os.environ.get("PI_CODING_AGENT_DIR", "/data/pi"))
-CWD = Path("/home/vivek/Deployments/Vault")
+CWD = Path("/data/vault")
 SESSION_DIR = DIR / "sessions"
 
-SYSTEM = """You live in this container. Your working directory is the Obsidian vault at /home/vivek/Deployments/Vault.
+SYSTEM = """You live in this container. Your working directory is the Obsidian vault at /data/vault.
 Read and mutate that folder freely — notes, folders, .obsidian, inbox, anything in the vault.
 Do not modify /app (the website image).
 Use read, write, edit, and bash. Keep wall answers short.
@@ -73,42 +75,69 @@ def _sessions() -> list[Path]:
     return sorted(SESSION_DIR.glob("*.jsonl"), key=lambda p: p.stat().st_mtime)
 
 
-def _named_wall(path: Path) -> bool:
+def _meta(path: Path) -> dict:
+    sid = path.stem
+    name = path.stem
     try:
         for raw in path.read_text(encoding="utf-8").splitlines():
-            ev = json.loads(raw)
-            if ev.get("type") == "session_info" and ev.get("name") == "wall":
-                return True
-    except (OSError, json.JSONDecodeError):
-        return False
-    return False
+            try:
+                ev = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if ev.get("type") == "session" and ev.get("id"):
+                sid = str(ev["id"])
+            elif ev.get("type") == "session_info" and ev.get("name"):
+                name = str(ev["name"])
+    except OSError:
+        pass
+    return {"id": sid, "name": name, "file": path.name, "mtime": path.stat().st_mtime}
+
+
+def sessions() -> list[dict]:
+    bootstrap()
+    return [_meta(p) for p in reversed(_sessions())]
 
 
 def wall() -> Path | None:
-    found = [p for p in _sessions() if _named_wall(p)]
-    if found:
-        return found[-1]
+    named = [p for p in _sessions() if _meta(p)["name"] == "wall"]
+    if named:
+        return named[-1]
     all_s = _sessions()
     return all_s[-1] if all_s else None
 
 
-def prune() -> Path | None:
-    keep = wall()
-    for p in _sessions():
-        if p != keep:
-            p.unlink(missing_ok=True)
-    return keep
+def resolve(sid: str | None) -> Path | None:
+    all_s = _sessions()
+    if not all_s:
+        return None
+    if sid:
+        for p in all_s:
+            m = _meta(p)
+            if sid in {m["id"], m["name"], p.stem, p.name}:
+                return p
+    return wall()
 
 
-def reset() -> None:
+def reset(sid: str | None = None) -> None:
     bootstrap()
-    for p in _sessions():
-        p.unlink(missing_ok=True)
+    path = resolve(sid)
+    if path:
+        path.unlink(missing_ok=True)
 
 
-def history() -> list[dict]:
+def md(text: str) -> str:
+    clean = re.sub(r"<script\b[\s\S]*?</script>", "", text, flags=re.I)
+    clean = (
+        clean.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+    return markdown.markdown(clean, extensions=["extra"])
+
+
+def history(sid: str | None = None) -> list[dict]:
     bootstrap()
-    path = prune()
+    path = resolve(sid)
     if not path:
         return []
     out: list[dict] = []
@@ -136,25 +165,18 @@ def history() -> list[dict]:
                     out.append({"kind": "tool", "name": c.get("name") or "tool", "text": ""})
             text = "".join(c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text")
             if text:
-                out.append({"kind": "assistant", "text": text})
+                out.append({"kind": "assistant", "text": text, "html": md(text)})
     return out
 
 
-async def ask(prompt: str) -> str:
-    if not available():
-        return ""
-    tmp = Path(tempfile.mkdtemp(prefix="ask-"))
-    try:
-        chunks: list[str] = []
-        async for ev in run(prompt, name="ask", session_dir=tmp):
-            if ev.get("type") == "text":
-                chunks.append(ev["delta"])
-        return "".join(chunks).strip()
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-
-
-async def run(message: str, *, name: str = "wall", session_dir: Path | None = None):
+async def run(
+    message: str,
+    *,
+    name: str = "wall",
+    session_dir: Path | None = None,
+    session_id: str | None = None,
+    fresh: bool = False,
+):
     if not available():
         yield {"type": "error", "message": "pi is not installed in this container."}
         return
@@ -182,8 +204,9 @@ async def run(message: str, *, name: str = "wall", session_dir: Path | None = No
         "high",
         message,
     ]
-    if session_dir is None and prune():
-        cmd.insert(-1, "-c")
+    path = None if fresh or session_dir is not None else resolve(session_id)
+    if path:
+        cmd[cmd.index(message):cmd.index(message)] = ["--session", str(path)]
     env = os.environ.copy()
     env["PI_CODING_AGENT_DIR"] = str(DIR)
     env["PI_SKIP_VERSION_CHECK"] = "1"

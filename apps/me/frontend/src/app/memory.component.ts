@@ -8,10 +8,11 @@ import { DossierComponent } from './dossier.component';
   styles: [`
     :host { display:flex; flex-direction:column; height:100%; min-height:0; background:var(--wall); padding:24px; box-sizing:border-box; color:var(--ink); position:relative; }
     h1 { margin:0; font:var(--heading); }
-    .year { display:grid; grid-template-columns:4rem repeat(53, minmax(0,1fr)); gap:4px; align-items:center; }
-    .cell { width:20px; height:20px; aspect-ratio:1; border:0; display:flex; align-items:center; justify-content:center; background:var(--wall); padding:0; }
+    .year { display:grid; grid-template-columns:4rem repeat(53, 20px); gap:4px; align-items:center; width:max-content; }
+    .cell { box-sizing:border-box; width:20px; height:20px; margin:0; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; background:var(--surface-2); padding:0; }
+    .cell:disabled { opacity:.35; }
     .cell.filled { background:var(--tile); }
-    .cell.now { outline:2px solid var(--accent); }
+    .cell.now { outline:2px solid var(--accent); outline-offset:1px; }
     .dot { width:4px; height:4px; background:var(--accent); }
     .dot.plan { background:var(--mute); }
     .sheet { position:absolute; left:24px; right:24px; bottom:24px; max-height:360px; display:flex; flex-direction:column; background:var(--tile); padding:24px; }
@@ -23,7 +24,7 @@ import { DossierComponent } from './dossier.component';
     @if (timeline === null) {
       <p class="text-mute">Can't load weeks. Rebuild the index.</p>
     } @else {
-      <div style="flex:1; overflow-y:auto; min-height:0">
+      <div style="flex:1; overflow:auto; min-height:0">
         @for (year of timeline.years; track year) {
           <div class="year">
             <span class="text-mute">{{ year }}</span>

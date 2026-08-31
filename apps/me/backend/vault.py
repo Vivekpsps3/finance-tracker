@@ -16,7 +16,7 @@ ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 ATX = re.compile(r"^#\s+(.+)$", re.M)
 
 
-VAULT = "/home/vivek/Deployments/Vault"
+VAULT = "/data/vault"
 
 
 def vault_root() -> Path:

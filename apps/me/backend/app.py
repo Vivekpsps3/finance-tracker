@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 from contextlib import asynccontextmanager
@@ -10,7 +9,6 @@ from fastapi.staticfiles import StaticFiles
 
 import agent
 import passwordless
-import standing
 import timeline
 import vault
 from db import close_db, open_db
@@ -25,7 +23,6 @@ async def lifespan(_app: FastAPI):
     passwordless.ensure_schema()
     vault.rebuild()
     agent.bootstrap()
-    asyncio.create_task(standing.ensure())
     yield
     close_db()
 
@@ -131,53 +128,7 @@ def bootstrap():
         tl = timeline.project_life()
     except Exception:
         tl = None
-    try:
-        st = standing.current()
-    except Exception:
-        st = {"status": "error", "question": "", "qid": "", "pending": None, "message": standing.LOAD_ERROR}
-    return {"timeline": tl, "standing": st}
-
-
-@app.get("/api/standing")
-async def standing_get():
-    st = standing.current()
-    if not st["qid"] and not st.get("pending") and not standing.busy():
-        asyncio.create_task(standing.ensure())
-    return standing.current()
-
-
-@app.post("/api/standing")
-def standing_post(payload: dict):
-    text = payload.get("answer")
-    if not isinstance(text, str) or not text or len(text) > 2000 or "\0" in text:
-        raise HTTPException(400, "invalid answer")
-    return standing.answer(text.strip())
-
-
-@app.post("/api/standing/skip")
-async def standing_skip():
-    if standing.current().get("pending"):
-        return standing.current()
-    standing.clear()
-    asyncio.create_task(standing.ensure(force=True))
-    return standing.current()
-
-
-@app.post("/api/standing/decide")
-async def standing_decide(payload: dict):
-    uid = payload.get("id")
-    decision = payload.get("decision")
-    if not isinstance(uid, str) or decision not in {"approve", "reject"}:
-        raise HTTPException(400, "invalid decide")
-    try:
-        result = standing.decide(uid, decision)
-    except ValueError as err:
-        if "mismatch" in str(err):
-            raise HTTPException(409, "pending mismatch") from err
-        raise
-    if not result["qid"] and not result.get("pending"):
-        asyncio.create_task(standing.ensure())
-    return result
+    return {"timeline": tl}
 
 
 @app.get("/api/notes")
@@ -196,15 +147,29 @@ def week(wid: str):
     return timeline.week_payload(wid)
 
 
+def _sid(val) -> str | None:
+    if not isinstance(val, str):
+        return None
+    s = val.strip()
+    return s or None
+
+
 @app.get("/api/agent")
-def agent_history():
-    return {"lines": agent.history()}
+def agent_history(id: str = ""):
+    sid = _sid(id)
+    path = agent.resolve(sid)
+    return {
+        "session": agent._meta(path) if path else None,
+        "sessions": agent.sessions(),
+        "lines": agent.history(sid),
+    }
 
 
 @app.post("/api/agent/reset")
-def agent_reset():
-    agent.reset()
-    return {"lines": []}
+def agent_reset(payload: dict | None = None):
+    sid = _sid((payload or {}).get("id"))
+    agent.reset(sid)
+    return {"session": None, "sessions": agent.sessions(), "lines": []}
 
 
 @app.post("/api/agent")
@@ -212,9 +177,16 @@ async def agent_route(payload: dict):
     q = payload.get("message")
     if not isinstance(q, str) or not q or len(q) > 8000 or "\0" in q:
         raise HTTPException(400, "invalid message")
+    sid = _sid(payload.get("id"))
+    fresh = bool(payload.get("fresh"))
+    name = payload.get("name")
+    if not isinstance(name, str) or not name.strip() or len(name) > 40:
+        name = "wall"
+    else:
+        name = name.strip()
 
     async def stream():
-        async for ev in agent.run(q.strip()):
+        async for ev in agent.run(q.strip(), name=name, session_id=sid, fresh=fresh):
             yield f"data: {json.dumps(ev)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
