@@ -1,47 +1,42 @@
+import asyncio
 import json
 import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+import agent
 from db import meta_del, meta_get, meta_set
 from vault import assert_inside, rebuild, vault_root
 
-FALLBACK = ["What should I remember?"]
+FALLBACK = "What should I remember?"
+CURRENT = "standing.current"
+PENDING = "standing.pending"
+BUSY = "standing.busy"
 INBOX = re.compile(r"^inbox/[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9a-f]{8}\.md$")
 REFUSE_RE = re.compile(r"\bspacex\b|\bspace[\s-]?x\b|\bcompany\b", re.I)
 REFUSE = "Company and SpaceX stay off this wall."
 LOAD_ERROR = "Can't load the question. Rebuild the index."
+PROMPT = (
+    "Look through the vault at /home/vivek/Deployments/Vault. "
+    "Invent one short, specific personal question for Vivek that would make a useful inbox note. "
+    "Not about work, company, or SpaceX. Reply with ONLY the question."
+)
+
+_lock = asyncio.Lock()
 
 
 def refused(text: str) -> bool:
     return bool(REFUSE_RE.search(text))
 
 
-def load_bank() -> list[str]:
-    root = vault_root()
-    path = assert_inside(root, root / "questions.md")
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return FALLBACK
-    questions = []
-    for line in raw.splitlines():
-        trimmed = line.strip()
-        if not trimmed or trimmed.startswith("#"):
-            continue
-        questions.append(re.sub(r"^[-*]\s+", "", trimmed))
-    return questions or FALLBACK
-
-
-def get_used() -> list[str]:
-    raw = meta_get("standing.used")
-    return json.loads(raw) if raw else []
+def busy() -> bool:
+    return bool(meta_get(BUSY))
 
 
 def current() -> dict:
     try:
-        pending_raw = meta_get("standing.pending")
+        pending_raw = meta_get(PENDING)
         if pending_raw:
             pending = json.loads(pending_raw)
             return {
@@ -50,24 +45,49 @@ def current() -> dict:
                 "qid": pending["qid"],
                 "pending": {"id": pending["id"], "path": pending["path"], "body": pending["body"]},
             }
-        bank = load_bank()
-        used = get_used()
-        qid = next((q for q in bank if q not in used), None)
-        if not qid:
-            meta_del("standing.used")
-            qid = bank[0]
-        return {"status": "idle", "question": qid, "qid": qid, "pending": None}
+        qid = meta_get(CURRENT) or ""
+        if qid:
+            return {"status": "idle", "question": qid, "qid": qid, "pending": None}
+        msg = "Thinking of a question…" if busy() else "No question yet."
+        return {"status": "empty", "question": "", "qid": "", "pending": None, "message": msg}
     except Exception:
         return {"status": "error", "question": "", "qid": "", "pending": None, "message": LOAD_ERROR}
 
 
-def skip() -> dict:
-    now = current()
-    if now["qid"]:
-        used = get_used()
-        used.append(now["qid"])
-        meta_set("standing.used", json.dumps(used))
-    return current()
+def clear() -> None:
+    meta_del(CURRENT)
+
+
+async def _invent() -> str:
+    try:
+        text = await agent.ask(PROMPT)
+    except Exception:
+        text = ""
+    line = next((ln.strip().strip("\"'") for ln in text.splitlines() if ln.strip() and not ln.startswith("#")), "")
+    if not line or refused(line):
+        return FALLBACK
+    return line[:240]
+
+
+async def ensure(*, force: bool = False) -> dict:
+    async with _lock:
+        if meta_get(PENDING):
+            return current()
+        if not force and meta_get(CURRENT):
+            return current()
+        meta_set(BUSY, "1")
+        try:
+            meta_set(CURRENT, await _invent())
+        finally:
+            meta_del(BUSY)
+        return current()
+
+
+async def skip() -> dict:
+    if meta_get(PENDING):
+        return current()
+    clear()
+    return await ensure(force=True)
 
 
 def answer(text: str) -> dict:
@@ -79,7 +99,7 @@ def answer(text: str) -> dict:
     hex8 = uid.replace("-", "")[:8]
     rel = f"inbox/{day}-{hex8}.md"
     body = f"# {now['question']}\n\n{text}"
-    meta_set("standing.pending", json.dumps({"id": uid, "qid": now["qid"], "path": rel, "body": body}))
+    meta_set(PENDING, json.dumps({"id": uid, "qid": now["qid"], "path": rel, "body": body}))
     return current()
 
 
@@ -98,16 +118,14 @@ def apply(rel: str, body: str) -> None:
 
 
 def decide(uid: str, decision: str) -> dict:
-    raw = meta_get("standing.pending")
+    raw = meta_get(PENDING)
     pending = json.loads(raw) if raw else None
     if not pending or pending["id"] != uid:
         raise ValueError("standing pending mismatch")
     if decision == "approve":
         apply(pending["path"], pending["body"])
-        used = get_used()
-        used.append(pending["qid"])
-        meta_set("standing.used", json.dumps(used))
-        meta_del("standing.pending")
+        meta_del(PENDING)
+        clear()
         return current()
-    meta_del("standing.pending")
+    meta_del(PENDING)
     return current()

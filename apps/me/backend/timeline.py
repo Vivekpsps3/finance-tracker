@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from db import open_db
+from facts import BIRTHDAY, LIFE_YEARS
 
 WEEK_ID = re.compile(r"^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$")
 WEEK_STEM = re.compile(r"^(\d{4})-(?:\[W\]|W?)(0[1-9]|[1-4]\d|5[0-3])$")
@@ -102,7 +103,6 @@ def notes_for_week(wid: str) -> list[dict]:
 def project_life(today: datetime | None = None) -> dict:
     today = today or datetime.now(timezone.utc)
     today_day = today.strftime("%Y-%m-%d")
-    eras = []
     counts: dict[str, dict] = {}
     for note in list_notes():
         try:
@@ -111,22 +111,7 @@ def project_life(today: datetime | None = None) -> dict:
             fm = {}
         typ = fm["type"] if isinstance(fm.get("type"), str) else note["type"]
         stem = Path(note["path"]).stem
-        if typ == "me" or stem.lower() == "me":
-            continue
-        if typ == "era" and isinstance(fm.get("start"), str) and isinstance(fm.get("end"), str):
-            if not (DAY_STEM.match(fm["start"]) and DAY_STEM.match(fm["end"]) and fm["end"] >= fm["start"]):
-                continue
-            y0, y1 = int(fm["start"][:4]), int(fm["end"][:4])
-            eras.append({
-                "id": stem,
-                "slug": stem,
-                "title": fm["title"] if isinstance(fm.get("title"), str) else note["title"],
-                "start": fm["start"],
-                "end": fm["end"],
-                "years": list(range(y0, y1 + 1)),
-            })
-            continue
-        if typ in {"era", "me"}:
+        if typ in {"era", "me"} or stem.lower() == "me":
             continue
         for i in attach_weeks(note):
             prev = counts.get(i) or {"n": 0, "plan": False}
@@ -139,7 +124,13 @@ def project_life(today: datetime | None = None) -> dict:
         future = week_range(i)[0] > today_day
         cells[i] = {"kind": "plan" if rec["plan"] or future else "memory", "n": rec["n"]}
     y, w = iso_week(today_day)
-    return {"currentWeek": week_id(y, w), "eras": eras, "cells": cells}
+    born = int(BIRTHDAY[:4])
+    return {
+        "currentWeek": week_id(y, w),
+        "birthday": BIRTHDAY,
+        "years": list(range(born, born + LIFE_YEARS + 1)),
+        "cells": cells,
+    }
 
 
 def week_payload(wid: str) -> dict:

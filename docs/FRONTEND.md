@@ -14,6 +14,7 @@ Angular 19 standalone app under `apps/finance/frontend/src/app/`.
 
 | Path | Component |
 |------|-----------|
+| `/embed` | Chrome-less net worth card for the ops iframe — auth + vault, outside shell |
 | `/login` | Auth (username + vault-passphrase challenge login; legacy password migration only) — outside shell |
 | `/vault/setup` | Create encrypted finance vault — auth only, outside shell |
 | `/vault/unlock` | Unlock encrypted finance vault — auth only, outside shell |

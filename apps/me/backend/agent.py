@@ -2,12 +2,12 @@ import asyncio
 import json
 import os
 import shutil
+import tempfile
 from pathlib import Path
 
 DIR = Path(os.environ.get("PI_CODING_AGENT_DIR", "/data/pi"))
 CWD = Path("/home/vivek/Deployments/Vault")
 SESSION_DIR = DIR / "sessions"
-AGENTS = DIR / "AGENTS.md"
 
 SYSTEM = """You live in this container. Your working directory is the Obsidian vault at /home/vivek/Deployments/Vault.
 Read and mutate that folder freely — notes, folders, .obsidian, inbox, anything in the vault.
@@ -54,8 +54,9 @@ def bootstrap() -> None:
         json.dumps({"defaultProjectTrust": "always"}),
         encoding="utf-8",
     )
-    if not AGENTS.exists():
-        AGENTS.write_text(SYSTEM, encoding="utf-8")
+    agents = DIR / "AGENTS.md"
+    if not agents.exists():
+        agents.write_text(SYSTEM, encoding="utf-8")
 
 
 def _pi() -> str:
@@ -66,11 +67,99 @@ def available() -> bool:
     return bool(_pi())
 
 
-async def run(message: str):
+def _sessions() -> list[Path]:
+    if not SESSION_DIR.is_dir():
+        return []
+    return sorted(SESSION_DIR.glob("*.jsonl"), key=lambda p: p.stat().st_mtime)
+
+
+def _named_wall(path: Path) -> bool:
+    try:
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            ev = json.loads(raw)
+            if ev.get("type") == "session_info" and ev.get("name") == "wall":
+                return True
+    except (OSError, json.JSONDecodeError):
+        return False
+    return False
+
+
+def wall() -> Path | None:
+    found = [p for p in _sessions() if _named_wall(p)]
+    if found:
+        return found[-1]
+    all_s = _sessions()
+    return all_s[-1] if all_s else None
+
+
+def prune() -> Path | None:
+    keep = wall()
+    for p in _sessions():
+        if p != keep:
+            p.unlink(missing_ok=True)
+    return keep
+
+
+def reset() -> None:
+    bootstrap()
+    for p in _sessions():
+        p.unlink(missing_ok=True)
+
+
+def history() -> list[dict]:
+    bootstrap()
+    path = prune()
+    if not path:
+        return []
+    out: list[dict] = []
+    try:
+        rows = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    for raw in rows:
+        try:
+            ev = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if ev.get("type") != "message":
+            continue
+        msg = ev.get("message") or {}
+        role = msg.get("role")
+        content = msg.get("content") or []
+        if role == "user":
+            text = "".join(c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text")
+            if text:
+                out.append({"kind": "user", "text": text})
+        elif role == "assistant":
+            for c in content:
+                if isinstance(c, dict) and c.get("type") == "toolCall":
+                    out.append({"kind": "tool", "name": c.get("name") or "tool", "text": ""})
+            text = "".join(c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text")
+            if text:
+                out.append({"kind": "assistant", "text": text})
+    return out
+
+
+async def ask(prompt: str) -> str:
+    if not available():
+        return ""
+    tmp = Path(tempfile.mkdtemp(prefix="ask-"))
+    try:
+        chunks: list[str] = []
+        async for ev in run(prompt, name="ask", session_dir=tmp):
+            if ev.get("type") == "text":
+                chunks.append(ev["delta"])
+        return "".join(chunks).strip()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+async def run(message: str, *, name: str = "wall", session_dir: Path | None = None):
     if not available():
         yield {"type": "error", "message": "pi is not installed in this container."}
         return
     bootstrap()
+    sdir = session_dir or SESSION_DIR
     model = os.environ.get("OPENAI_MODEL", "muse-glimmer-30b-thinking")
     key = os.environ.get("OPENAI_API_KEY", "local")
     cmd = [
@@ -84,16 +173,16 @@ async def run(message: str):
         "--api-key",
         key,
         "--session-dir",
-        str(SESSION_DIR),
+        str(sdir),
         "--name",
-        "wall",
+        name,
         "--approve",
         "--no-extensions",
         "--thinking",
         "high",
         message,
     ]
-    if any(SESSION_DIR.rglob("*.jsonl")):
+    if session_dir is None and prune():
         cmd.insert(-1, "-c")
     env = os.environ.copy()
     env["PI_CODING_AGENT_DIR"] = str(DIR)

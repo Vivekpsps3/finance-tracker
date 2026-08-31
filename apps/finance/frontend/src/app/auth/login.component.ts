@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { afterAuthUrl } from './after-auth';
 import { AuthService } from './auth.service';
 import { UiButtonComponent, UiCardComponent, UiInputComponent } from '../shared/ui';
 
@@ -51,7 +52,7 @@ export class LoginComponent {
         () => {
           this.loading = false;
           this.cdr.markForCheck();
-          return this.router.navigate(['/']);
+          return this.router.navigateByUrl(afterAuthUrl());
         },
         err => {
           this.error = this.errorMessage(err);
@@ -66,7 +67,7 @@ export class LoginComponent {
         () => {
           this.loading = false;
           this.cdr.markForCheck();
-          return this.router.navigate(['/']);
+          return this.router.navigateByUrl(afterAuthUrl());
         },
         err => {
           this.error = this.errorMessage(err);
@@ -83,7 +84,7 @@ export class LoginComponent {
           .then(() => {
             this.loading = false;
             this.cdr.markForCheck();
-            return this.router.navigate(['/']);
+            return this.router.navigateByUrl(afterAuthUrl());
           })
           .catch(err => {
             this.error = this.errorMessage(err);

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from contextlib import asynccontextmanager
@@ -24,6 +25,7 @@ async def lifespan(_app: FastAPI):
     passwordless.ensure_schema()
     vault.rebuild()
     agent.bootstrap()
+    asyncio.create_task(standing.ensure())
     yield
     close_db()
 
@@ -137,7 +139,10 @@ def bootstrap():
 
 
 @app.get("/api/standing")
-def standing_get():
+async def standing_get():
+    st = standing.current()
+    if not st["qid"] and not st.get("pending") and not standing.busy():
+        asyncio.create_task(standing.ensure())
     return standing.current()
 
 
@@ -150,22 +155,29 @@ def standing_post(payload: dict):
 
 
 @app.post("/api/standing/skip")
-def standing_skip():
-    return standing.skip()
+async def standing_skip():
+    if standing.current().get("pending"):
+        return standing.current()
+    standing.clear()
+    asyncio.create_task(standing.ensure(force=True))
+    return standing.current()
 
 
 @app.post("/api/standing/decide")
-def standing_decide(payload: dict):
+async def standing_decide(payload: dict):
     uid = payload.get("id")
     decision = payload.get("decision")
     if not isinstance(uid, str) or decision not in {"approve", "reject"}:
         raise HTTPException(400, "invalid decide")
     try:
-        return standing.decide(uid, decision)
+        result = standing.decide(uid, decision)
     except ValueError as err:
         if "mismatch" in str(err):
             raise HTTPException(409, "pending mismatch") from err
         raise
+    if not result["qid"] and not result.get("pending"):
+        asyncio.create_task(standing.ensure())
+    return result
 
 
 @app.get("/api/notes")
@@ -182,6 +194,17 @@ def week(wid: str):
     if not timeline.WEEK_ID.match(wid):
         raise HTTPException(400, "invalid week")
     return timeline.week_payload(wid)
+
+
+@app.get("/api/agent")
+def agent_history():
+    return {"lines": agent.history()}
+
+
+@app.post("/api/agent/reset")
+def agent_reset():
+    agent.reset()
+    return {"lines": []}
 
 
 @app.post("/api/agent")

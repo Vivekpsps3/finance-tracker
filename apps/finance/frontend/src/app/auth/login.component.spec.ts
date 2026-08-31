@@ -11,7 +11,7 @@ describe('LoginComponent', () => {
       imports: [LoginComponent],
       providers: [
         { provide: AuthService, useValue: auth },
-        { provide: Router, useValue: jasmine.createSpyObj('Router', ['navigate']) },
+        { provide: Router, useValue: jasmine.createSpyObj('Router', ['navigate', 'navigateByUrl']) },
       ],
     });
     const fixture: ComponentFixture<LoginComponent> = TestBed.createComponent(LoginComponent);

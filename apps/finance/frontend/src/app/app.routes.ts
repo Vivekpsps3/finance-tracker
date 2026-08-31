@@ -32,6 +32,13 @@ export const routes: Routes = [
     loadComponent: () => import('./vault/vault-unlock.component').then(m => m.VaultUnlockComponent),
   },
   {
+    path: 'embed',
+    title: 'Net worth · Finance',
+    canActivate: [authGuard, vaultGuard],
+    loadComponent: () =>
+      import('./embed/net-worth-embed.component').then(m => m.NetWorthEmbedComponent),
+  },
+  {
     path: '',
     component: MainLayoutComponent,
     canActivate: [authGuard, vaultGuard],

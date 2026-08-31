@@ -7,6 +7,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 os.environ["SQLITE_PATH"] = ":memory:"
 
 import passwordless  # noqa: E402
+import standing  # noqa: E402
+
+async def _noop_ensure(**_k):
+    return standing.current()
+
+standing.ensure = _noop_ensure  # noqa: E402
+
 from fastapi.testclient import TestClient  # noqa: E402
 from app import app  # noqa: E402
 

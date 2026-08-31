@@ -12,7 +12,8 @@ export type Standing = {
 
 export type Timeline = {
   currentWeek: string;
-  eras: { id: string; slug: string; title: string; start: string; end: string; years: number[] }[];
+  birthday: string;
+  years: number[];
   cells: Record<string, { kind: string; n: number }>;
 };
 
@@ -34,6 +35,9 @@ export class Api {
   bootstrap() {
     return firstValueFrom(this.http.get<{ timeline: Timeline | null; standing: Standing }>('/api/bootstrap'));
   }
+  standing() {
+    return firstValueFrom(this.http.get<Standing>('/api/standing'));
+  }
   standingPost(answer: string) {
     return firstValueFrom(this.http.post<Standing>('/api/standing', { answer }));
   }
@@ -48,6 +52,12 @@ export class Api {
   }
   week(id: string) {
     return firstValueFrom(this.http.get<any>(`/api/timeline/week/${id}`));
+  }
+  agentHistory() {
+    return firstValueFrom(this.http.get<{ lines: any[] }>('/api/agent'));
+  }
+  agentReset() {
+    return firstValueFrom(this.http.post<{ lines: any[] }>('/api/agent/reset', {}));
   }
   async *agent(message: string): AsyncGenerator<any> {
     const csrf = document.cookie.match(/(?:^|;\s*)me_csrf=([^;]*)/)?.[1] ?? '';
