@@ -1,9 +1,3 @@
-.section-heading {
-  margin: 0 0 var(--space-6);
-  font-size: var(--text-xl);
-  font-weight: 600;
-}
-
 .charts-section.embedded,
 .charts-section:not(.page) {
   margin-top: var(--space-6);
@@ -69,10 +63,4 @@
   font: inherit;
   font-size: var(--text-sm);
   cursor: pointer;
-}
-
-.chart-sub {
-  color: var(--text-tertiary);
-  font-size: var(--text-sm);
-  margin-top: 0;
 }

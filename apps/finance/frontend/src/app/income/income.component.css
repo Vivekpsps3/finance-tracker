@@ -138,11 +138,6 @@
   display: block;
 }
 
-.income-panel {
-  max-width: 44rem;
-  width: 100%;
-}
-
 .checkbox-field {
   display: flex;
   gap: var(--space-2);

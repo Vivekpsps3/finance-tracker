@@ -1,4 +1,4 @@
-import { createSigningKey, signChallenge } from './auth-crypto';
+import { createSigningKey, signChallenge } from '@vivek/auth';
 
 describe('auth-crypto', () => {
   it('wraps the signing key with the vault passphrase only', async () => {

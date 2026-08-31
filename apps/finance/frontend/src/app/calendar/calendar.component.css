@@ -32,16 +32,6 @@
   letter-spacing: -0.02em;
 }
 
-.nav-btn {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: var(--radius-md);
-  min-width: 44px;
-  min-height: 44px;
-  cursor: pointer;
-}
-
 .calendar-toolbar ui-button:last-child {
   margin-left: auto;
 }

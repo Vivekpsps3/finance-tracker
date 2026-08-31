@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { apiUrl } from '../core/api-url';
 import { AuthUser, LoginResponse, MeResponse } from './auth.models';
 import { FinanceService } from '../services/finance.service';
-import { createSigningKey, signChallenge, WrappedSigningKey } from '../crypto/auth-crypto';
+import { createSigningKey, signChallenge, WrappedSigningKey } from '@vivek/auth';
 import { createVaultMaterial } from '../crypto/vault-crypto';
 import { VaultService } from '../crypto/vault.service';
 

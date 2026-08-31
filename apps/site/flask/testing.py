@@ -7,12 +7,6 @@ client = OpenAI(
   api_key = api_key
 )
 
-
-# client = OpenAI(
-#   base_url = "http://192.168.0.181:8085",
-#   api_key = api_key
-# )
-
 # Get available models
 try:
     models = client.models.list()
@@ -35,7 +29,3 @@ completion = client.chat.completions.create(
 
 print("Completion response:")
 print(completion)
-
-for chunk in completion:
-  if chunk.choices[0].delta.content is not None:
-    print(chunk.choices[0].delta.content, end="")

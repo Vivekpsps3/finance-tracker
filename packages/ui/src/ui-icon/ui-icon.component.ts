@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 export type UiIconName =
   | 'dashboard'
@@ -76,7 +76,8 @@ const PATHS: Record<UiIconName, string> = {
       height: 24px;
     }
   `,
-  })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
 export class UiIconComponent {
   name = input.required<UiIconName>();
   size = input<'sm' | 'md' | 'lg'>('md');

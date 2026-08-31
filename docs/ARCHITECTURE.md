@@ -12,9 +12,9 @@ Local-first personal finance: **Angular 19** UI, **FastAPI** API, **SQLite** per
 
 | Plane | What it is | Writes | Reads for |
 |-------|------------|--------|-----------|
-| **Balance sheet** | per-user `assets`, `liabilities`, `holdings` + market prices | CRUD + Fidelity CSV (holdings per brokerage account) | **Net worth** (`GET /api/net-worth/`) |
+| **Balance sheet** | per-user `assets`, `liabilities`, `holdings` + market prices | CRUD + Fidelity CSV (holdings per brokerage account) | **Net worth** (computed client-side in `client-finance.ts` after vault unlock) |
 | **Transactions ledger** | encrypted per-user transactions (income/expense, `source=import` from browser-side bank CSV) | Browser CRUD + client CSV preview/commit | Dashboard period charts, calendar, planning **inputs** (averages) |
-| **Recurring cashflow** | per-user `job_incomes`, `fixed_expenses`, `subscriptions` | CRUD on those tables only | Income / fixed-expense / subscription pages; `GET /api/cashflow/summary`; planning spending inputs |
+| **Recurring cashflow** | per-user `job_incomes`, `fixed_expenses`, `subscriptions` | CRUD on those tables only | Income / fixed-expense / subscription pages; cashflow summary computed client-side; planning spending inputs |
 | **Planning (speculative)** | MC profiles + encrypted `stock_lab_scenarios`; public market research cache | MC profiles; Stock Lab scenarios via vault; market research by symbol | Monte Carlo `/planning`, Stock Lab `/stock-lab` |
 
 **Invariant:** Net worth is always balance-sheet based: manual assets + portfolio market value − liabilities. Transactions, recurring cashflow rows, and simulations **never** update net worth.
@@ -62,12 +62,12 @@ There is **no** `routers/analytics.py`. Net-worth Monte Carlo still lives under 
 - **Monte Carlo tool:** `mc_net_worth_paths` — read-only ledger snapshot → MC paths (ephemeral; **not** written to `planning_scenario_runs`).
 - **MC saved inputs:** `planning_assumption_profiles` (named presets).
 - API prefix: `/api/planning/v1` (`tools`, `inputs`, `profiles`, `POST /runs`).
-- UI: `frontend/src/app/planning/` + `PlanningService`; route `/planning`.
+- UI: `apps/finance/frontend/src/app/planning/` + `PlanningService`; route `/planning`.
 - **Stock Lab:** `/stock-lab` is a speculative stock/ETF planning page. It saves encrypted scenario inputs in the vault and uses `/api/market/research/*` for public ticker research. Ticker symbols, including selected owned symbols, are intentionally disclosed for this feature; purchase assumptions remain encrypted client data.
 
 ## Imports
 
-- **Banks:** browser-side parsers in `frontend/src/app/utils/bank-import.util.ts` preview and commit CSV rows into encrypted transaction records.
+- **Banks:** browser-side parsers in `apps/finance/frontend/src/app/utils/bank-import.util.ts` preview and commit CSV rows into encrypted transaction records.
 - **Brokerage:** client-side Fidelity CSV parse/preview/replace-commit into encrypted holdings.
 
 **SimpleFIN later:** the user wants SimpleFIN eventually. **Plaid is not the intended integration** even if placeholder env vars exist. CSV only today.

@@ -215,6 +215,11 @@ def session_user(token: str | None):
     return row
 
 
+def csrf_ok(request, session_row) -> bool:
+    provided = request.headers.get("X-CSRF-Token", "")
+    return bool(provided) and hmac.compare_digest(provided, session_row["csrf"] or "")
+
+
 def logout(token: str | None) -> None:
     if not token:
         return

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
-load_dotenv()  # Load .env for local development (DB, Redis, API_KEY, etc.)
+load_dotenv()
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,23 +19,22 @@ from routers import auth_routes, health, market, vault
 setup_logging()
 logger = get_logger()
 
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CORS_ORIGINS", "http://localhost:4200,http://127.0.0.1:4200").split(",")
+    if o.strip()
+]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from database import SQLALCHEMY_DATABASE_URL, init_database
 
     init_database()
-    cors = [
-        o.strip()
-        for o in os.getenv(
-            "CORS_ORIGINS", "http://localhost:4200,http://127.0.0.1:4200"
-        ).split(",")
-        if o.strip()
-    ]
     logger.info(
         "startup version=2.0.0 database=%s cors_origins=%s price_cache_ttl_s=%s eod_cache_hours=%s",
         redact_database_url(SQLALCHEMY_DATABASE_URL),
-        cors,
+        CORS_ORIGINS,
         int(os.getenv("PRICE_CACHE_TTL", "120")),
         int(os.getenv("EOD_CACHE_HOURS", "24")),
     )
@@ -54,13 +53,9 @@ def create_app() -> FastAPI:
         openapi_url=None if disable_openapi else "/openapi.json",
     )
 
-    cors_origins = os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:4200,http://127.0.0.1:4200",
-    ).split(",")
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=[o.strip() for o in cors_origins if o.strip()],
+        allow_origins=CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-CSRF-Token"],

@@ -2,7 +2,7 @@
 
 Bank imports create **expense** transactions (`source=import`). They **do not** change net worth; update liabilities on **Balance sheet** if you track balances there.
 
-Parsers live in `frontend/src/app/utils/bank-import.util.ts`. Tests: `frontend/src/app/utils/bank-import.util.spec.ts`.
+Parsers live in `apps/finance/frontend/src/app/utils/bank-import.util.ts`. Tests: `apps/finance/frontend/src/app/utils/bank-import.util.spec.ts`.
 
 Each parser must produce:
 
@@ -19,4 +19,4 @@ The Transactions page calls `FinanceService.previewBankImport()` / `commitBankIm
 | `citi` | Citi credit card export (Status, Debit/Credit, Member Name). |
 | `x_money` | Completed negative Card Purchase rows only. |
 
-Fidelity positions CSV is a **holdings** import (replace positions per account), not expense transactions. Parser: `frontend/src/app/utils/fidelity-import.util.ts`.
+Fidelity positions CSV is a **holdings** import (replace positions per account), not expense transactions. Parser: `apps/finance/frontend/src/app/utils/fidelity-import.util.ts`.

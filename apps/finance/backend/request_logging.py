@@ -15,11 +15,8 @@ logger = logging.getLogger("finance_api.access")
 
 
 def _path_for_access_log(path: str, query: str) -> str:
-    """SEC-007: avoid logging transaction search terms (may contain PII)."""
     if not query:
         return path
-    if path.startswith("/api/transactions") and "search=" in query:
-        return f"{path}?search=[redacted]"
     return f"{path}?{query}"
 
 

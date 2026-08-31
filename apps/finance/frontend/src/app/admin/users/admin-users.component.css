@@ -28,8 +28,7 @@
 }
 
 .users-section,
-.create-user-section,
-.sql-panel {
+.create-user-section {
   padding: 0 var(--space-6) var(--space-8);
   display: grid;
   gap: var(--space-4);
@@ -46,8 +45,7 @@
   display: block;
 }
 
-.section-heading h2,
-.sql-panel h2 {
+.section-heading h2 {
   margin: 0;
   font-size: var(--text-lg);
 }
@@ -82,8 +80,7 @@
 }
 
 .native-select,
-.table-select,
-.sql-input {
+.table-select {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-elevated);
@@ -100,8 +97,7 @@
   min-width: 92px;
 }
 
-.form-actions,
-.sql-actions {
+.form-actions {
   display: flex;
   justify-content: flex-end;
 }
@@ -133,41 +129,6 @@
   min-width: 320px;
 }
 
-.sql-panel {
-  padding-top: var(--space-2);
-  gap: var(--space-3);
-}
-
-.sql-input {
-  width: 100%;
-  min-height: 132px;
-  resize: vertical;
-  padding: var(--space-3);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: var(--text-sm);
-}
-
-.sql-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-}
-
-.sql-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-}
-
-.sql-table th,
-.sql-table td {
-  border-bottom: 1px solid var(--border-subtle);
-  padding: var(--space-2) var(--space-3);
-  text-align: left;
-  vertical-align: top;
-  white-space: nowrap;
-}
-
 @media (max-width: 980px) {
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -175,8 +136,7 @@
 
   .metrics-grid,
   .users-section,
-  .create-user-section,
-  .sql-panel {
+  .create-user-section {
     padding-inline: var(--space-4);
   }
 
@@ -194,8 +154,7 @@
     grid-template-columns: 1fr;
   }
 
-  .form-actions,
-  .sql-actions {
+  .form-actions {
     justify-content: stretch;
   }
 

@@ -12,7 +12,7 @@ replacement is verified per user and WAL checkpoint + `VACUUM` complete.
 | **migration-only** | Exists for upgrade/enroll paths; not a daily product surface |
 | **reserved** | Schema/table present; no product HTTP/UI |
 
-## HTTP routers (`backend/app.py`)
+## HTTP routers (`apps/finance/backend/app.py`)
 
 | Surface | Module | Lifecycle | Owner |
 |---------|--------|-----------|-------|
@@ -37,8 +37,8 @@ Plaintext finance HTTP (transactions, assets, holdings, imports, planning, cashf
 | Authority | Path | Role |
 |-----------|------|------|
 | ORM `create_all` | `database.py` | Creates missing tables from models on startup |
-| Lightweight SQLite | `migrations.py` | Column/table backfills for old DBs |
-| Alembic | `alembic/versions/*` | Versioned upgrades to head `f1a2b3c4d5e6` |
+| Lightweight SQLite | `migrations.py` | Column backfills for old DBs |
+| Alembic | `alembic/versions/*` | Versioned upgrades to head `b7c9d2e4f601` |
 
 Startup order: `create_all` → `run_sqlite_migrations` → Alembic `upgrade head`.
 
@@ -62,7 +62,7 @@ Startup order: `create_all` → `run_sqlite_migrations` → Alembic `upgrade hea
 
 ## Supported database generations (BE-002)
 
-Named generations with fixture coverage in `backend/tests/test_migrations.py`:
+Named generations with fixture coverage in `apps/finance/backend/tests/test_migrations.py`:
 
 | Generation ID | Starting state | Fixture |
 |---------------|----------------|---------|
@@ -71,11 +71,11 @@ Named generations with fixture coverage in `backend/tests/test_migrations.py`:
 | `partial-passwordless-d4e5` | Partial passwordless at `d4e5f6a7b8c9` | `test_passwordless_migration_recovers_partial_sqlite_state` |
 | `lightweight-tx-columns` | Bare `transactions` table | `test_run_sqlite_migrations_adds_transaction_columns_on_legacy_table` |
 
-Head revision: `f1a2b3c4d5e6`.
+Head revision: `b7c9d2e4f601`.
 
 Vault schema-v1 → schema-v2 ciphertext replacement is browser-owned; do not delete
 plaintext source tables until encrypted replacement is verified per user and WAL
-checkpoint + `VACUUM` complete (see `MIGRATION_TO_SERVER_BLIND_ENCRYPTION.md`).
+checkpoint + `VACUUM` complete (see [SECURITY_MODEL.md](./SECURITY_MODEL.md)).
 
 ## Preserve
 

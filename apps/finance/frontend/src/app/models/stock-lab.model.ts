@@ -1,4 +1,4 @@
-export type MarketCacheStatus = 'hit' | 'miss' | 'refresh' | 'partial';
+export type MarketCacheStatus = 'hit' | 'miss' | 'refresh';
 export type StockLabPurchaseMode = 'shares' | 'budget' | 'target_price';
 export type DividendCadence = 'monthly' | 'quarterly' | 'annual' | 'irregular' | 'none';
 

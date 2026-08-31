@@ -8,7 +8,6 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 import agent
-import ask as ask_mod
 import passwordless
 import standing
 import timeline
@@ -41,23 +40,22 @@ PUBLIC_API = (
 )
 
 
-def gated(request: Request) -> bool:
-    return passwordless.session_user(request.cookies.get(passwordless.COOKIE)) is not None
-
-
 @app.middleware("http")
 async def gate(request: Request, call_next):
     path = request.url.path
     if path.startswith("/login") or path in PUBLIC_API:
         return await call_next(request)
     if path.startswith("/api/"):
-        if not gated(request):
+        user = passwordless.session_user(request.cookies.get(passwordless.COOKIE))
+        if not user:
             return JSONResponse({"error": "auth"}, status_code=401)
+        if request.method not in ("GET", "HEAD", "OPTIONS") and not passwordless.csrf_ok(request, user):
+            return JSONResponse({"error": "csrf"}, status_code=403)
         return await call_next(request)
     ext = Path(path).suffix
     if ext in {".js", ".css", ".ico", ".svg", ".woff", ".woff2", ".map"}:
         return await call_next(request)
-    if not gated(request) and path != "/login":
+    if passwordless.session_user(request.cookies.get(passwordless.COOKIE)) is None and path != "/login":
         return RedirectResponse("/login", status_code=303)
     return await call_next(request)
 
@@ -184,14 +182,6 @@ def week(wid: str):
     if not timeline.WEEK_ID.match(wid):
         raise HTTPException(400, "invalid week")
     return timeline.week_payload(wid)
-
-
-@app.post("/api/ask")
-async def ask_route(payload: dict):
-    q = payload.get("question")
-    if not isinstance(q, str) or not q or len(q) > 500 or "\0" in q:
-        raise HTTPException(400, "invalid question")
-    return await ask_mod.ask(q.strip())
 
 
 @app.post("/api/agent")

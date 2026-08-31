@@ -14,11 +14,13 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "moduleResolution": "bundler",
-    "importHelpers": true,
+    "importHelpers": false,
     "target": "ES2022",
     "module": "ES2022",
     "baseUrl": ".",
     "paths": {
+      "@angular/*": ["./node_modules/@angular/*"],
+      "tslib": ["./node_modules/tslib"],
       "@vivek/auth": ["../../../packages/auth/src/index.ts"],
       "@vivek/ui": ["../../../packages/ui/src/public-api.ts"]
     }

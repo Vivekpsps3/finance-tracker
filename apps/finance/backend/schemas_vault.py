@@ -80,13 +80,6 @@ class BlindIndexLookupRequest(BaseModel):
     index_value_b64: str
 
 
-class MigrationStatusUpdate(BaseModel):
-    status: str
-    legacy_counts: dict[str, int] | None = None
-    encrypted_counts: dict[str, int] | None = None
-    error_message: str | None = None
-
-
 class MigrationStatusResponse(BaseModel):
     status: str
     legacy_counts: dict[str, Any] | None = None

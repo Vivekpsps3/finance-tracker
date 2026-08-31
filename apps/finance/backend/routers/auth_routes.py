@@ -61,13 +61,9 @@ def _origin(request: Request) -> str:
     return request.headers.get("origin") or str(request.base_url).rstrip("/")
 
 
-def _username(value: str) -> str:
-    return value.strip().lower()
-
-
 def _find_passwordless_user(db: Session, identifier: str) -> User | None:
     """Resolve passwordless login by username, or by email for legacy convenience."""
-    key = _username(identifier)
+    key = normalize_email(identifier)
     if not key:
         return None
     user = db.query(User).filter(User.username == key).first()
@@ -142,7 +138,7 @@ def passwordless_bootstrap_first_admin(
 ):
     if db.query(User).count() != 0:
         raise HTTPException(status_code=409, detail="Setup is already complete")
-    username = _username(body.username)
+    username = normalize_email(body.username)
     _require_p256_public_key(body.public_key_b64)
     user = create_user(
         db,
@@ -172,7 +168,7 @@ def passwordless_signup(
     body: PasswordlessSignupRequest, request: Request, response: Response, db: Session = Depends(get_db)
 ):
     """Open self-signup: anyone may create an account with username + vault material."""
-    username = _username(body.username)
+    username = normalize_email(body.username)
     if "@" in username:
         raise HTTPException(status_code=422, detail="Username cannot be an email address")
     if db.query(User).filter(User.username == username).first():
@@ -217,7 +213,7 @@ def enroll_passwordless(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_migration_user),
 ):
-    username = _username(body.username)
+    username = normalize_email(body.username)
     if db.query(User).filter(User.username == username, User.id != current_user.id).first():
         raise HTTPException(status_code=409, detail="Username already exists")
     if vault_store.get_vault(db, current_user.id):
@@ -388,13 +384,13 @@ def admin_create_user(
 ):
     user = create_user(
         db,
-        email=f"{_username(body.username)}@pending.local",
+        email=f"{normalize_email(body.username)}@pending.local",
         display_name=body.display_name,
         role=UserRole(body.role),
         must_change_password=False,
         actor_user_id=admin.id,
     )
-    user.username = _username(body.username)
+    user.username = normalize_email(body.username)
     token = secrets.token_urlsafe(32)
     db.add(AuthEnrollment(
         user_id=user.id,

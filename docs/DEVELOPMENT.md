@@ -26,7 +26,7 @@ then create a vault at `/vault/setup`. Normal finance routes require vault unloc
 
 ### Optional API key (non-browser clients)
 
-If `API_KEY` or `FINANCE_API_KEY` is set in `backend/.env`, every `/api/*` route except **`GET /api/health`** also requires `X-API-Key: <key>` or `Authorization: Bearer <key>`. Leave both unset for normal local browser dev (`make dev`). The web app uses **session cookies + CSRF**, not a baked-in frontend API key.
+If `API_KEY` or `FINANCE_API_KEY` is set in `apps/finance/backend/.env`, every `/api/*` route except **`GET /api/health`** also requires `X-API-Key: <key>` or `Authorization: Bearer <key>`. Leave both unset for normal local browser dev (`make dev`). The web app uses **session cookies + CSRF**, not a baked-in frontend API key.
 
 The UI calls the API at **`/api/...`** (see `environment.development.ts` `apiUrl: '/api'`). `proxy.conf.js` forwards `/api/**` to the backend. **Restart `ng serve` after proxy changes** (a stale dev server keeps serving HTML for `/api/*`).
 
@@ -39,7 +39,7 @@ See `make help`. Common:
 - `cd frontend && npm run e2e` — Playwright smoke (start `make dev` first, or let Playwright reuse an existing dev server on :4200)
 - `make docker-up` — full website on http://127.0.0.1:8080 with API private behind the web proxy (see [DEPLOY.md](./DEPLOY.md))
 - `make docker-down` / `make docker-logs` / `make docker-config` — common Docker operations
-- `make reset-db` — delete `backend/finance.db` only
+- `make reset-db` — delete `apps/finance/backend/finance.db` only
 - `make reset-docker-db` — delete `data/finance.db` for Docker
 - `make clean` — caches and `dist`; does **not** delete `finance.db` or `node_modules`
 - `make build` — production frontend build
@@ -53,7 +53,7 @@ make dev API_PORT=8001 WEB_PORT=4300
 ## Backend layout
 
 ```
-backend/
+apps/finance/backend/
   main.py          # uvicorn entry
   app.py           # FastAPI app
   database.py      # engine, get_db
@@ -62,10 +62,9 @@ backend/
   auth.py / api_auth.py
   routers/         # health, auth/admin, vault, market
   services/        # encrypted storage, market_data, challenge_auth
-  .env.example     # copy to .env (optional)
 ```
 
-Local DB default: `backend/finance.db` (gitignored). Override with `DATABASE_URL`.
+Local DB default: `apps/finance/backend/finance.db` (gitignored). Override with `DATABASE_URL`.
 
 Wipe all local data and start fresh:
 
@@ -79,7 +78,7 @@ make backend    # creates empty tables via init_database()
 On API startup, `init_database()` in `database.py` runs in order:
 
 1. **`Base.metadata.create_all`** — creates tables from current SQLAlchemy models.
-2. **`migrations.run_sqlite_migrations`** — legacy idempotent column/table patches for older local DBs.
+2. **`migrations.run_sqlite_migrations`** — legacy idempotent column backfills for older local DBs.
 3. **Alembic `upgrade head`** — file-backed DBs only (`:memory:` skips Alembic). Revision scripts use inspector guards so reruns are safe if `create_all` already applied schema.
 
 If Alembic fails, the API fails startup by default (`ALEMBIC_STRICT=1`). Set
@@ -89,7 +88,7 @@ schema risk.
 ## Frontend layout
 
 ```
-frontend/
+apps/finance/frontend/
   src/app/         # features + shared/ui + auth + services
   proxy.conf.js    # dev API proxy
 ```
@@ -100,7 +99,7 @@ calendar, planning, admin.
 
 ## Environment
 
-Copy `backend/.env.example` → `backend/.env` if you need custom CORS, Redis, log levels, session cookie flags, or optional `API_KEY`.
+Copy `.env.example` → `.env` (repo root) if you need custom CORS, log levels, session cookie flags, or optional `API_KEY`.
 
 **SEC-006:** Do not set `LOG_SQL=1` in production or on shared machines. SQL echo logs can include transaction amounts, categories, and account labels from the ledger.
 
@@ -108,13 +107,13 @@ Copy `backend/.env.example` → `backend/.env` if you need custom CORS, Redis, l
 
 There are **no** Plaid routes or SDK usage in the app today. Bank transactions come from **CSV import** ([ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md)). Variables in `.env.example` are placeholders only; safe to omit for local dev. SimpleFIN is the intended future aggregation path.
 
-See `backend/.env.example` for the full template. Never commit your real `.env` file.
+See `.env.example` for the full template. Never commit your real `.env` file.
 
 ## Tests
 
 ```bash
 make test-backend
-cd frontend && npx ng build --configuration development
+cd apps/finance/frontend && npx ng build --configuration development
 ```
 
 ## More docs

@@ -1,11 +1,11 @@
 # Frontend conventions
 
-Angular 19 standalone app under `frontend/src/app/`.
+Angular 19 standalone app under `apps/finance/frontend/src/app/`.
 
 ## Stack
 
-- **Tailwind CSS 3** + `src/theme/tokens.css` (ink + dust light default; dark only via `prefers-color-scheme`)
-- **Shared UI** — `shared/ui/*`, selector prefix `ui-`
+- **Plain CSS** with design tokens from `src/theme/tokens.css` (ink + dust light default; dark only via `prefers-color-scheme`)
+- **Shared UI** — finance-local `shared/ui/*` (selector prefix `ui-`) plus primitives re-exported from `@vivek/ui` (`packages/ui`)
 - **State** — `FinanceService` over `EncryptedStoreService` after vault unlock (RxJS `BehaviorSubject`s for ledger, balance sheet, recurring cashflow); `PlanningService`; `AuthService`
 - Stock Lab uses `MarketResearchService` for explicit ticker lookups and `EncryptedStoreService` for encrypted `stock_lab_scenarios`.
 - **Charts** — Chart.js via dynamic `import('chart.js/auto')` (dashboard/charts components and planning fan chart)
@@ -33,18 +33,18 @@ Shell: `MainLayoutComponent` (five hubs, `#main-content`). Admin and account act
 
 ## Design tokens
 
-Source of truth: `frontend/src/theme/tokens.css` and `frontend/tailwind.config.js`.
+Source of truth: `apps/finance/frontend/src/theme/tokens.css`.
 
-| CSS variable | Tailwind | Role |
-|--------------|----------|------|
-| `--bg` | `bg-bg` | Page background |
-| `--card-bg` | `bg-card` | Cards |
-| `--surface-2` | `bg-surface` | Inputs, chips |
-| `--text` | `text-foreground` | Primary text |
-| `--text-secondary` | `text-muted` | Secondary text |
-| `--accent` | `text-accent` / `bg-accent` | Indigo `#5266EB` — links, primary actions |
-| `--border` | `border-border` | Borders |
-| `--success` / `--danger` / `--warning` | semantic utilities | Status |
+| CSS variable | Role |
+|--------------|------|
+| `--bg` | Page background |
+| `--card-bg` | Cards |
+| `--surface-2` | Inputs, chips |
+| `--text` | Primary text |
+| `--text-secondary` | Secondary text |
+| `--accent` | Indigo `#5266EB` — links, primary actions |
+| `--border` | Borders |
+| `--success` / `--danger` / `--warning` | Status |
 
 Charts: `src/theme/chart-colors.ts` (prefer CSS vars for axes/tooltips; segment palette in `CHART_COLORS`).
 
@@ -53,10 +53,10 @@ ink `#1C1B18`, pine accent `#3F6F5C`). Dark is `[data-theme="dark"]`. First
 visit follows the OS. The account menu has a Light / Dark split. Choice is
 stored in `localStorage` key `ft-theme`. Elevation is surface value, not drop shadow.
 Reduced transparency and increased contrast media queries are honored.
-Typography prefers the system stack (no remote font fetch). There is no in-app
-theme toggle. Locale money/date helpers live in `utils/format.util.ts`.
+Typography prefers the system stack (no remote font fetch). Locale money/date
+helpers live in `utils/format.util.ts`.
 
-## Viewport presentation matrix (PLAT-001)
+## Viewport presentation matrix
 
 | Viewport | Navigation | Tables / dense data |
 |----------|------------|---------------------|
@@ -64,13 +64,15 @@ theme toggle. Locale money/date helpers live in `utils/format.util.ts`.
 | 844×390 | Same, landscape | Same |
 | 768×1024 | Short or full labels | Dense tables |
 | 1024×768 | Desktop grid nav | Dense tables |
-| 1280×800+ | Full labels + subnav | Dense tables |
+| 1280×800+ | Full labels | Dense tables |
 
 Do **not** add a service worker that caches decrypted finance plaintext.
 
 ## Shared components
 
-Import from `shared/ui` or `shared/ui/index.ts`.
+Primitives (`ui-button`, `ui-card`, `ui-input`, `ui-page-header`, `ui-icon`,
+`ui-empty-state`) live in `packages/ui` (`@vivek/ui`) and are re-exported by
+`shared/ui/index.ts`. Finance-local components live under `shared/ui/`.
 
 | Selector | Notes |
 |----------|--------|
@@ -91,7 +93,7 @@ Use **OnPush** on new components; feature pages must call `markForCheck()` after
 ## Privacy and migration
 
 - Vault finance records are schema-v2 authenticated-record ciphertext. The browser migrates schema-v1 records after login, verifies encrypted replacements, then removes legacy plaintext rows.
-- Manual/imported Portfolio prices stay local. Explicit Portfolio refresh, typed lookup, and Stock Lab research send ticker symbols to the market-data backend/yfinance; no shares, values, account details, or scenario inputs are sent.
+- Manual/imported Portfolio prices stay local. Explicit Portfolio refresh, typed lookup, and Stock Lab research send ticker symbols to the market-data apps/finance/backend/yfinance; no shares, values, account details, or scenario inputs are sent.
 - Login unwraps a browser-held signing key with the vault passphrase and signs a single-use challenge. Admins issue invitations but cannot reset a user's vault passphrase or recover encrypted data.
 
 ## Home behavior
@@ -117,9 +119,9 @@ Use **OnPush** on new components; feature pages must call `markForCheck()` after
 ## Build
 
 ```bash
-cd frontend
+cd apps/finance/frontend
 npm install
 npx ng build --configuration development
 ```
 
-Do not break `FinanceService` public method signatures without coordinating with backend/docs.
+Do not break `FinanceService` public method signatures without coordinating with apps/finance/backend/docs.

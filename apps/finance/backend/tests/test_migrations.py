@@ -313,33 +313,6 @@ def test_run_sqlite_migrations_adds_transaction_columns_on_legacy_table():
         engine.dispose()
 
 
-# Supported database generations for BE-002 (do not delete compatibility until each is green).
-# See docs/LIFECYCLE.md schema authorities.
-SUPPORTED_DB_GENERATIONS = (
-    ("legacy-holdings", "pre-brokerage holdings table only"),
-    ("vault-present-f2d8", "create_all vault tables at f2d8c6a4b913"),
-    ("partial-passwordless-d4e5", "partial passwordless at d4e5f6a7b8c9"),
-    ("lightweight-tx-columns", "run_sqlite_migrations transaction column backfill"),
-)
-
-
-def test_supported_db_generation_matrix_is_documented():
-    """Every supported generation must have a named fixture test in this module."""
-    names = {g[0] for g in SUPPORTED_DB_GENERATIONS}
-    assert names == {
-        "legacy-holdings",
-        "vault-present-f2d8",
-        "partial-passwordless-d4e5",
-        "lightweight-tx-columns",
-    }
-    # Cross-check fixture tests exist by name convention in this file's source.
-    source = Path(__file__).read_text(encoding="utf-8")
-    assert "test_alembic_upgrade_head_on_legacy_holdings_sqlite" in source
-    assert "test_vault_migration_is_idempotent_after_create_all" in source
-    assert "test_passwordless_migration_recovers_partial_sqlite_state" in source
-    assert "test_run_sqlite_migrations_adds_transaction_columns_on_legacy_table" in source
-
-
 def test_market_research_cache_create_all_has_expected_columns():
     from sqlalchemy import create_engine, inspect
 

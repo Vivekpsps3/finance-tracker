@@ -1,8 +1,7 @@
 import { AfterViewChecked, ChangeDetectionStrategy, Component, ElementRef, HostListener, OnDestroy, ViewChild, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ConfirmService } from '../services/confirm.service';
-import { UiButtonComponent } from './ui/ui-button/ui-button.component';
-import { UiCardComponent } from './ui/ui-card/ui-card.component';
+import { UiButtonComponent, UiCardComponent } from './ui';
 
 @Component({
   selector: 'app-confirm-dialog',

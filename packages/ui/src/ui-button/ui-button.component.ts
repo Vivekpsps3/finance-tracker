@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 export type UiButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type UiButtonSize = 'sm' | 'md';
@@ -8,7 +8,8 @@ export type UiButtonSize = 'sm' | 'md';
   standalone: true,
   templateUrl: './ui-button.component.html',
   styleUrl: './ui-button.component.css',
-  })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
 export class UiButtonComponent {
   variant = input<UiButtonVariant>('primary');
   size = input<UiButtonSize>('md');

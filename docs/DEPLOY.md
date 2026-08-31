@@ -27,7 +27,7 @@ domain / LAN / VPN
 
 ## Data & backups
 
-- SQLite file: `backend/finance.db` (see [BACKUP.md](./BACKUP.md)).
+- SQLite file (production): `data/finance.db` (local dev default: `apps/finance/backend/finance.db`; see [BACKUP.md](./BACKUP.md)).
 - Copy the DB before upgrades or `make reset-db`.
 - **OPS-009:** Single SQLite file = no built-in HA or replication; use file backups and one writer process.
 
@@ -96,21 +96,24 @@ The runner should run on the production host because the deployment builds from
 the checked-out repo, backs up the local SQLite database, and restarts the local
 Docker Compose stack.
 
-Required GitHub environment variable for the `production` environment:
+The workflow runs entirely on the production host against the live repo tree at
+`/home/vivek/Deployments/vivek-monorepo` (`MONOREPO`), the repo root `.env`
+(`ENV_FILE=/home/vivek/Deployments/vivek-monorepo/.env`), and the external
+`_control` Makefile (`CONTROL=/home/vivek/Deployments/_control`):
 
-| Variable | Value |
-|----------|-------|
-| `CORS_ORIGINS` | `https://finance.vivekpanchagnula.com` |
+1. Resolve the deployed SHA (CI `workflow_run` on `main`, or manual `workflow_dispatch`).
+2. Sync the live tree to that SHA: `git fetch` + `git checkout -B main <sha>`.
+3. Source the repo root `.env` and create `$FINANCE_DATA_DIR`, `$FINANCE_BACKUP_DIR`, `$ME_DATA_DIR`, plus the canonical vault `/home/vivek/Deployments/Vault`.
+4. Verify Docker access: `sudo -n docker compose version`.
+5. Back up the SQLite database with `scripts/backup-db.sh`.
+6. Build images: `make -C "$CONTROL" build STACK=finance-tracker` and `STACK=me-app`.
+7. Restart stacks: `make -C "$CONTROL" up STACK=...` for both, then `make -C "$CONTROL" site-deploy`.
+8. Health-check `http://127.0.0.1:8085/api/health` (finance) and `http://127.0.0.1:8090/login` (me-app).
 
-The deploy workflow writes those settings to `.env.production` during the job
-and runs Compose with:
-
-```bash
-sudo -n docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d --remove-orphans
-```
-
-Production uses Compose project name `finance_tracker` and publishes the web
-container on `127.0.0.1:8085`. Keep this aligned with
+There is no `.env.production` and no `docker-compose.prod.yml`; runtime
+configuration comes from the repo root `.env` (plus the `production`
+GitHub environment's protection rules). The web container publishes on
+`127.0.0.1:8085`; keep this aligned with
 `/home/vivek/Deployments/nginx/conf/conf.d/finance.vivekpanchagnula.com.conf`,
 which proxies the public domain to `http://127.0.0.1:8085`.
 

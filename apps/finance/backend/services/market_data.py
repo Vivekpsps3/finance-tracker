@@ -329,33 +329,6 @@ class MarketDataService:
             analyst=analyst,
         )
 
-    def get_company_name(self, symbol: str) -> Optional[str]:
-        """Fetch short company/fund name for a symbol (cached in memory)."""
-        symbol = symbol.upper().strip()
-        if self._looks_like_non_ticker(symbol):
-            return None
-
-        # simple memory cache for names (separate from price cache)
-        if not hasattr(self, '_company_names'):
-            self._company_names: Dict[str, str] = {}
-        if symbol in self._company_names:
-            return self._company_names[symbol]
-
-        try:
-            ticker = yf.Ticker(symbol)
-            name = None
-            if hasattr(ticker, 'fast_info') and ticker.fast_info:
-                name = ticker.fast_info.get('shortName') or ticker.fast_info.get('longName')
-            if not name:
-                info = ticker.info
-                name = info.get('shortName') or info.get('longName') or info.get('displayName')
-            if name:
-                self._company_names[symbol] = name
-                return name
-        except Exception:
-            pass
-        return None
-
     def get_price(
         self, symbol: str, force_refresh: bool = False, db: Optional[Session] = None
     ) -> Tuple[float, str, Optional[datetime]]:

@@ -9,7 +9,6 @@
 | [FRONTEND.md](./FRONTEND.md) | Angular routes, tokens, shared UI, page rules |
 | [DESIGN_GUIDE.md](./DESIGN_GUIDE.md) | Product/UI metrics, charts, and page standards |
 | [SECURITY_MODEL.md](./SECURITY_MODEL.md) | Server-blind encryption threat model |
-| [MIGRATION_TO_SERVER_BLIND_ENCRYPTION.md](./MIGRATION_TO_SERVER_BLIND_ENCRYPTION.md) | Stepwise encryption migration plan |
 | [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md) | New bank CSV importer |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | One-page system architecture |
 | [LIFECYCLE.md](./LIFECYCLE.md) | Active/retired/reserved surface ownership |

@@ -10,7 +10,7 @@ import {
   recordAad,
   unlockWithPassphrase,
 } from './vault-crypto';
-import { WrappedSigningKey } from './auth-crypto';
+import { WrappedSigningKey } from '@vivek/auth';
 
 export interface VaultStatus {
   exists: boolean;

@@ -58,31 +58,6 @@ def exchange_keys(client_public_key_hex):
         logger.error(f"Error in key exchange: {str(e)}")
         emit("error", {"message": "Key exchange failed"})
 
-@socketio.on("encrypt_message")
-def encrypt_message(data):
-    """Encrypts messages sent by clients"""
-    try:
-        logger.info("Received encrypt_message request")
-        plaintext = data["message"]
-        shared_key = bytes.fromhex(data["shared_key"])
-        
-        # Encrypt using the crypto module
-        iv, tag, ciphertext = crypto.encrypt_message(shared_key, plaintext)
-        
-        logger.info("Message encrypted successfully")
-        
-        # Send the encrypted message back to the client
-        result = {
-            "iv": iv.hex(),
-            "ciphertext": ciphertext.hex(), 
-            "tag": tag.hex()
-        }
-        emit("encrypted_message", result)
-        
-    except Exception as e:
-        logger.error(f"Error encrypting message: {str(e)}")
-        emit("error", {"message": f"Encryption failed: {str(e)}"})
-
 @socketio.on("decrypt_message")
 def decrypt_message(data):
     """Decrypts messages for clients"""

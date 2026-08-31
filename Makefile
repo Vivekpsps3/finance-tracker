@@ -30,7 +30,7 @@ help:
 	@echo "  make test             Backend + frontend unit tests"
 	@echo "  make test-fast        Doc path checks (OPS-002)"
 	@echo "  make test-finance     Finance invariants + migration matrix"
-	@echo "  make test-security    Vault/auth/openapi + local signal detectors"
+	@echo "  make test-security    Vault/auth/openapi + client-finance/evidence-label specs"
 	@echo "  make test-full        Full unit tests + frontend build + docker build"
 	@echo "  make build            Production Angular build"
 	@echo "  make docker-up        Build/start full website → http://127.0.0.1:8080"
@@ -113,7 +113,7 @@ test-security:
 	fi
 	@if [ "$(SKIP_FRONTEND_TESTS)" = "1" ]; then echo "Skipping frontend security tests"; \
 	else cd $(FRONTEND_DIR) && npx ng test --no-watch --browsers=ChromeHeadless \
-		--include='**/detectors.spec.ts' --include='**/client-finance.spec.ts' \
+		--include='**/client-finance.spec.ts' \
 		--include='**/evidence-labels.util.spec.ts'; fi
 
 test-full: test-fast test-backend test-frontend build-frontend docker-build

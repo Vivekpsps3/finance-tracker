@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from constants import SYMBOL_PATTERN
 
 
-MarketCacheStatus = Literal["hit", "miss", "refresh", "partial"]
+MarketCacheStatus = Literal["hit", "miss", "refresh"]
 
 
 class MarketInstrumentProfile(BaseModel):

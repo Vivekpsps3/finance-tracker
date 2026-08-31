@@ -4,7 +4,7 @@ The ledger, auth tables, and planning profiles live in SQLite. Paths:
 
 | Mode | Default DB file |
 |------|-----------------|
-| Local dev (`make dev`) | `backend/finance.db` |
+| Local dev (`make dev`) | `apps/finance/backend/finance.db` |
 | Docker Compose | `data/finance.db` |
 
 `DATABASE_URL` can point elsewhere. These files are gitignored; you are
@@ -29,7 +29,7 @@ Defaults:
 For local dev:
 
 ```bash
-FINANCE_DATA_DIR=backend FINANCE_BACKUP_DIR=backend/backups scripts/backup-db.sh
+FINANCE_DATA_DIR=apps/finance/backend FINANCE_BACKUP_DIR=apps/finance/backend/backups scripts/backup-db.sh
 ```
 
 Stopping the API before backup is still fine, but no longer required by the
@@ -69,9 +69,9 @@ cp /path/to/finance.db.bak-YYYYMMDD data/finance.db
 
 | Item | Path |
 |------|------|
-| Dev ledger DB | `backend/finance.db` |
+| Dev ledger DB | `apps/finance/backend/finance.db` |
 | Docker ledger DB | `data/finance.db` |
-| Env secrets | `backend/.env` (not in git) |
+| Env secrets | `apps/finance/backend/.env` (not in git) |
 | Users/sessions/audit | Inside `finance.db` |
 | Balance sheet, holdings, transactions, recurring cashflow | Inside `finance.db` |
 | Planning profiles (and any future stored runs) | Inside `finance.db` — speculative MC results are not ledger truth |
@@ -80,7 +80,7 @@ cp /path/to/finance.db.bak-YYYYMMDD data/finance.db
 
 | Command | Effect |
 |---------|--------|
-| **`make reset-db`** | **Deletes** `backend/finance.db` (and only that path). All users, ledger, and planning data are gone. Use for a fresh schema on next start—not for preserving data. |
+| **`make reset-db`** | **Deletes** `apps/finance/backend/finance.db` (and only that path). All users, ledger, and planning data are gone. Use for a fresh schema on next start—not for preserving data. |
 | **`make reset-docker-db`** | **Deletes** `data/finance.db` for the Docker stack. |
 | **Backup (`scripts/backup-db.sh`)** | Creates a consistent SQLite backup file so you can restore later. Always back up before risky imports or schema experiments. |
 

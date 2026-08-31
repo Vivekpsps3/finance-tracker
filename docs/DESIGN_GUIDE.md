@@ -45,7 +45,7 @@ table when a summary or graph would answer the natural question faster.
 ## Chart Rules
 
 - Use Chart.js through existing chart utilities.
-- Use token-based colors from `frontend/src/theme/chart-colors.ts`.
+- Use token-based colors from `apps/finance/frontend/src/theme/chart-colors.ts`.
 - Every chart needs a meaningful empty state.
 - Every chart needs a nearby numeric summary so the user does not have to hover.
 - Keep net worth charts sourced from the current balance-sheet formula, never

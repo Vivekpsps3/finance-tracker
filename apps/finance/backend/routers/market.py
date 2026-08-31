@@ -22,7 +22,7 @@ def get_market_price(
     symbol: str,
     refresh: bool = Query(False, description="Bypass cache and fetch live"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
 ):
     upper = symbol.upper().strip()
     if not SYMBOL_PATTERN.match(upper):
@@ -44,9 +44,8 @@ def get_market_research(
     refresh: bool = Query(False, description="Bypass market research cache"),
     period: str = Query("10y", description="History period: 1y, 2y, 5y, 10y, max"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
 ):
-    del current_user
     upper = symbol.upper().strip()
     if not SYMBOL_PATTERN.match(upper):
         raise HTTPException(status_code=400, detail="Invalid symbol format")
@@ -63,9 +62,8 @@ def get_market_research(
 def get_market_research_batch(
     body: MarketResearchBatchRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
 ):
-    del current_user
     results = []
     failed = []
     for symbol in body.symbols:

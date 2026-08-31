@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { UiIconComponent, UiIconName } from '../ui-icon/ui-icon.component';
 
 @Component({
@@ -7,7 +7,8 @@ import { UiIconComponent, UiIconName } from '../ui-icon/ui-icon.component';
   imports: [UiIconComponent],
   templateUrl: './ui-empty-state.component.html',
   styleUrl: './ui-empty-state.component.css',
-  })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
 export class UiEmptyStateComponent {
   title = input<string | undefined>(undefined);
   message = input('No data yet.');

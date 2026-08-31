@@ -36,7 +36,6 @@ import { Api, Standing } from './api';
     </div>
     @if (reviewing && local.pending) {
       <div class="sheet">
-        <p>{{ local.pending.path }}</p>
         <pre>{{ local.pending.path }}
 {{ local.pending.body }}</pre>
         @if (note) { <p class="mute">{{ note }}</p> }

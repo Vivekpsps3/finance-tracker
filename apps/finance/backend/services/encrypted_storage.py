@@ -126,11 +126,6 @@ def get_or_create_migration(db: Session, user_id: int) -> UserCryptoMigration:
     return row
 
 
-def is_user_migrated(db: Session, user_id: int) -> bool:
-    row = db.query(UserCryptoMigration).filter(UserCryptoMigration.user_id == user_id).one_or_none()
-    return bool(row and row.status == "completed")
-
-
 def create_vault(
     db: Session,
     user_id: int,

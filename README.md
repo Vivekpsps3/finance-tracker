@@ -35,9 +35,9 @@ Details: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**
 
 | Layer | Stack |
 |-------|--------|
-| Frontend | Angular 19, Tailwind, Chart.js, RxJS |
+| Frontend | Angular 19, plain CSS design tokens, Chart.js, RxJS |
 | Backend | FastAPI, SQLAlchemy, SQLite, Alembic |
-| Prices | Memory → Redis (optional) → SQLite EOD → yfinance |
+| Prices | Memory → SQLite EOD → yfinance |
 
 ## Project layout
 
@@ -79,7 +79,7 @@ Adding banks: **[docs/ADDING_A_BANK_IMPORT.md](docs/ADDING_A_BANK_IMPORT.md)**. 
 - **Recurring cashflow** — job income, fixed expenses, subscriptions; cashflow views only.
 - **Planning** — speculative; does not mutate balance sheet or transactions.
 
-Local database: `backend/finance.db` (not committed; see `.gitignore`). Docker default: `data/finance.db`.
+Local database: `apps/finance/backend/finance.db` (not committed; see `.gitignore`). Docker default: `data/finance.db`.
 
 ## Tests & CI-style check
 
@@ -96,7 +96,7 @@ docker compose up --build
 
 Open http://127.0.0.1:8080. The `web` container serves Angular and proxies
 `/api` to the private FastAPI container. Docker stores SQLite at
-`data/finance.db`; local dev defaults to `backend/finance.db`. Override with
+`data/finance.db`; local dev defaults to `apps/finance/backend/finance.db`. Override with
 `DATABASE_URL` and a matching Compose volume when needed.
 
 ## Production checklist
@@ -105,5 +105,5 @@ See **[docs/DEPLOY.md](docs/DEPLOY.md)**. In short: TLS in front of the web cont
 
 ## Troubleshooting
 
-- If the UI shows API errors, confirm the backend is running on `127.0.0.1:8000`, restart `ng serve`, and check `frontend/proxy.conf.js`.
+- If the UI shows API errors, confirm the backend is running on `127.0.0.1:8000`, restart `ng serve`, and check `apps/finance/frontend/proxy.conf.js`.
 - If you are not logged in, open `/login` (bootstrap first admin on an empty DB).

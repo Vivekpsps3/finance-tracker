@@ -40,7 +40,7 @@ Do not blur these data planes:
 ## Current Stack
 
 - Backend: FastAPI, SQLAlchemy, SQLite, Alembic, yfinance price lookup.
-- Frontend: Angular 19 standalone components, Tailwind, Chart.js.
+- Frontend: Angular 19 standalone components, plain CSS design tokens, Chart.js.
 - Auth: passwordless username + vault-passphrase challenge sessions (cookie + CSRF), roles admin/user, `/admin/users`.
 - Bank imports today: Capital One, Chase, Amex CSV transactions.
 - Brokerage import today: Fidelity CSV positions.

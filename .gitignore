@@ -4,8 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-backend/.venv/
-backend/venv/
 apps/*/*/.venv/
 apps/*/.venv/
 .venv/
@@ -14,15 +12,12 @@ ENV/
 .env
 .env.*
 !.env.example
-backend/.env
-!backend/.env.example
 apps/**/.env
 !apps/**/.env.example
 *.egg-info/
 .eggs/
 dist/
 build/
-backend/.pytest_cache/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -46,12 +41,6 @@ backups/
 *~
 
 # --- Node / frontend ---
-frontend/node_modules/
-frontend/dist/
-frontend/.angular/
-frontend/coverage/
-frontend/playwright-report/
-frontend/test-results/
 apps/**/node_modules/
 apps/**/dist/
 apps/**/.angular/

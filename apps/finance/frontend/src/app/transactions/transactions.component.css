@@ -67,17 +67,11 @@
   gap: 2rem;
 }
 
-.month-picker__label,
 .month-total__label,
-.month-total__hint,
 .month-picker__caption {
   display: block;
   font-size: var(--text-sm);
   color: var(--text-secondary);
-}
-
-.month-picker__label {
-  margin-bottom: 0.25rem;
 }
 
 .month-picker__caption {
@@ -198,11 +192,6 @@
   font: inherit;
   padding: 0;
   text-align: inherit;
-}
-
-.import-panel {
-  max-width: 52rem;
-  width: 100%;
 }
 
 .import-hint,

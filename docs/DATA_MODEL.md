@@ -1,7 +1,7 @@
 # Data model
 
-Code truth: `backend/models.py`, `frontend/src/app/crypto/client-finance.ts`,
-`frontend/src/app/services/planning.service.ts`.
+Code truth: `apps/finance/backend/models.py`, `apps/finance/frontend/src/app/crypto/client-finance.ts`,
+`apps/finance/frontend/src/app/services/planning.service.ts`.
 
 ## Users and ownership
 
@@ -13,7 +13,7 @@ App-native auth uses three security tables:
 | `user_sessions` | Hashed session tokens, CSRF token hashes, expiry/revocation metadata |
 | `audit_events` | Login, logout, user create/update, password reset, and related account events |
 
-The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions, bank accounts, import batches, assets, liabilities, holdings, brokerage accounts, job incomes, fixed expenses, subscriptions, planning profiles, and planning runs. Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics and the guarded SQL console read from the same SQLite database.
+The first account created by the app setup flow is an admin. All finance data that belongs to a person is scoped by `user_id`: transactions, bank accounts, import batches, assets, liabilities, holdings, brokerage accounts, job incomes, fixed expenses, subscriptions, planning profiles, and planning runs. Provider tables (`banks`, `brokerages`) and ticker quote cache are global. Admin metrics read from the same SQLite database.
 
 Deleting an account is destructive: the admin API removes that user, their sessions, and all rows in user-owned finance tables. It does not delete global provider/cache tables. The API refuses self-delete and refuses deleting an account only when that account is the final active admin. Inactive admins can be deleted when at least one other active admin remains.
 
@@ -27,11 +27,11 @@ total_assets  = other_assets + portfolio
 net_worth     = total_assets − liabilities
 ```
 
-Always **current** via `GET /api/net-worth/` (computed from assets + portfolio market value − liabilities).
+Always **current** — computed client-side after vault unlock by `computeNetWorth()` from assets + portfolio market value − liabilities. There is no net-worth HTTP endpoint.
 
 **Not** derived from transactions, imports, job income, fixed expenses, or subscriptions.
 
-Net worth history is not stored. The current total is exposed only by `GET /api/net-worth/`.
+Net worth history is not stored. The current total exists only as the client-side computed value in the browser.
 
 Expenses, income, card payments, rent, utilities, transfers, and bank imports remain
 transaction/cashflow data. They only affect net worth after the corresponding current
@@ -39,7 +39,7 @@ asset/liability value is updated.
 
 ### Avoid double-counting cash
 
-`computeNetWorth()` in `frontend/src/app/crypto/client-finance.ts` **adds** `other_assets` (all manual `assets` rows) and **portfolio** (all `holdings` rows valued at market or purchase fallback). There is **no** deduplication between a manual cash/checking asset and brokerage sweep or money-market positions (e.g. **SPAXX**, **SWVXX**, **VMFXX**) that appear in Fidelity or other imports.
+`computeNetWorth()` in `apps/finance/frontend/src/app/crypto/client-finance.ts` **adds** `other_assets` (all manual `assets` rows) and **portfolio** (all `holdings` rows valued at market or purchase fallback). There is **no** deduplication between a manual cash/checking asset and brokerage sweep or money-market positions (e.g. **SPAXX**, **SWVXX**, **VMFXX**) that appear in Fidelity or other imports.
 
 | User mistake | Effect on net worth |
 |--------------|---------------------|
@@ -76,7 +76,7 @@ SimpleFIN is the likely future aggregation path. Plaid placeholders may exist in
 
 ## Recurring cashflow (not net worth)
 
-Separate from the transaction ledger and balance sheet. Code: `models.py`, `frontend/src/app/crypto/client-finance.ts`.
+Separate from the transaction ledger and balance sheet. Code: `models.py`, `apps/finance/frontend/src/app/crypto/client-finance.ts`.
 
 | Table | Purpose |
 |-------|---------|
@@ -84,16 +84,17 @@ Separate from the transaction ledger and balance sheet. Code: `models.py`, `fron
 | `fixed_expenses` | Named recurring bills (rent, utilities, etc.) with frequency and date range |
 | `subscriptions` | Recurring subscription amounts with `next_bill_date` |
 
-`GET /api/cashflow/summary?start_date=&end_date=` combines period **transaction** totals with
-pro-rated/planned job income and scheduled fixed-expense/subscription occurrences for that range.
-This is a cashflow view only: it does **not** write assets, liabilities, holdings, or net worth.
+The cashflow summary is computed client-side after vault unlock (`apps/finance/frontend/src/app/crypto/client-finance.ts`):
+it combines period **transaction** totals with pro-rated/planned job income and scheduled
+fixed-expense/subscription occurrences for the selected range. There is no cashflow-summary
+HTTP endpoint. This is a cashflow view only: it does **not** write assets, liabilities, holdings, or net worth.
 
 Planning reads recurring annual fixed expenses and subscriptions into its input snapshot for
 spending estimates when useful.
 
 ## Planning lab (speculative)
 
-Separate from net worth and the transaction ledger. Code: `backend/models.py`, `frontend/src/app/services/planning.service.ts`.
+Separate from net worth and the transaction ledger. Code: `apps/finance/backend/models.py`, `apps/finance/frontend/src/app/services/planning.service.ts`.
 
 | Table | Purpose |
 |-------|---------|
@@ -101,7 +102,7 @@ Separate from net worth and the transaction ledger. Code: `backend/models.py`, `
 | `planning_scenario_runs` | Schema reserved for persisted runs; **current** `POST /api/planning/v1/runs` returns results with `id=None` and does **not** insert rows |
 
 - **Does not** update `assets`, `liabilities`, `holdings`, `transactions`, or recurring cashflow tables.
-- **Does not** affect `GET /api/net-worth/`.
+- **Does not** affect net worth.
 - API: `/api/planning/v1/*` — all responses include speculative disclaimers.
 - Only tool wired: `mc_net_worth_paths`.
 

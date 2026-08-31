@@ -7,7 +7,7 @@ and account administration.
 ## Goal
 
 Protect user finance data from database readers, backups, admin tooling, and
-normal backend/server operators. Admins should be able to manage accounts,
+normal apps/finance/backend/server operators. Admins should be able to manage accounts,
 disable access, reset contents, and delete data, but they should not be able to
 decrypt user finance records or reset vault access.
 
@@ -90,7 +90,7 @@ Client-side financial signals, detectors, and local snapshots must obey:
 Feature contracts for new analytics must list transmitted fields (default: **none**)
 and ship unit tests that run pure detectors over synthetic fixtures.
 
-Implementation: `frontend/src/app/signals/` (pure TypeScript; no `HttpClient`).
+No client-side signal/detector code currently ships; these rules bind any future implementation.
 
 ## Migration ordering
 

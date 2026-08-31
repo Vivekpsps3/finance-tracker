@@ -1,1 +1,0 @@
-export { CHART_COLORS, chartColorAt } from './chart-colors';

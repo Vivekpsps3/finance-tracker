@@ -5,47 +5,24 @@ from typing import Any
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
+from auth import role_str
 from models import (
-    Asset,
     AuditEvent,
-    BankAccount,
-    BrokerageAccount,
     EncryptedRecord,
-    EncryptedRecordIndex,
-    FixedExpense,
-    Holding,
-    ImportBatch,
-    JobIncome,
-    Liability,
-    PlanningAssumptionProfile,
-    PlanningScenarioRun,
-    Subscription,
-    Transaction,
     User,
     UserCryptoMigration,
     UserSession,
     UserVault,
 )
+from services.encrypted_storage import LEGACY_DELETE_ORDER, wipe_encrypted_user_data
 
-USER_OWNED_MODELS = [
-    Transaction,
-    BankAccount,
-    ImportBatch,
-    Asset,
-    Liability,
-    Holding,
-    BrokerageAccount,
-    JobIncome,
-    FixedExpense,
-    Subscription,
-    PlanningAssumptionProfile,
-    PlanningScenarioRun,
-]
+USER_OWNED_MODELS = LEGACY_DELETE_ORDER
+
 
 def admin_metrics(db: Session) -> dict[str, Any]:
     users = db.query(User).all()
     active_users = sum(1 for u in users if u.is_active)
-    admins = sum(1 for u in users if (u.role.value if hasattr(u.role, "value") else str(u.role)) == "admin")
+    admins = sum(1 for u in users if role_str(u.role) == "admin")
     totals = {
         "users": len(users),
         "active_users": active_users,
@@ -68,7 +45,7 @@ def admin_metrics(db: Session) -> dict[str, Any]:
             "id": user.id,
             "email": user.email,
             "display_name": user.display_name,
-            "role": user.role.value if hasattr(user.role, "value") else str(user.role),
+            "role": role_str(user.role),
             "is_active": user.is_active,
             "crypto_migration_status": migration.status if migration else "none",
             "has_vault": db.query(UserVault).filter(UserVault.user_id == user.id).count() > 0,
@@ -90,10 +67,7 @@ def admin_metrics(db: Session) -> dict[str, Any]:
 def reset_user_contents(db: Session, user: User, *, actor_user_id: int, revoke_sessions: bool = True) -> None:
     for model in USER_OWNED_MODELS:
         db.query(model).filter(model.user_id == user.id).delete(synchronize_session=False)
-    db.query(EncryptedRecordIndex).filter(EncryptedRecordIndex.user_id == user.id).delete(synchronize_session=False)
-    db.query(EncryptedRecord).filter(EncryptedRecord.user_id == user.id).delete(synchronize_session=False)
-    db.query(UserVault).filter(UserVault.user_id == user.id).delete(synchronize_session=False)
-    db.query(UserCryptoMigration).filter(UserCryptoMigration.user_id == user.id).delete(synchronize_session=False)
+    wipe_encrypted_user_data(db, user.id)
     if revoke_sessions:
         db.query(UserSession).filter(UserSession.user_id == user.id).delete(synchronize_session=False)
     audit = AuditEvent(
@@ -108,10 +82,7 @@ def reset_user_contents(db: Session, user: User, *, actor_user_id: int, revoke_s
 def delete_user_account(db: Session, user: User, *, actor_user_id: int) -> None:
     for model in USER_OWNED_MODELS:
         db.query(model).filter(model.user_id == user.id).delete(synchronize_session=False)
-    db.query(EncryptedRecordIndex).filter(EncryptedRecordIndex.user_id == user.id).delete(synchronize_session=False)
-    db.query(EncryptedRecord).filter(EncryptedRecord.user_id == user.id).delete(synchronize_session=False)
-    db.query(UserVault).filter(UserVault.user_id == user.id).delete(synchronize_session=False)
-    db.query(UserCryptoMigration).filter(UserCryptoMigration.user_id == user.id).delete(synchronize_session=False)
+    wipe_encrypted_user_data(db, user.id)
     db.query(UserSession).filter(UserSession.user_id == user.id).delete(synchronize_session=False)
     db.query(AuditEvent).filter(AuditEvent.actor_user_id == user.id).update(
         {AuditEvent.actor_user_id: None}, synchronize_session=False

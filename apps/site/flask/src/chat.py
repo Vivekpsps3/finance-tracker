@@ -138,70 +138,14 @@ class GitHubCopilotChat:
             print(f"Error in chat: {e}")
             return ''
 
-    def chat_sync(self, message):
-        if self.token is None:
-            self.get_token()
-
-        if type(message) == str:
-            self.messages.append({
-                "content": str(message),
-                "role": "user"
-            })
-        else:
-            self.messages = message
-
-        try:
-            resp = requests.post('https://api.githubcopilot.com/chat/completions', headers={
-                    'authorization': f'Bearer {self.token}',
-                    'Editor-Version': 'vscode/1.80.1',
-                }, json={
-                    'intent': False,
-                    'model': self.model,
-                    'temperature': 0,
-                    'top_p': 1,
-                    'n': 1,
-                    'stream': True,
-                    'messages': self.messages
-                })
-        except requests.exceptions.ConnectionError:
-            return ''
-
-        result = ''
-
-        resp_text = resp.text.split('\n')
-        for line in resp_text:
-            if line.startswith('data: {'):
-                json_completion = json.loads(line[6:])
-                try:
-                    completion = json_completion.get('choices')[0].get('delta').get('content')
-                    if completion:
-                        result += completion
-                    else:
-                        result += '\n'
-                except:
-                    pass
-
-        self.messages.append({
-            "content": result,
-            "role": "assistant"
-        })
-        
-        if result == '':
-            print(resp.status_code)
-            print(resp.text)
-        return result
-
     def get_models_list(self):
         return self.MODELS
-    
+
     def set_model(self, model):
         if model in self.MODELS:
             self.model = model
             return True
         return False
-    
-    def clear_conversation(self):
-        self.messages = []
 
 
 def main():

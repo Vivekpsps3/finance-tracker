@@ -1,3 +1,5 @@
+*Historical design record. The recovery-key path described here was later removed — there is no recovery mechanism; see docs/SECURITY_MODEL.md.*
+
 # Passwordless Vault Authentication Design
 
 ## Goal

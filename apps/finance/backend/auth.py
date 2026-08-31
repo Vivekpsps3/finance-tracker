@@ -31,6 +31,10 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def role_str(role) -> str:
+    return role.value if hasattr(role, "value") else str(role)
+
+
 def hash_password(password: str) -> str:
     return _ph.hash(password)
 
@@ -72,7 +76,7 @@ def public_user(user: User) -> dict:
         "email": user.email,
         "username": user.username,
         "display_name": user.display_name,
-        "role": user.role.value if hasattr(user.role, "value") else str(user.role),
+        "role": role_str(user.role),
         "is_active": user.is_active,
         "must_change_password": user.must_change_password,
         "created_at": user.created_at,
@@ -184,8 +188,7 @@ def complete_migration_session(db: Session, request: Request) -> None:
 
 
 def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
-    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
-    if role != UserRole.admin.value:
+    if role_str(current_user.role) != UserRole.admin.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
 
@@ -217,9 +220,8 @@ def create_user(
     return user
 
 
-def revoke_user_sessions(db: Session, user_id: int, *, except_session_id: Optional[int] = None) -> None:
+def revoke_user_sessions(db: Session, user_id: int) -> None:
     now = utc_now_naive()
-    query = db.query(UserSession).filter(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
-    if except_session_id is not None:
-        query = query.filter(UserSession.id != except_session_id)
-    query.update({UserSession.revoked_at: now}, synchronize_session=False)
+    db.query(UserSession).filter(UserSession.user_id == user_id, UserSession.revoked_at.is_(None)).update(
+        {UserSession.revoked_at: now}, synchronize_session=False
+    )

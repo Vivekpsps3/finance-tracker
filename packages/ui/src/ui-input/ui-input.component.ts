@@ -1,4 +1,4 @@
-import { Component, computed, input, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, model, signal } from '@angular/core';
 
 let uiInputIdSeq = 0;
 
@@ -7,7 +7,8 @@ let uiInputIdSeq = 0;
   standalone: true,
   templateUrl: './ui-input.component.html',
   styleUrl: './ui-input.component.css',
-  })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
 export class UiInputComponent {
   value = model<string>('');
   label = input<string | undefined>(undefined);

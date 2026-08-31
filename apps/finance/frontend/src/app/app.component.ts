@@ -3,7 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { ThemeService } from './services/theme.service';
 import { ToastService } from './services/toast.service';
 import { ConfirmDialogComponent } from './shared/confirm-dialog.component';
-import { UiButtonComponent } from './shared/ui/ui-button/ui-button.component';
+import { UiButtonComponent } from '@vivek/ui';
 import { ToastPayload } from './models/transaction.model';
 
 @Component({

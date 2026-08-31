@@ -34,9 +34,6 @@ export class Api {
   bootstrap() {
     return firstValueFrom(this.http.get<{ timeline: Timeline | null; standing: Standing }>('/api/bootstrap'));
   }
-  login(password: string) {
-    return firstValueFrom(this.http.post('/api/login', { password }));
-  }
   standingPost(answer: string) {
     return firstValueFrom(this.http.post<Standing>('/api/standing', { answer }));
   }
@@ -52,13 +49,11 @@ export class Api {
   week(id: string) {
     return firstValueFrom(this.http.get<any>(`/api/timeline/week/${id}`));
   }
-  ask(question: string) {
-    return firstValueFrom(this.http.post<any>('/api/ask', { question }));
-  }
   async *agent(message: string): AsyncGenerator<any> {
+    const csrf = document.cookie.match(/(?:^|;\s*)me_csrf=([^;]*)/)?.[1] ?? '';
     const res = await fetch('/api/agent', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) },
       credentials: 'same-origin',
       body: JSON.stringify({ message }),
     });

@@ -358,11 +358,3 @@ export interface ToastPayload {
   kind: ToastKind;
   undo?: () => void;
 }
-
-export interface DateFilter {
-  mode: 'month' | 'year' | 'custom' | 'all';
-  month?: string; // YYYY-MM
-  year?: number;
-  start?: string; // YYYY-MM-DD
-  end?: string; // YYYY-MM-DD
-}
