@@ -135,16 +135,7 @@ def bootstrap():
 def notes(n: str = ""):
     if not n or len(n) > 200 or "\0" in n:
         raise HTTPException(400, "invalid target")
-    if timeline.WEEK_ID.match(n):
-        return {"kind": "week", "id": n}
     return vault.resolve_target(n)
-
-
-@app.get("/api/timeline/week/{wid}")
-def week(wid: str):
-    if not timeline.WEEK_ID.match(wid):
-        raise HTTPException(400, "invalid week")
-    return timeline.week_payload(wid)
 
 
 def _sid(val) -> str | None:

@@ -2,11 +2,19 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
+export type Cell = { n: number; refs?: string[] };
 export type Timeline = {
+  currentYear: number;
+  currentMonth: string;
   currentWeek: string;
+  currentDay: string;
   birthday: string;
   years: number[];
-  cells: Record<string, { kind: string; n: number }>;
+  yearly: Record<string, Cell>;
+  monthly: Record<string, Cell>;
+  weekly: Record<string, Cell>;
+  daily: Record<string, Cell>;
+  misc: { id: string; title: string; n: number; refs?: string[] }[];
 };
 
 export type Dossier = {
@@ -28,10 +36,7 @@ export class Api {
     return firstValueFrom(this.http.get<{ timeline: Timeline | null }>('/api/bootstrap'));
   }
   notes(n: string) {
-    return firstValueFrom(this.http.get<any>(`/api/notes?n=${encodeURIComponent(n)}`));
-  }
-  week(id: string) {
-    return firstValueFrom(this.http.get<any>(`/api/timeline/week/${id}`));
+    return firstValueFrom(this.http.get<Dossier>(`/api/notes?n=${encodeURIComponent(n)}`));
   }
   agentHistory(id = '') {
     const q = id ? `?id=${encodeURIComponent(id)}` : '';

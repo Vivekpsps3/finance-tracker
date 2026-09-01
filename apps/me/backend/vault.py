@@ -75,8 +75,7 @@ def parse_note(raw: str, rel_path: str) -> dict:
         title = m.group(1).strip() if m else Path(rel_path).stem
     dates = []
     for value in data.values():
-        if isinstance(value, str):
-            dates.extend(ISO_DAY.findall(value))
+        dates.extend(ISO_DAY.findall(value if isinstance(value, str) else str(value)))
     dates.extend(ISO_DAY.findall(body))
     links = [
         {"target": m.group(2), "alias": m.group(4), "heading": m.group(3), "embed": bool(m.group(1))}
@@ -86,7 +85,7 @@ def parse_note(raw: str, rel_path: str) -> dict:
         "path": rel_path,
         "title": title,
         "type": data["type"] if isinstance(data.get("type"), str) else None,
-        "frontmatter": json.dumps(data),
+        "frontmatter": json.dumps(data, default=str),
         "body": body,
         "dates": json.dumps(dates),
         "links": links,
