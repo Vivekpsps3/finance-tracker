@@ -1,12 +1,15 @@
 import {
+  clearDekLocal,
   createVaultMaterial,
   decryptJson,
   encryptJson,
   generateDataKey,
   hmacBlindIndex,
+  persistDekLocal,
   randomBytes,
   randomClientId,
   recordAad,
+  restoreDekLocal,
   rewrapDekWithPassphrase,
   unlockWithPassphrase,
 } from './vault-crypto';
@@ -23,6 +26,19 @@ describe('vault-crypto', () => {
     const id = randomClientId('tx');
     expect(id.startsWith('tx_')).toBeTrue();
     expect(id.length).toBeGreaterThan(8);
+  });
+
+  it('persists and restores a DEK in localStorage', async () => {
+    clearDekLocal();
+    const dek = await generateDataKey();
+    const payload = { ok: true };
+    const ct = await encryptJson(dek, payload);
+    await persistDekLocal(dek);
+    const restored = await restoreDekLocal();
+    expect(restored).toBeTruthy();
+    expect(await decryptJson<typeof payload>(restored!, ct)).toEqual(payload);
+    clearDekLocal();
+    expect(await restoreDekLocal()).toBeNull();
   });
 
   it('encrypts and decrypts JSON with a DEK', async () => {

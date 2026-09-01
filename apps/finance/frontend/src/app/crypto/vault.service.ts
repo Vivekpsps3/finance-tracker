@@ -3,11 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, firstValueFrom, Observable } from 'rxjs';
 import { apiUrl } from '../core/api-url';
 import {
+  clearDekLocal,
   createVaultMaterial,
   decryptJson,
   encryptJson,
   hmacBlindIndex,
+  persistDekLocal,
   recordAad,
+  restoreDekLocal,
   unlockWithPassphrase,
 } from './vault-crypto';
 import { WrappedSigningKey } from '@vivek/auth';
@@ -45,11 +48,27 @@ export class VaultService {
   private statusSubject = new BehaviorSubject<VaultStatus | null>(null);
   private unlockedSubject = new BehaviorSubject<boolean>(false);
   private authWrap: WrappedSigningKey | null = null;
+  private boot: Promise<void>;
 
   readonly status$ = this.statusSubject.asObservable();
   readonly unlocked$ = this.unlockedSubject.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    this.boot = this.hydrate();
+  }
+
+  private async hydrate(): Promise<void> {
+    const dek = await restoreDekLocal();
+    if (!dek) return;
+    this.dek = dek;
+    this.unlockedSubject.next(true);
+  }
+
+  private hold(dek: CryptoKey): void {
+    this.dek = dek;
+    this.unlockedSubject.next(true);
+    void persistDekLocal(dek);
+  }
 
   get isUnlocked(): boolean {
     return this.unlockedSubject.value && !!this.dek;
@@ -60,6 +79,7 @@ export class VaultService {
   }
 
   async refreshStatus(): Promise<VaultStatus> {
+    await this.boot;
     const status = await firstValueFrom(this.http.get<VaultStatus>(apiUrl('/vault/status')));
     this.statusSubject.next(status);
     return status;
@@ -87,6 +107,7 @@ export class VaultService {
   lock(): void {
     this.dek = null;
     this.unlockedSubject.next(false);
+    clearDekLocal();
   }
 
   async setup(passphrase: string): Promise<void> {
@@ -95,15 +116,13 @@ export class VaultService {
       this.http.post<VaultStatus>(apiUrl('/vault/setup'), material.setupPayload)
     );
     this.statusSubject.next(status);
-    this.dek = material.dek;
-    this.unlockedSubject.next(true);
+    this.hold(material.dek);
   }
 
   /** Completes an atomically-created vault after passwordless account bootstrap/signup. */
   async adoptBootstrapVault(dek: CryptoKey): Promise<void> {
     await this.refreshStatus();
-    this.dek = dek;
-    this.unlockedSubject.next(true);
+    this.hold(dek);
   }
 
   async unlock(passphrase: string): Promise<void> {
@@ -111,13 +130,14 @@ export class VaultService {
     if (!status.exists || !status.kdf_salt_b64 || !status.wrapped_dek_b64 || !status.kdf_iterations) {
       throw new Error('Vault is not set up');
     }
-    this.dek = await unlockWithPassphrase(
-      passphrase,
-      status.kdf_salt_b64,
-      status.kdf_iterations,
-      status.wrapped_dek_b64
+    this.hold(
+      await unlockWithPassphrase(
+        passphrase,
+        status.kdf_salt_b64,
+        status.kdf_iterations,
+        status.wrapped_dek_b64
+      )
     );
-    this.unlockedSubject.next(true);
   }
 
   requireDek(): CryptoKey {

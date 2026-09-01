@@ -182,6 +182,26 @@ export async function decryptJson<T>(
   return JSON.parse(textDecoder.decode(plain)) as T;
 }
 
+const DEK_STORE = 'finance-dek';
+
+export async function persistDekLocal(dek: CryptoKey): Promise<void> {
+  try { localStorage.setItem(DEK_STORE, bufToB64(await exportRawKey(dek))); } catch { /* private */ }
+}
+
+export async function restoreDekLocal(): Promise<CryptoKey | null> {
+  try {
+    const raw = localStorage.getItem(DEK_STORE);
+    if (!raw) return null;
+    return importAesKey(b64ToBuf(raw));
+  } catch {
+    return null;
+  }
+}
+
+export function clearDekLocal(): void {
+  try { localStorage.removeItem(DEK_STORE); } catch { /* private */ }
+}
+
 export async function hmacBlindIndex(dek: CryptoKey, value: string): Promise<string> {
   // Derive a non-extractable HMAC key from DEK raw material via HKDF-like digest.
   const raw = await exportRawKey(dek);

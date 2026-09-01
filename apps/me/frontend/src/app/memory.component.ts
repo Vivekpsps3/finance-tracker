@@ -2,7 +2,10 @@ import { Component, ElementRef, HostListener, Input, OnDestroy, OnInit } from '@
 import { FormsModule } from '@angular/forms';
 import { Api, Dossier, Misc, Timeline } from './api';
 import { DossierComponent } from './dossier.component';
-import { DOW_MON, LONG, addDays, cell, clock, eraYears, fillDays, hue, isoMonday, monthWeeks, widOf, ymd } from './cal';
+import { DOW_MON, LONG, addDays, cell, clock, eraCoversDay, eraCoversYear, eraYears, erasAt, fillDays, hue, isoMonday, monthWeeks, widOf, ymd } from './cal';
+
+const ERA_STORE = 'me-era';
+const VIEW_STORE = 'me-mem-view';
 
 type Level = 'life' | 'era' | 'year' | 'month' | 'week' | 'day';
 
@@ -21,6 +24,17 @@ type Level = 'life' | 'era' | 'year' | 'month' | 'week' | 'day';
           @if (day) { <b>/</b> <button class="here">{{ day }}</button> }
         </nav>
         <div class="tools">
+          @if (dated.length) {
+            <select class="mem-era-pick" [ngModel]="era?.id ?? ''" (ngModelChange)="pickEra($event)">
+              <option value="">No era</option>
+              @for (e of hereEras; track e.id) {
+                <option [value]="e.id">{{ e.title }}</option>
+              }
+              @if (eraOffList && era) {
+                <option [value]="era.id">{{ era.title }}</option>
+              }
+            </select>
+          }
           <span class="clock">{{ time }}</span>
           <button class="hit" (click)="toNow()">Now</button>
           <button class="hit" [disabled]="rebuilding" (click)="onRebuild()">Rebuild</button>
@@ -42,9 +56,10 @@ type Level = 'life' | 'era' | 'year' | 'month' | 'week' | 'day';
                     <i class="now-pin" [style.left.%]="yearPct(tl.currentYear)"></i>
                   </div>
                   <div class="mem-eras">
+                    <button class="mem-era none" [class.on]="!era" (click)="pickEra('')">No era</button>
                     @for (e of dated; track e.id) {
                       <button class="mem-era" [style.--h]="hue(e.id)" [style.--a]="eraLeft(e)" [style.--b]="eraRight(e)"
-                        [class.now]="eraNow(e)" (click)="diveEra(e)">
+                        [class.now]="eraNow(e)" [class.on]="era?.id===e.id" (click)="diveEra(e)">
                         <i class="span"></i>
                         <span>{{ e.title }}</span>
                         <small>{{ e.start?.slice(0,4) }}–{{ e.end?.slice(0,4) || 'live' }}</small>
@@ -181,14 +196,19 @@ export class MemoryComponent implements OnInit, OnDestroy {
   dayNote: Dossier | null = null;
   newTitle = '';
   dows = DOW_MON;
+  prefId = MemoryComponent.loadPref();
   private tick?: ReturnType<typeof setInterval>;
+
+  private static loadPref() {
+    try { return localStorage.getItem(ERA_STORE) ?? ''; } catch { return ''; }
+  }
 
   constructor(private api: Api, private el: ElementRef<HTMLElement>) {}
 
   @Input() set timeline(v: Timeline | null) {
     if (v) {
       this.tl = v;
-      if (!this.year) this.landNow(false);
+      if (!this.year && !this.restoreView()) this.landNow(false);
     }
   }
 
@@ -255,6 +275,16 @@ export class MemoryComponent implements OnInit, OnDestroy {
     });
   }
   get dayRefs() { return cell(this.tl?.daily ?? {}, this.day).refs ?? []; }
+  get hereEras() {
+    if (!this.dated.length) return [];
+    if (this.day) return erasAt(this.dated, +this.day.slice(0, 4), this.day);
+    if (this.year) return erasAt(this.dated, this.year);
+    if (this.tl) return erasAt(this.dated, this.tl.currentYear, this.tl.currentDay);
+    return this.dated;
+  }
+  get eraOffList() {
+    return !!this.era && !this.hereEras.some((e) => e.id === this.era!.id);
+  }
 
   hue = hue;
   yearPct(y: number) {
@@ -282,14 +312,60 @@ export class MemoryComponent implements OnInit, OnDestroy {
     this.diveYear(Math.round(this.born + t * (this.last - this.born)));
   }
 
+  private saveView() {
+    try {
+      localStorage.setItem(VIEW_STORE, JSON.stringify({
+        level: this.level, era: this.era?.id ?? '', year: this.year,
+        month: this.month, week: this.week, day: this.day,
+      }));
+    } catch { /* private */ }
+  }
+
+  private restoreView(): boolean {
+    try {
+      const raw = localStorage.getItem(VIEW_STORE);
+      if (!raw) return false;
+      const v = JSON.parse(raw) as { level?: Level; era?: string; year?: number; month?: string; week?: string; day?: string };
+      if (v.era) {
+        this.prefId = v.era;
+        this.era = this.dated.find((e) => e.id === v.era) ?? null;
+      }
+      this.year = v.year || 0;
+      this.month = v.month || '';
+      this.week = v.week || '';
+      this.day = v.day || '';
+      this.level = v.level || (this.month ? 'month' : 'life');
+      return this.year > 0 || this.level === 'life';
+    } catch {
+      return false;
+    }
+  }
+
+  pickEra(id: string) {
+    this.prefId = id;
+    try { localStorage.setItem(ERA_STORE, id); } catch { /* private */ }
+    if (!id) {
+      this.era = null;
+      if (this.level === 'era') this.go(this.year ? 'year' : 'life');
+      return;
+    }
+    const e = this.dated.find((x) => x.id === id);
+    if (!e) return;
+    this.era = e;
+    const [a, b] = eraYears(e, this.born, this.last);
+    if (!this.year || this.year < a || this.year > b) this.diveEra(e);
+    else this.saveView();
+  }
+
   go(level: Level) {
     this.flash('out');
     this.level = level;
-    if (level === 'life') { this.era = null; this.year = 0; this.month = ''; this.week = ''; this.day = ''; }
+    if (level === 'life') { this.year = 0; this.month = ''; this.week = ''; this.day = ''; }
     if (level === 'era') { this.year = 0; this.month = ''; this.week = ''; this.day = ''; }
     if (level === 'year') { this.month = ''; this.week = ''; this.day = ''; }
     if (level === 'month') { this.week = ''; this.day = ''; }
     if (level === 'week') { this.day = ''; }
+    this.saveView();
   }
   up() {
     const order: Level[] = ['life', 'era', 'year', 'month', 'week', 'day'];
@@ -304,14 +380,19 @@ export class MemoryComponent implements OnInit, OnDestroy {
   diveEra(e: Misc) {
     this.flash('in');
     this.era = e;
+    this.prefId = e.id;
+    try { localStorage.setItem(ERA_STORE, e.id); } catch { /* private */ }
     this.level = 'era';
     this.year = 0; this.month = ''; this.week = ''; this.day = '';
+    this.saveView();
   }
   diveYear(y: number) {
     this.flash('in');
     this.year = y;
+    this.era = this.prefCovering(y);
     this.level = 'year';
     this.month = ''; this.week = ''; this.day = '';
+    this.saveView();
   }
   diveMonth(id: string) {
     this.flash('in');
@@ -319,6 +400,7 @@ export class MemoryComponent implements OnInit, OnDestroy {
     this.year = +id.slice(0, 4);
     this.level = 'month';
     this.week = ''; this.day = '';
+    this.saveView();
   }
   diveWeek(id: string) {
     this.flash('in');
@@ -328,6 +410,7 @@ export class MemoryComponent implements OnInit, OnDestroy {
     this.year = +this.month.slice(0, 4);
     this.level = 'week';
     this.day = '';
+    this.saveView();
   }
   async diveDay(id: string) {
     this.flash('in');
@@ -337,19 +420,28 @@ export class MemoryComponent implements OnInit, OnDestroy {
     this.month = id.slice(0, 7);
     this.year = +id.slice(0, 4);
     this.level = 'day';
+    this.saveView();
     await this.openDay();
+  }
+
+  private prefCovering(y: number, day?: string) {
+    if (!this.prefId) return null;
+    const e = this.dated.find((x) => x.id === this.prefId);
+    if (!e) return null;
+    return (day ? eraCoversDay(e, day) : eraCoversYear(e, y)) ? e : null;
   }
 
   landNow(animate = true) {
     if (!this.tl) return;
     if (animate) this.flash('in');
     const today = this.tl.currentDay;
-    this.era = this.dated.find((e) => this.eraNow(e)) ?? null;
+    this.era = this.prefCovering(this.tl.currentYear, today);
     this.year = this.tl.currentYear;
     this.month = this.tl.currentMonth;
     this.week = this.tl.currentWeek;
     this.day = today;
     this.level = 'month';
+    this.saveView();
   }
   toNow() { this.landNow(true); }
 

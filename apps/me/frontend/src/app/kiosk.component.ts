@@ -27,7 +27,7 @@ type WindowId = 'ops' | 'memory' | 'agent';
         </div>
       </nav>
       <main class="kiosk-stage">
-        <app-ops [class.off]="active !== 'ops'" />
+        <app-ops [class.off]="active !== 'ops'" [timeline]="timeline" />
         <app-memory [class.off]="active !== 'memory'" [timeline]="timeline" />
         <app-agent [class.off]="active !== 'agent'" />
       </main>

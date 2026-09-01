@@ -44,6 +44,22 @@ export function eraYears(e: Misc, born: number, last: number): [number, number] 
   return [Math.max(born, a), Math.min(last, b)];
 }
 
+export function eraCoversDay(e: Misc, day: string) {
+  if (!e.start) return false;
+  return day >= e.start && day <= (e.end || '9999-12-31');
+}
+
+export function eraCoversYear(e: Misc, y: number) {
+  if (!e.start) return false;
+  const a = +e.start.slice(0, 4);
+  const b = e.end ? +e.end.slice(0, 4) : 9999;
+  return y >= a && y <= b;
+}
+
+export function erasAt(list: Misc[], y: number, day?: string) {
+  return list.filter((e) => (day ? eraCoversDay(e, day) : eraCoversYear(e, y)));
+}
+
 export function monthWeeks(ym: string) {
   const [y, m] = ym.split('-').map(Number);
   const first = utc(y, m - 1, 1);

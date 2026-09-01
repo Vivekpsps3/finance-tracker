@@ -273,6 +273,7 @@ export class AuthService {
   clearLocalSession(): void {
     this.checkedSession = true;
     this.finance.clearSessionState();
+    this.vault.lock();
     this.userSubject.next(null);
   }
 

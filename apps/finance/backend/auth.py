@@ -19,7 +19,7 @@ CSRF_COOKIE_NAME = "finance_csrf"
 CSRF_HEADER_NAME = "X-CSRF-Token"
 SESSION_DAYS = int(os.getenv("SESSION_DAYS", "7"))
 COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0").lower() in ("1", "true", "yes")
-COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "lax")
+COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE") or ("none" if COOKIE_SECURE else "lax")
 _ph = PasswordHasher()
 
 
