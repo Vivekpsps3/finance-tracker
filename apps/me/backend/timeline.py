@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -86,7 +87,7 @@ def project_life(today: datetime | None = None) -> dict:
     yearly, monthly, weekly, daily, misc = {}, {}, {}, {}, []
     buckets = {"yearly": yearly, "monthly": monthly, "weekly": weekly, "daily": daily}
     seen: set[str] = set()
-    for row in open_db().execute("SELECT path, title FROM notes").fetchall():
+    for row in open_db().execute("SELECT path, title, frontmatter FROM notes").fetchall():
         hit = classify(row["path"])
         if not hit:
             continue
@@ -94,7 +95,16 @@ def project_life(today: datetime | None = None) -> dict:
         refs = _take(outs.get(row["path"], []) + ins.get(ident, []), ident)
         rec = {"n": len(outs.get(row["path"], [])) + len(ins.get(ident, [])), "refs": refs}
         if kind == "misc":
-            misc.append({"id": ident, "title": row["title"], **rec})
+            fm = {}
+            try:
+                parsed = json.loads(row["frontmatter"] or "{}")
+                if isinstance(parsed, dict):
+                    fm = parsed
+            except Exception:
+                fm = {}
+            start = str(fm["start"])[:10] if fm.get("start") else None
+            end = str(fm["end"])[:10] if fm.get("end") else None
+            misc.append({"id": ident, "title": row["title"], "start": start, "end": end, **rec})
         else:
             buckets[kind][ident] = rec
         seen.add(ident)

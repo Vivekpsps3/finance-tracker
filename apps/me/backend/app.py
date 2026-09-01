@@ -138,6 +138,53 @@ def notes(n: str = ""):
     return vault.resolve_target(n)
 
 
+@app.get("/api/vault/tree")
+def vault_tree():
+    return {"files": vault.list_tree()}
+
+
+@app.get("/api/vault/note")
+def vault_note(path: str = ""):
+    try:
+        return vault.read_file(path)
+    except FileNotFoundError:
+        raise HTTPException(404, "missing")
+    except ValueError:
+        raise HTTPException(400, "bad path")
+
+
+@app.put("/api/vault/note")
+def vault_put(payload: dict):
+    try:
+        return vault.write_file(str(payload.get("path") or ""), str(payload.get("raw") or ""))
+    except ValueError:
+        raise HTTPException(400, "bad")
+
+
+@app.post("/api/calendar/ensure")
+def calendar_ensure(payload: dict):
+    ident = str((payload or {}).get("id") or "").strip()
+    try:
+        note = vault.ensure_period(ident)
+    except ValueError:
+        raise HTTPException(400, "bad id")
+    return {"note": note, "timeline": timeline.project_life()}
+
+
+@app.post("/api/notes")
+def notes_create(payload: dict):
+    payload = payload or {}
+    try:
+        note = vault.create_note(
+            str(payload.get("title") or ""),
+            str(payload.get("folder") or "Inbox"),
+            str(payload.get("link") or "") or None,
+        )
+    except ValueError:
+        raise HTTPException(400, "bad note")
+    return {"note": note, "timeline": timeline.project_life()}
+
+
 def _sid(val) -> str | None:
     if not isinstance(val, str):
         return None

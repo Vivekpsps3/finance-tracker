@@ -37,7 +37,9 @@ check:
 	cd frontend && npx ng build --configuration=development
 
 test-unit:
-	cd backend && ../backend/.venv/bin/python -c "from vault import parse_note; assert parse_note('---\\ntitle: Ada\\n---\\nHi','people/Ada.md')['title']=='Ada'"
+	cd backend && .venv/bin/python test_vault.py
+	cd backend && .venv/bin/python test_timeline.py
+	cd backend && .venv/bin/python test_csrf_smoke.py
 
 test: test-unit
 

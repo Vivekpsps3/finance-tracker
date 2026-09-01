@@ -52,3 +52,5 @@ end: 2025-05-01
 ```
 
 Link by note title/stem (`[[Isha Tripathy]]`, `[[2026-09-14]]`), not the folder path.
+
+The Memory UI auto-creates missing Yearly / Monthly / Weekly / Daily files when you open a day, and links the new period up the chain. New notes from a day land in `Inbox/` and are appended as `[[wikilinks]]` on that daily note.

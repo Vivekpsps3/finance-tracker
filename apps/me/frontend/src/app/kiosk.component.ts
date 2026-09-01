@@ -1,40 +1,32 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Api, Timeline } from './api';
 import { OpsComponent } from './ops.component';
 import { MemoryComponent } from './memory.component';
 import { AgentComponent } from './agent.component';
+import { clock } from './cal';
 
 type WindowId = 'ops' | 'memory' | 'agent';
 
 @Component({
   selector: 'app-kiosk',
   imports: [OpsComponent, MemoryComponent, AgentComponent],
-  styles: [`
-    .shell { display:flex; flex-direction:column; height:100dvh; overflow:hidden; background:var(--wall); }
-    nav {
-      flex:none; z-index:10; display:flex; height:64px; align-items:center;
-      gap:8px; padding:0 24px; background:var(--tile); border-bottom:1px solid var(--border-subtle);
-    }
-    nav button.hit { background:transparent; border-radius:var(--radius-md); padding:0 var(--space-3); color:var(--mute); }
-    nav button.hit.on { background:var(--surface-2); color:var(--ink); }
-    nav .theme { margin-left:auto; }
-    main { flex:1; min-height:0; overflow:hidden; }
-    main > * { height:100%; min-height:0; }
-    main > .off { display:none; }
-  `],
   template: `
-    <div class="shell">
-      <nav>
-        <button class="hit" [class.on]="active==='ops'" (click)="active='ops'">Ops</button>
-        <button class="hit" [class.on]="active==='memory'" (click)="active='memory'">Memory</button>
-        <button class="hit" [class.on]="active==='agent'" (click)="active='agent'">Agent</button>
-        <div class="vivek-nav__theme theme" role="group" aria-label="Color mode">
-          <button type="button" [class.on]="theme !== 'dark'" (click)="setTheme('light')">Light</button>
-          <button type="button" [class.on]="theme === 'dark'" (click)="setTheme('dark')">Dark</button>
+    <div class="kiosk">
+      <nav class="kiosk-nav">
+        <span class="mark">me</span>
+        <button class="tab" [class.on]="active==='ops'" (click)="active='ops'">Ops</button>
+        <button class="tab" [class.on]="active==='memory'" (click)="active='memory'">Memory</button>
+        <button class="tab" [class.on]="active==='agent'" (click)="active='agent'">Agent</button>
+        <div class="end">
+          <span class="live">{{ time }}</span>
+          <div class="vivek-nav__theme" role="group" aria-label="Color mode">
+            <button type="button" [class.on]="theme !== 'dark'" (click)="setTheme('light')">Light</button>
+            <button type="button" [class.on]="theme === 'dark'" (click)="setTheme('dark')">Dark</button>
+          </div>
         </div>
       </nav>
-      <main>
+      <main class="kiosk-stage">
         <app-ops [class.off]="active !== 'ops'" />
         <app-memory [class.off]="active !== 'memory'" [timeline]="timeline" />
         <app-agent [class.off]="active !== 'agent'" />
@@ -42,24 +34,23 @@ type WindowId = 'ops' | 'memory' | 'agent';
     </div>
   `,
 })
-export class KioskComponent {
+export class KioskComponent implements OnInit, OnDestroy {
   private api = inject(Api);
   private router = inject(Router);
-  active: WindowId = 'ops';
+  active: WindowId = 'memory';
   theme: 'light' | 'dark' = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   timeline: Timeline | null = null;
+  time = clock();
+  private tick?: ReturnType<typeof setInterval>;
 
   setTheme(theme: 'light' | 'dark') {
     this.theme = theme;
-    try {
-      localStorage.setItem('me-theme', theme);
-    } catch {
-      /* private mode */
-    }
+    try { localStorage.setItem('me-theme', theme); } catch { /* private */ }
     document.documentElement.setAttribute('data-theme', theme);
   }
 
   async ngOnInit() {
+    this.tick = setInterval(() => (this.time = clock()), 15000);
     try {
       const data = await this.api.bootstrap();
       this.timeline = data.timeline;
@@ -67,4 +58,5 @@ export class KioskComponent {
       await this.router.navigateByUrl('/login');
     }
   }
+  ngOnDestroy() { if (this.tick) clearInterval(this.tick); }
 }

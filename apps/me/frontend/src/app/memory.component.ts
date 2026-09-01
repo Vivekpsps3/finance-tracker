@@ -1,262 +1,396 @@
-import { Component, Input } from '@angular/core';
-import { Api, Cell, Dossier, Timeline } from './api';
+import { Component, ElementRef, HostListener, Input, OnDestroy, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Api, Dossier, Misc, Timeline } from './api';
 import { DossierComponent } from './dossier.component';
+import { DOW_MON, LONG, addDays, cell, clock, eraYears, fillDays, hue, isoMonday, monthWeeks, widOf, ymd } from './cal';
 
-type Grain = 'year' | 'month' | 'week' | 'day';
-
-type Row = {
-  id: string;
-  grain: Grain;
-  label: string;
-  depth: number;
-  n: number;
-  below: number;
-  refs: string[];
-  up: string[];
-  down: string[];
-  now: boolean;
-};
-
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function utc(y: number, m: number, d: number) { return new Date(Date.UTC(y, m, d)); }
-function addDays(d: Date, n: number) { const x = new Date(d); x.setUTCDate(x.getUTCDate() + n); return x; }
-function ymd(d: Date) { return d.toISOString().slice(0, 10); }
-function pad(n: number) { return String(n).padStart(2, '0'); }
-function isoWeek(d: Date) {
-  const t = new Date(d.getTime());
-  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
-  const start = utc(t.getUTCFullYear(), 0, 1);
-  const w = Math.ceil((((t.getTime() - start.getTime()) / 86400000) + 1) / 7);
-  return { y: t.getUTCFullYear(), w };
-}
-function isoMonday(y: number, w: number) {
-  const jan4 = utc(y, 0, 4);
-  return addDays(jan4, -((jan4.getUTCDay() + 6) % 7) + (w - 1) * 7);
-}
-function widOf(d: Date) { const { y, w } = isoWeek(d); return `${y}-W${pad(w)}`; }
-function rangeLabel(a: Date, b: Date) {
-  if (a.getUTCMonth() === b.getUTCMonth()) return `${MON[a.getUTCMonth()]} ${a.getUTCDate()} – ${b.getUTCDate()}`;
-  return `${MON[a.getUTCMonth()]} ${a.getUTCDate()} – ${MON[b.getUTCMonth()]} ${b.getUTCDate()}`;
-}
+type Level = 'life' | 'era' | 'year' | 'month' | 'week' | 'day';
 
 @Component({
   selector: 'app-memory',
-  imports: [DossierComponent],
-  styles: [`
-    :host { display:flex; flex-direction:column; height:100%; min-height:0; background:var(--wall); padding:24px; box-sizing:border-box; color:var(--ink); position:relative; }
-    h1 { margin:0; font:var(--heading); }
-    .bar { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; align-items:center; }
-    .bar .hit.on { background:var(--surface-2); }
-    .bar label { display:flex; align-items:center; gap:8px; color:var(--mute); font:var(--label); }
-    .bar input { min-height:48px; border:1px solid var(--border); background:var(--tile); padding:0 12px; }
-    .tree { flex:1; overflow:auto; min-height:0; }
-    .row { position:relative; display:flex; align-items:center; gap:16px; width:100%; max-width:44rem; min-height:48px; margin:0 0 4px; padding:0 16px; border:0; background:transparent; text-align:left; }
-    .row.d1 { padding-left:32px; }
-    .row.d2 { padding-left:48px; }
-    .row.d3 { padding-left:64px; }
-    .row.filled { background:var(--tile); }
-    .row.now { outline:2px solid var(--accent); outline-offset:-2px; }
-    .row .n { margin-left:auto; color:var(--mute); font:var(--label); }
-    .tip {
-      position:absolute; left:16px; bottom:calc(100% - 4px); z-index:3; min-width:16rem; max-width:28rem;
-      padding:12px 16px; background:var(--tile); border:1px solid var(--border); color:var(--ink);
-      opacity:0; transform:translateY(-6px); pointer-events:none;
-      transition:opacity .16s ease, transform .16s ease;
-    }
-    .row:hover .tip, .row:focus-visible .tip { opacity:1; transform:none; }
-    .tip b { display:block; font:var(--label); }
-    .tip p { margin:8px 0 0; color:var(--mute); }
-    .rebuild { margin-top:auto; align-self:flex-start; }
-  `],
+  imports: [DossierComponent, FormsModule],
   template: `
-    <h1>Memory</h1>
-    @if (tl === null) {
-      <p class="text-mute">Can't load calendar. Rebuild the index.</p>
-    } @else {
-      <div class="bar">
-        @for (g of grains; track g) {
-          <button class="hit" [class.on]="grain===g" (click)="grain=g">{{ g }}</button>
-        }
-        <label>From <input type="date" [value]="from" (change)="from = $any($event.target).value"></label>
-        <label>To <input type="date" [value]="to" (change)="to = $any($event.target).value"></label>
+    <div class="mem">
+      <div class="mem-top">
+        <nav class="mem-crumb">
+          <button (click)="go('life')" [class.here]="level==='life'">Life</button>
+          @if (era) { <b>/</b> <button (click)="go('era')" [class.here]="level==='era'">{{ era.title }}</button> }
+          @if (year) { <b>/</b> <button (click)="go('year')" [class.here]="level==='year'">{{ year }}</button> }
+          @if (month) { <b>/</b> <button (click)="go('month')" [class.here]="level==='month'">{{ monthName }}</button> }
+          @if (week) { <b>/</b> <button (click)="go('week')" [class.here]="level==='week'">{{ week }}</button> }
+          @if (day) { <b>/</b> <button class="here">{{ day }}</button> }
+        </nav>
+        <div class="tools">
+          <span class="clock">{{ time }}</span>
+          <button class="hit" (click)="toNow()">Now</button>
+          <button class="hit" [disabled]="rebuilding" (click)="onRebuild()">Rebuild</button>
+        </div>
       </div>
-      <div class="tree">
-        @for (r of rows; track r.grain + r.id) {
-          <button class="row" [class.d1]="r.depth===1" [class.d2]="r.depth===2" [class.d3]="r.depth===3"
-            [class.filled]="r.n+r.below>0" [class.now]="r.now" (click)="openDossier(r.id)">
-            <span>{{ r.label }}</span>
-            @if (r.n + r.below) { <span class="n">{{ r.n || r.below }}</span> }
-            <div class="tip">
-              <b>{{ r.label }}</b>
-              @if (r.up.length) { <p>{{ r.up.join(' · ') }}</p> }
-              <p>{{ r.n ? r.n + ' linked' : 'Nothing on this ' + r.grain }}@if (r.below) { · {{ r.below }} below }</p>
-              @if (r.down.length) { <p>{{ r.down.join(' · ') }}</p> }
-              @if (r.refs.length) { <p>{{ r.refs.join(' · ') }}</p> }
-            </div>
-          </button>
-        }
-        @if (tl.misc.length) {
-          <p class="text-mute" style="margin:24px 0 8px">Miscellaneous</p>
-          @for (m of tl.misc; track m.id) {
-            <button class="row" [class.filled]="m.n>0" (click)="openDossier(m.id)">
-              <span>{{ m.title }}</span>
-              @if (m.n) { <span class="n">{{ m.n }}</span> }
-              <div class="tip">
-                <b>{{ m.title }}</b>
-                <p>{{ m.n ? m.n + ' linked' : 'No links' }}</p>
-                @if (m.refs?.length) { <p>{{ (m.refs ?? []).join(' · ') }}</p> }
-              </div>
-            </button>
-          }
-        }
-      </div>
-    }
-    <button class="hit rebuild" [disabled]="rebuilding" (click)="onRebuild()">Rebuild</button>
-    @if (view === 'dossier') {
-      <app-dossier [dossier]="dossier" [errorText]="dossierError" [knownTitle]="knownTitle"
-        (back)="popDossier()" (open)="openDossier($event)" />
-    }
+
+      @if (!tl) {
+        <p class="text-mute">Can't load calendar. Rebuild the index.</p>
+      } @else {
+        <div class="mem-stage">
+          <div class="mem-layer" [class.out]="dir==='out'" [attr.data-k]="anim">
+            @switch (level) {
+              @case ('life') {
+                <div class="mem-life">
+                  <div class="mem-axis" (click)="axisYear($event)">
+                    @for (y of axisLabs; track y) {
+                      <span class="lab" [style.left.%]="yearPct(y)">{{ y }}</span>
+                    }
+                    <i class="now-pin" [style.left.%]="yearPct(tl.currentYear)"></i>
+                  </div>
+                  <div class="mem-eras">
+                    @for (e of dated; track e.id) {
+                      <button class="mem-era" [style.--h]="hue(e.id)" [style.--a]="eraLeft(e)" [style.--b]="eraRight(e)"
+                        [class.now]="eraNow(e)" (click)="diveEra(e)">
+                        <i class="span"></i>
+                        <span>{{ e.title }}</span>
+                        <small>{{ e.start?.slice(0,4) }}–{{ e.end?.slice(0,4) || 'live' }}</small>
+                      </button>
+                    }
+                  </div>
+                  @if (loose.length) {
+                    <div class="mem-loose">
+                      @for (m of loose; track m.id) {
+                        <button class="chip" (click)="openNote(m.id)">{{ m.title }}</button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+              @case ('era') {
+                <div class="mem-grid">
+                  @for (y of yearList; track y) {
+                    <button class="mem-cell" [class.hot]="yearN(y)>0" [class.now]="y===tl.currentYear" (click)="diveYear(y)">
+                      <span class="k">{{ y }}</span>
+                      <span class="v">{{ yearN(y) ? yearN(y) + ' notes' : 'open' }}</span>
+                    </button>
+                  }
+                </div>
+              }
+              @case ('year') {
+                <div class="mem-grid months">
+                  @for (m of months; track m.id) {
+                    <button class="mem-cell" [class.hot]="m.n>0" [class.now]="m.id===tl.currentMonth" (click)="diveMonth(m.id)">
+                      <span class="k">{{ m.name }}</span>
+                      @if (m.n) { <i class="dot"></i> } @else { <span class="v">·</span> }
+                    </button>
+                  }
+                </div>
+              }
+              @case ('month') {
+                <div class="mem-cal">
+                  <div class="mem-dow">
+                    <span></span>
+                    @for (d of dows; track d) { <span>{{ d }}</span> }
+                  </div>
+                  <div class="mem-weeks">
+                    @for (w of weeks; track w.id) {
+                      <div class="mem-week">
+                        <button class="mem-wn" (click)="diveWeek(w.id)">{{ w.id.slice(6) }}</button>
+                        @for (d of w.days; track d.id) {
+                          <button class="mem-day" [class.out]="!d.in" [class.hot]="d.n>0" [class.now]="d.id===tl.currentDay"
+                            (click)="diveDay(d.id)">
+                            <span class="n">{{ +d.id.slice(8) }}</span>
+                            @if (d.n) { <span class="c">{{ d.n }}</span> }
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+              @case ('week') {
+                <div class="mem-ribbon tall">
+                  @for (d of weekDays; track d.id) {
+                    <button [class.on]="d.id===day" [class.hot]="d.n>0" (click)="diveDay(d.id)">
+                      <span class="d">{{ d.lab }}</span>
+                      <span class="n">{{ +d.id.slice(8) }}</span>
+                    </button>
+                  }
+                </div>
+              }
+              @case ('day') {
+                <div class="mem-ribbon">
+                  @for (d of weekDays; track d.id) {
+                    <button [class.on]="d.id===day" (click)="diveDay(d.id)">
+                      <span class="d">{{ d.lab }}</span>
+                      <span class="n">{{ +d.id.slice(8) }}</span>
+                    </button>
+                  }
+                </div>
+                <div class="mem-daypane">
+                  <div class="mem-edit">
+                    <textarea [(ngModel)]="draft" placeholder="This day…"></textarea>
+                    <div class="row">
+                      <button class="hit" [disabled]="saving" (click)="saveDay()">Save</button>
+                    </div>
+                  </div>
+                  <div class="mem-side">
+                    <h3>On this day</h3>
+                    @if (dayNote?.missing) { <p class="text-mute">New daily note. Save to keep it.</p> }
+                    <div class="mem-add">
+                      <input [(ngModel)]="newTitle" placeholder="New note" (keydown.enter)="addNote()" />
+                      <button class="hit" (click)="addNote()">Add</button>
+                    </div>
+                    @for (r of dayNote?.backlinks ?? []; track r.src) {
+                      <button class="chip" (click)="openNote(stem(r.src))">{{ r.title }}</button>
+                    }
+                    @if (dayRefs.length) {
+                      @for (r of dayRefs; track r) {
+                        <button class="chip" (click)="openNote(r)">{{ r }}</button>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      }
+
+      @if (view === 'dossier') {
+        <app-dossier [dossier]="dossier" [errorText]="dossierError" [knownTitle]="knownTitle"
+          (back)="popDossier()" (open)="openNote($event)" />
+      }
+    </div>
   `,
 })
-export class MemoryComponent {
+export class MemoryComponent implements OnInit, OnDestroy {
   tl: Timeline | null = null;
-  grain: Grain = 'week';
-  grains: Grain[] = ['year', 'month', 'week', 'day'];
-  from = '';
-  to = '';
+  level: Level = 'month';
+  dir: 'in' | 'out' = 'in';
+  anim = 0;
+  era: Misc | null = null;
+  year = 0;
+  month = '';
+  week = '';
+  day = '';
+  time = clock();
   view: 'life' | 'dossier' = 'life';
   trail: string[] = [];
   dossier: Dossier | null = null;
   dossierError: string | null = null;
   knownTitle: string | null = null;
   rebuilding = false;
-  private primed = false;
+  saving = false;
+  draft = '';
+  dayPath = '';
+  dayNote: Dossier | null = null;
+  newTitle = '';
+  dows = DOW_MON;
+  private tick?: ReturnType<typeof setInterval>;
 
-  constructor(private api: Api) {}
+  constructor(private api: Api, private el: ElementRef<HTMLElement>) {}
 
   @Input() set timeline(v: Timeline | null) {
-    this.tl = v;
-    if (v && !this.primed) {
-      this.from = `${v.currentDay.slice(0, 4)}-01-01`;
-      this.to = v.currentDay;
-      this.primed = true;
+    if (v) {
+      this.tl = v;
+      if (!this.year) this.landNow(false);
     }
   }
 
-  private cell(map: Record<string, Cell>, id: string): Cell {
-    return map[id] ?? { n: 0, refs: [] };
+  ngOnInit() {
+    this.tick = setInterval(() => (this.time = clock()), 15000);
+  }
+  ngOnDestroy() { if (this.tick) clearInterval(this.tick); }
+
+  @HostListener('document:keydown', ['$event'])
+  keys(ev: KeyboardEvent) {
+    if (this.el.nativeElement.classList.contains('off')) return;
+    if (ev.key === 'Escape') {
+      if (this.view === 'dossier') this.popDossier();
+      else this.up();
+    }
+    if ((ev.metaKey || ev.ctrlKey) && ev.key === 's' && this.level === 'day') {
+      ev.preventDefault();
+      void this.saveDay();
+    }
   }
 
-  get rows(): Row[] {
-    const tl = this.tl;
-    if (!tl || !this.from || !this.to) return [];
-    const start = new Date(this.from + 'T00:00:00Z');
-    const end = new Date(this.to + 'T00:00:00Z');
-    if (isNaN(+start) || isNaN(+end) || start > end) return [];
-
-    const days: string[] = [];
-    for (let d = new Date(start); d <= end; d = addDays(d, 1)) days.push(ymd(d));
-
-    const weeks: { id: string; mon: Date; sun: Date; month: string; year: string }[] = [];
-    const seen = new Set<string>();
-    for (const id of days) {
-      const d = new Date(id + 'T00:00:00Z');
-      const wid = widOf(d);
-      if (seen.has(wid)) continue;
-      seen.add(wid);
-      const { y, w } = isoWeek(d);
-      const mon = isoMonday(y, w);
-      const thu = addDays(mon, 3);
-      weeks.push({ id: wid, mon, sun: addDays(mon, 6), month: ymd(thu).slice(0, 7), year: String(thu.getUTCFullYear()) });
-    }
-
-    const months = [...new Set(weeks.map((w) => w.month))];
-    const years = [...new Set(weeks.map((w) => w.year))];
-    const own = (g: 'yearly' | 'monthly' | 'weekly' | 'daily', id: string) => this.cell(tl[g], id);
-    const dayN = (id: string) => own('daily', id).n;
-    const weekN = (id: string) => own('weekly', id).n;
-    const monthN = (id: string) => own('monthly', id).n;
-    const yearN = (id: string) => own('yearly', id).n;
-    const weekDays = (w: (typeof weeks)[0]) => days.filter((id) => id >= ymd(w.mon) && id <= ymd(w.sun));
-    const monthWeeks = (ym: string) => weeks.filter((w) => w.month === ym);
-    const yearMonths = (y: string) => months.filter((m) => m.startsWith(y));
-    const yearWeeks = (y: string) => weeks.filter((w) => w.year === y);
-    const yearDays = (y: string) => days.filter((id) => id.startsWith(y));
-    const monthDays = (ym: string) => days.filter((id) => id.startsWith(ym));
-    const countDays = (ids: string[]) => ids.filter((id) => dayN(id) > 0).length;
-    const countWeeks = (ws: typeof weeks) => ws.filter((w) => weekN(w.id) > 0 || countDays(weekDays(w)) > 0).length;
-
-    const out: Row[] = [];
-    const push = (row: Row) => out.push(row);
-
-    for (const y of years) {
-      const yWeeks = yearWeeks(y);
-      const yDays = yearDays(y);
-      const yMonths = yearMonths(y);
-      const below = yMonths.filter((m) => monthN(m) > 0).length + countWeeks(yWeeks) + countDays(yDays);
-      const yDown = [
-        ...yMonths.map((m) => `${LONG[+m.slice(5) - 1]} (${monthN(m) || countDays(monthDays(m))})`),
-        ...yWeeks.filter((w) => weekN(w.id) || countDays(weekDays(w))).map((w) => rangeLabel(w.mon, w.sun)),
-      ].slice(0, 8);
-      push({
-        id: y, grain: 'year', label: y, depth: 0, n: yearN(y), below,
-        refs: own('yearly', y).refs ?? [], up: [], down: yDown,
-        now: tl.currentYear === +y,
-      });
-      if (this.grain === 'year') continue;
-      for (const ym of yMonths) {
-        const [yy, mm] = ym.split('-').map(Number);
-        const mWeeks = monthWeeks(ym);
-        const mDays = monthDays(ym);
-        const mBelow = countWeeks(mWeeks) + countDays(mDays);
-        const mDown = [
-          ...mWeeks.map((w) => rangeLabel(w.mon, w.sun)),
-          ...mDays.filter((id) => dayN(id)).map((id) => id.slice(8)),
-        ].slice(0, 8);
-        const mLabel = `${LONG[mm - 1]} ${yy}`;
-        push({
-          id: ym, grain: 'month', label: mLabel, depth: 1, n: monthN(ym), below: mBelow,
-          refs: own('monthly', ym).refs ?? [], up: [y], down: mDown,
-          now: tl.currentMonth === ym,
-        });
-        if (this.grain === 'month') continue;
-        for (const w of mWeeks) {
-          const wDays = weekDays(w);
-          const label = rangeLabel(w.mon, w.sun);
-          const wBelow = countDays(wDays);
-          const wDown = wDays.map((id) => {
-            const d = new Date(id + 'T00:00:00Z');
-            return `${DOW[d.getUTCDay()]} ${d.getUTCDate()}${dayN(id) ? ' · ' + dayN(id) : ''}`;
-          });
-          push({
-            id: w.id, grain: 'week', label, depth: 2, n: weekN(w.id), below: wBelow,
-            refs: own('weekly', w.id).refs ?? [], up: [y, mLabel], down: wDown,
-            now: tl.currentWeek === w.id,
-          });
-          if (this.grain === 'week') continue;
-          for (const id of wDays) {
-            const d = new Date(id + 'T00:00:00Z');
-            push({
-              id, grain: 'day', label: `${DOW[d.getUTCDay()]} ${MON[d.getUTCMonth()]} ${d.getUTCDate()}`,
-              depth: 3, n: dayN(id), below: 0,
-              refs: own('daily', id).refs ?? [], up: [y, mLabel, label], down: [],
-              now: tl.currentDay === id,
-            });
-          }
-        }
-      }
-    }
+  get born() { return this.tl?.years[0] ?? 2003; }
+  get last() { return this.tl?.years.at(-1) ?? 2093; }
+  get dated() { return (this.tl?.misc ?? []).filter((m) => m.start); }
+  get loose() { return (this.tl?.misc ?? []).filter((m) => !m.start); }
+  get axisLabs() {
+    const a = this.born;
+    const b = this.last;
+    const step = 10;
+    const out = [];
+    for (let y = Math.ceil(a / step) * step; y <= b; y += step) out.push(y);
     return out;
+  }
+  get yearList() {
+    if (this.era) {
+      const [a, b] = eraYears(this.era, this.born, this.last);
+      return Array.from({ length: b - a + 1 }, (_, i) => a + i);
+    }
+    return this.tl?.years ?? [];
+  }
+  get months() {
+    const y = this.year;
+    return LONG.map((name, i) => {
+      const id = `${y}-${String(i + 1).padStart(2, '0')}`;
+      return { id, name, n: cell(this.tl?.monthly ?? {}, id).n };
+    });
+  }
+  get monthName() {
+    if (!this.month) return '';
+    return LONG[+this.month.slice(5) - 1];
+  }
+  get weeks() {
+    if (!this.month || !this.tl) return [];
+    return fillDays(monthWeeks(this.month), this.tl);
+  }
+  get weekDays() {
+    if (!this.week) return [];
+    const [y, w] = [+this.week.slice(0, 4), +this.week.slice(6)];
+    const mon = isoMonday(y, w);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(mon, i);
+      const id = ymd(d);
+      return { id, lab: DOW_MON[i], n: cell(this.tl?.daily ?? {}, id).n };
+    });
+  }
+  get dayRefs() { return cell(this.tl?.daily ?? {}, this.day).refs ?? []; }
+
+  hue = hue;
+  yearPct(y: number) {
+    const span = this.last - this.born || 1;
+    return ((y - this.born) / span) * 100;
+  }
+  eraLeft(e: Misc) { return this.yearPct(eraYears(e, this.born, this.last)[0]); }
+  eraRight(e: Misc) { return this.yearPct(eraYears(e, this.born, this.last)[1]); }
+  eraNow(e: Misc) {
+    if (!this.tl) return false;
+    const [a, b] = eraYears(e, this.born, this.last);
+    return this.tl.currentYear >= a && this.tl.currentYear <= b;
+  }
+  yearN(y: number) { return cell(this.tl?.yearly ?? {}, String(y)).n; }
+  stem(p: string) { return (p.split('/').pop() ?? p).replace(/\.md$/i, ''); }
+
+  private flash(dir: 'in' | 'out') {
+    this.dir = dir;
+    this.anim++;
+  }
+
+  axisYear(ev: MouseEvent) {
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const t = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+    this.diveYear(Math.round(this.born + t * (this.last - this.born)));
+  }
+
+  go(level: Level) {
+    this.flash('out');
+    this.level = level;
+    if (level === 'life') { this.era = null; this.year = 0; this.month = ''; this.week = ''; this.day = ''; }
+    if (level === 'era') { this.year = 0; this.month = ''; this.week = ''; this.day = ''; }
+    if (level === 'year') { this.month = ''; this.week = ''; this.day = ''; }
+    if (level === 'month') { this.week = ''; this.day = ''; }
+    if (level === 'week') { this.day = ''; }
+  }
+  up() {
+    const order: Level[] = ['life', 'era', 'year', 'month', 'week', 'day'];
+    const i = order.indexOf(this.level);
+    if (i <= 0) return;
+    if (this.level === 'era') this.go('life');
+    else if (this.level === 'year' && this.era) this.go('era');
+    else if (this.level === 'year') this.go('life');
+    else this.go(order[i - 1]);
+  }
+
+  diveEra(e: Misc) {
+    this.flash('in');
+    this.era = e;
+    this.level = 'era';
+    this.year = 0; this.month = ''; this.week = ''; this.day = '';
+  }
+  diveYear(y: number) {
+    this.flash('in');
+    this.year = y;
+    this.level = 'year';
+    this.month = ''; this.week = ''; this.day = '';
+  }
+  diveMonth(id: string) {
+    this.flash('in');
+    this.month = id;
+    this.year = +id.slice(0, 4);
+    this.level = 'month';
+    this.week = ''; this.day = '';
+  }
+  diveWeek(id: string) {
+    this.flash('in');
+    this.week = id;
+    const mon = isoMonday(+id.slice(0, 4), +id.slice(6));
+    this.month = ymd(addDays(mon, 3)).slice(0, 7);
+    this.year = +this.month.slice(0, 4);
+    this.level = 'week';
+    this.day = '';
+  }
+  async diveDay(id: string) {
+    this.flash('in');
+    this.day = id;
+    const d = new Date(id + 'T00:00:00Z');
+    this.week = widOf(d);
+    this.month = id.slice(0, 7);
+    this.year = +id.slice(0, 4);
+    this.level = 'day';
+    await this.openDay();
+  }
+
+  landNow(animate = true) {
+    if (!this.tl) return;
+    if (animate) this.flash('in');
+    const today = this.tl.currentDay;
+    this.era = this.dated.find((e) => this.eraNow(e)) ?? null;
+    this.year = this.tl.currentYear;
+    this.month = this.tl.currentMonth;
+    this.week = this.tl.currentWeek;
+    this.day = today;
+    this.level = 'month';
+  }
+  toNow() { this.landNow(true); }
+
+  async openDay() {
+    if (!this.day) return;
+    try {
+      const res = await this.api.ensure(this.day);
+      this.tl = res.timeline;
+      this.dayNote = res.note;
+      this.dayPath = res.note.path || `Calendar/Daily/${this.day}.md`;
+      const file = await this.api.file(this.dayPath);
+      this.draft = file.raw;
+    } catch {
+      this.draft = `# ${this.day}\n\n`;
+      this.dayPath = `Calendar/Daily/${this.day}.md`;
+    }
+  }
+
+  async saveDay() {
+    if (!this.dayPath || this.saving) return;
+    this.saving = true;
+    try {
+      await this.api.save(this.dayPath, this.draft);
+    } finally { this.saving = false; }
+  }
+
+  async addNote() {
+    const title = this.newTitle.trim();
+    if (!title || !this.day) return;
+    this.newTitle = '';
+    const res = await this.api.createNote(title, this.day);
+    this.tl = res.timeline;
+    this.dayNote = (await this.api.ensure(this.day)).note;
+    this.openNote(title);
   }
 
   async onRebuild() {
     this.rebuilding = true;
     try { await this.api.rebuild(); location.reload(); } finally { this.rebuilding = false; }
   }
-  async openDossier(target: string) {
+  async openNote(target: string) {
     this.knownTitle = target; this.dossier = null; this.dossierError = null; this.view = 'dossier';
     try {
       this.dossier = await this.api.notes(target);

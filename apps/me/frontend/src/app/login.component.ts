@@ -8,17 +8,13 @@ import { createSigningKey, signChallenge, type WrappedSigningKey } from '@vivek/
 @Component({
   selector: 'app-login',
   imports: [FormsModule],
-  styles: [`
-    main { min-height: 100dvh; display: grid; place-items: center; padding: 32px; }
-    form { display: flex; flex-direction: column; gap: 16px; width: min(100%, 22rem); }
-  `],
   template: `
-    <main>
+    <main class="login">
       <form class="ui-card" (ngSubmit)="submit()">
-        <h1 class="ui-card__title">{{ needsSetup ? 'Create unlock' : 'Unlock' }}</h1>
+        <h1>{{ needsSetup ? 'Create unlock' : 'Unlock' }}</h1>
         <label>Username <input name="username" [(ngModel)]="username" autocomplete="username" /></label>
         <label>Passphrase <input name="passphrase" type="password" [(ngModel)]="passphrase" autocomplete="current-password" /></label>
-        @if (error) { <p style="color: var(--danger)">{{ error }}</p> }
+        @if (error) { <p class="text-hurt">{{ error }}</p> }
         <button class="ui-btn ui-btn--primary ui-btn--md" type="submit">Unlock</button>
       </form>
     </main>

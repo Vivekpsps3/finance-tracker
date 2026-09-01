@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 export type Cell = { n: number; refs?: string[] };
+export type Misc = { id: string; title: string; n: number; refs?: string[]; start?: string | null; end?: string | null };
 export type Timeline = {
   currentYear: number;
   currentMonth: string;
@@ -14,7 +15,7 @@ export type Timeline = {
   monthly: Record<string, Cell>;
   weekly: Record<string, Cell>;
   daily: Record<string, Cell>;
-  misc: { id: string; title: string; n: number; refs?: string[] }[];
+  misc: Misc[];
 };
 
 export type Dossier = {
@@ -28,6 +29,8 @@ export type Dossier = {
   backlinks: { src: string; title: string; type: string | null }[];
 };
 
+export type VaultFile = { path: string; name: string; folder: string };
+
 @Injectable({ providedIn: 'root' })
 export class Api {
   constructor(private http: HttpClient) {}
@@ -37,6 +40,21 @@ export class Api {
   }
   notes(n: string) {
     return firstValueFrom(this.http.get<Dossier>(`/api/notes?n=${encodeURIComponent(n)}`));
+  }
+  tree() {
+    return firstValueFrom(this.http.get<{ files: VaultFile[] }>('/api/vault/tree'));
+  }
+  file(path: string) {
+    return firstValueFrom(this.http.get<{ path: string; raw: string }>(`/api/vault/note?path=${encodeURIComponent(path)}`));
+  }
+  save(path: string, raw: string) {
+    return firstValueFrom(this.http.put<{ path: string; raw: string }>('/api/vault/note', { path, raw }));
+  }
+  ensure(id: string) {
+    return firstValueFrom(this.http.post<{ note: Dossier; timeline: Timeline }>('/api/calendar/ensure', { id }));
+  }
+  createNote(title: string, link?: string, folder = 'Inbox') {
+    return firstValueFrom(this.http.post<{ note: Dossier; timeline: Timeline }>('/api/notes', { title, link, folder }));
   }
   agentHistory(id = '') {
     const q = id ? `?id=${encodeURIComponent(id)}` : '';

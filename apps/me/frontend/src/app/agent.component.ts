@@ -16,49 +16,32 @@ const STORE = 'me-agent-session';
 @Component({
   selector: 'app-agent',
   imports: [FormsModule],
-  styles: [`
-    :host { display:flex; flex-direction:column; height:100%; min-height:0; overflow:hidden; background:var(--wall); padding:24px; box-sizing:border-box; position:relative; }
-    .head { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; gap:8px; }
-    h1 { margin:0; font:var(--heading); }
-    .head .actions { display:flex; align-items:center; gap:8px; }
-    select { height:48px; border:0; background:var(--tile); color:var(--ink); padding:0 12px; max-width:200px; font:var(--label); }
-    .log { margin-top:16px; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:12px; }
-    .user, .tool { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
-    .user { color:var(--accent); }
-    .tool { color:var(--mute); font:var(--label); }
-    .assistant { overflow-wrap:anywhere; }
-    .assistant :is(h1,h2,h3) { font:var(--heading); margin:12px 0 8px; }
-    .assistant :is(ul,ol) { margin:8px 0; padding-left:24px; }
-    .assistant p { margin:0 0 8px; }
-    .assistant pre { white-space:pre-wrap; font:var(--body); background:var(--tile); padding:8px 16px; overflow-x:auto; }
-    .assistant code { font-family:ui-monospace,monospace; }
-    .row { margin-top:16px; display:flex; gap:16px; flex-shrink:0; }
-    textarea { flex:1; min-height:48px; max-height:64px; resize:none; border:0; background:var(--tile); color:var(--ink); padding:8px 16px; }
-  `],
   template: `
-    <div class="head">
-      <h1>Agent</h1>
-      <div class="actions">
-        <select [ngModel]="sid" (ngModelChange)="onPick($event)" [disabled]="busy">
-          @for (s of sessionList; track s.id) {
-            <option [value]="s.id">{{ s.name }}</option>
-          }
-        </select>
-        <button class="hit" [disabled]="busy" (click)="onNew()">New</button>
-        <button class="hit" [disabled]="busy" (click)="onReset()">Reset</button>
+    <div class="ag">
+      <div class="head">
+        <h1>Agent</h1>
+        <div class="actions">
+          <select [ngModel]="sid" (ngModelChange)="onPick($event)" [disabled]="busy">
+            @for (s of sessionList; track s.id) {
+              <option [value]="s.id">{{ s.name }}</option>
+            }
+          </select>
+          <button class="hit" [disabled]="busy" (click)="onNew()">New</button>
+          <button class="hit" [disabled]="busy" (click)="onReset()">Reset</button>
+        </div>
       </div>
-    </div>
-    <div class="log" #log>
-      @if (!lines.length) { <p class="text-mute">pi. Vault is /data/vault — it can read and write the whole folder.</p> }
-      @for (l of lines; track $index) {
-        @if (l.kind === 'user') { <pre class="user">{{ l.text }}</pre> }
-        @else if (l.kind === 'tool') { <p class="tool">{{ l.name }} {{ l.text }}</p> }
-        @else { <div class="assistant" [innerHTML]="html(l)"></div> }
-      }
-    </div>
-    <div class="row">
-      <textarea placeholder="Tell the agent" [(ngModel)]="chatDraft" (keydown.enter)="onEnter($event)"></textarea>
-      <button class="hit" [disabled]="!canSend" (click)="send()">Send</button>
+      <div class="log" #log>
+        @if (!lines.length) { <p class="text-mute">pi. Vault is /data/vault — it can read and write the whole folder.</p> }
+        @for (l of lines; track $index) {
+          @if (l.kind === 'user') { <pre class="user">{{ l.text }}</pre> }
+          @else if (l.kind === 'tool') { <p class="tool">{{ l.name }} {{ l.text }}</p> }
+          @else { <div class="assistant" [innerHTML]="html(l)"></div> }
+        }
+      </div>
+      <div class="row">
+        <textarea placeholder="Tell the agent" [(ngModel)]="chatDraft" (keydown.enter)="onEnter($event)"></textarea>
+        <button class="hit" [disabled]="!canSend" (click)="send()">Send</button>
+      </div>
     </div>
   `,
 })

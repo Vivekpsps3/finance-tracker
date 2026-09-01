@@ -35,7 +35,7 @@ db.execute("INSERT INTO links (src_path, target, alias, heading, embed) VALUES (
            ("Personal/Ada.md", "2026-09-01", None, None, 0))
 db.execute(
     "INSERT INTO notes (path, title, type, frontmatter, body, dates, mtime_ms) VALUES (?,?,?,?,?,?,?)",
-    ("Calendar/Miscellaneous/Purdue.md", "Purdue", None, "{}", "- [[Purdue]]\n", "[]", 0),
+    ("Calendar/Miscellaneous/Purdue.md", "Purdue", None, '{"start": "2021-08-01", "end": "2025-05-01"}', "- [[Purdue]]\n", "[]", 0),
 )
 db.commit()
 
@@ -50,5 +50,7 @@ assert tl["weekly"]["2026-W36"]["n"] == 2, tl
 assert "Ada" in tl["weekly"]["2026-W36"]["refs"], tl
 assert tl["daily"]["2026-09-01"]["n"] == 1, tl
 assert tl["misc"][0]["id"] == "Purdue", tl
+assert tl["misc"][0]["start"] == "2021-08-01", tl
+assert tl["misc"][0]["end"] == "2025-05-01", tl
 assert "cells" not in tl, tl
 print("me-backend timeline: all assertions passed")
