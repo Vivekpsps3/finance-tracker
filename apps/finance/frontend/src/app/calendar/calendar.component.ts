@@ -1,17 +1,27 @@
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   Input,
   OnDestroy,
   OnInit,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
+import type { Chart as ChartInstance, ChartItem } from 'chart.js';
 import { FinanceService } from '../services/finance.service';
 import { Transaction } from '../models/transaction.model';
 import { todayIsoDate } from '../utils/date.util';
+import { monthKeyFromDate, MonthSpendSummary, summarizeMonthSpend } from '../utils/spend-summary.util';
+import {
+  chartColorAt,
+  chartLegendBottom,
+  chartTooltipTheme,
+} from '../../theme/chart-colors';
 import {
   UiBadgeComponent,
   UiButtonComponent,
@@ -24,8 +34,11 @@ import {
 interface CalendarDay {
   date: string;
   hasTransactions: boolean;
+  expense: number;
   isToday?: boolean;
 }
+
+type ChartConstructor = new (item: ChartItem, config: unknown) => ChartInstance;
 
 @Component({
   selector: 'app-calendar',
@@ -44,16 +57,21 @@ interface CalendarDay {
   styleUrl: './calendar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CalendarComponent implements OnInit, OnDestroy {
+export class CalendarComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() embedded = false;
+  @ViewChild('categoryChart') categoryCanvas?: ElementRef<HTMLCanvasElement>;
   currentDate = new Date();
   transactions: Transaction[] = [];
   selectedDate: string | null = null;
   selectedTransactions: Transaction[] = [];
   daysInMonth: CalendarDay[] = [];
   weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  monthSummary: MonthSpendSummary = summarizeMonthSpend([], monthKeyFromDate(new Date()));
 
   private destroy$ = new Subject<void>();
+  private categoryChart?: ChartInstance;
+  private chartCtor: ChartConstructor | null = null;
+  private viewReady = false;
 
   constructor(
     private financeService: FinanceService,
@@ -71,9 +89,23 @@ export class CalendarComponent implements OnInit, OnDestroy {
     });
   }
 
+  ngAfterViewInit() {
+    this.viewReady = true;
+    void this.paintCategoryChart();
+  }
+
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    this.categoryChart?.destroy();
+  }
+
+  get monthKey(): string {
+    return monthKeyFromDate(this.currentDate);
+  }
+
+  get topPurchaseMax(): number {
+    return this.monthSummary.topPurchases[0]?.amount || 1;
   }
 
   generateCalendar() {
@@ -82,19 +114,82 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const today = todayIsoDate();
+    const spendByDay = new Map<string, number>();
+    for (const tx of this.transactions) {
+      if (tx.type !== 'expense') continue;
+      spendByDay.set(tx.date, (spendByDay.get(tx.date) || 0) + tx.amount);
+    }
 
     this.daysInMonth = [];
     for (let i = 0; i < firstDay; i++) {
-      this.daysInMonth.push({ date: '', hasTransactions: false });
+      this.daysInMonth.push({ date: '', hasTransactions: false, expense: 0 });
     }
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       this.daysInMonth.push({
         date: dateStr,
         hasTransactions: this.transactions.some(t => t.date === dateStr),
+        expense: spendByDay.get(dateStr) || 0,
         isToday: dateStr === today,
       });
     }
+    this.monthSummary = summarizeMonthSpend(this.transactions, this.monthKey);
+    this.cdr.markForCheck();
+    setTimeout(() => void this.paintCategoryChart());
+  }
+
+  private chartCategoryRows() {
+    return this.monthSummary.categories.slice(0, 8);
+  }
+
+  private async paintCategoryChart(): Promise<void> {
+    if (!this.viewReady) return;
+    const canvas = this.categoryCanvas?.nativeElement;
+    const rows = this.chartCategoryRows();
+    if (!canvas || !rows.length) {
+      this.categoryChart?.destroy();
+      this.categoryChart = undefined;
+      return;
+    }
+    if (!this.chartCtor) {
+      const mod = await import('chart.js/auto');
+      this.chartCtor = mod.default as ChartConstructor;
+    }
+    const data = {
+      labels: rows.map(row => row.label),
+      datasets: [{
+        data: rows.map(row => row.value),
+        backgroundColor: rows.map((_, i) => chartColorAt(i)),
+      }],
+    };
+    if (this.categoryChart) {
+      this.categoryChart.data = data;
+      this.categoryChart.update('none');
+      return;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    this.categoryChart = new this.chartCtor(ctx, {
+      type: 'doughnut',
+      data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: chartLegendBottom(),
+          tooltip: {
+            ...chartTooltipTheme(),
+            callbacks: {
+              label: (ctx: { raw: number; dataIndex: number }) => {
+                const row = this.chartCategoryRows()[ctx.dataIndex];
+                if (!row) return '';
+                return `${row.label}: $${Number(ctx.raw).toLocaleString()} (${row.pct.toFixed(1)}%)`;
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   selectDay(day: CalendarDay) {

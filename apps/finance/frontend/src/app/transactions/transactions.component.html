@@ -29,16 +29,19 @@
   }
 
   <section class="month-hero">
-    <p class="section-eyebrow">This month</p>
+    <p class="section-eyebrow">{{ summaryMonth ? 'This month' : 'Loaded activity' }}</p>
     <div class="month-summary-row">
       <label class="month-picker">
         <input
           type="month"
           [(ngModel)]="summaryMonth"
           (ngModelChange)="onSummaryMonthChange()"
-          aria-label="Month for totals" />
+          aria-label="Filter by month" />
         <span class="month-picker__caption">{{ summaryMonthLabel }}</span>
       </label>
+      @if (summaryMonth) {
+        <ui-button variant="ghost" size="sm" (clicked)="clearMonthFilter()">All months</ui-button>
+      }
       <div class="month-totals">
         @if (typeFilter !== 'income') {
           <div class="month-total month-total--expense">
@@ -71,6 +74,20 @@
         placeholder="Search category or description..."
         class="search-input"
         aria-label="Search transactions"
+      />
+      <ui-select
+        selectId="tx-category-filter"
+        label="Category"
+        [value]="categoryFilter"
+        [options]="categorySelectOptions"
+        (valueChange)="categoryFilter = $event; onCategoryFilterChange()"
+      />
+      <ui-select
+        selectId="tx-sort"
+        label="Sort"
+        [value]="sortPreset"
+        [options]="sortSelectOptions"
+        (valueChange)="onSortPresetChange($event)"
       />
       <ui-button variant="secondary" size="sm" (clicked)="exportToCsv()">Export CSV</ui-button>
     </div>
@@ -164,8 +181,13 @@
       <span class="spinner-inline" aria-hidden="true"></span> Loading transactions…
     </div>
 
-    @if (hasMore && filteredTransactions.length > 0) {
-      <p class="list-hint" role="status">Loaded subtotal only. Monthly totals and this table use currently loaded rows. Load more for older history.</p>
+    @if (filteredTransactions.length > 0) {
+      <p class="list-hint" role="status">
+        {{ filteredTransactions.length }} shown
+        @if (summaryMonth) { for {{ summaryMonthLabel }} }
+        @if (categoryFilter) { in {{ categoryFilter }} }
+        @if (hasMore) { · load more for older history }
+      </p>
     }
 
     <div class="tx-table-wrap" *ngIf="filteredTransactions.length > 0; else empty">

@@ -11,6 +11,75 @@
     <ui-button variant="secondary" size="sm" (clicked)="goToday()">Today</ui-button>
   </div>
 
+  <section class="month-hero" aria-label="Month spend summary">
+    <p class="section-eyebrow">This month</p>
+    <div class="month-totals">
+      <div class="month-total month-total--expense">
+        <span class="month-total__label">Spend</span>
+        <strong class="money">${{ monthSummary.expenseTotal | number: '1.2-2' }}</strong>
+      </div>
+      <div class="month-total">
+        <span class="month-total__label">Pay</span>
+        <strong class="money">${{ monthSummary.incomeTotal | number: '1.2-2' }}</strong>
+      </div>
+      <div class="month-total">
+        <span class="month-total__label">Net</span>
+        <strong class="money">${{ monthSummary.net | number: '1.2-2' }}</strong>
+      </div>
+      <div class="month-total">
+        <span class="month-total__label">Active days</span>
+        <strong>{{ monthSummary.activeDays }}</strong>
+      </div>
+    </div>
+  </section>
+
+  <div class="month-charts">
+    <ui-card title="Category breakdown">
+      @if (monthSummary.categories.length) {
+        <div class="chart-wrap">
+          <canvas #categoryChart role="img" [attr.aria-label]="'Spending by category for ' + getMonthName()"></canvas>
+        </div>
+        <table class="summary-table" aria-label="Spending category totals">
+          <thead>
+            <tr><th>Category</th><th>Amount</th><th>%</th></tr>
+          </thead>
+          <tbody>
+            @for (row of monthSummary.categories; track row.label) {
+              <tr>
+                <td>
+                  <a [routerLink]="['/spending']" [queryParams]="{ t: 'spend', month: monthKey, category: row.label }">{{ row.label }}</a>
+                </td>
+                <td>${{ row.value | number: '1.2-2' }}</td>
+                <td>{{ row.pct | number: '1.0-0' }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <ui-empty-state message="No card spend this month." />
+      }
+    </ui-card>
+
+    <ui-card title="Highest purchases">
+      @if (monthSummary.topPurchases.length) {
+        <ol class="top-list">
+          @for (row of monthSummary.topPurchases; track row.id) {
+            <li>
+              <div class="top-row">
+                <span class="top-desc">{{ row.description }}</span>
+                <span class="top-amt">${{ row.amount | number: '1.2-2' }}</span>
+              </div>
+              <div class="top-meta">{{ row.date }} · {{ row.category }}</div>
+              <div class="top-bar" [style.width.%]="(row.amount / topPurchaseMax) * 100"></div>
+            </li>
+          }
+        </ol>
+      } @else {
+        <ui-empty-state message="No purchases this month." />
+      }
+    </ui-card>
+  </div>
+
   <div class="calendar-grid" role="grid" aria-label="Calendar month view">
     @for (day of weekdays; track day) {
       <div class="weekday" role="columnheader">{{ day }}</div>
@@ -33,7 +102,9 @@
           (keydown)="onDayKeydown($event, day, i)"
         >
           <span class="day-number">{{ day.date.split('-')[2] }}</span>
-          @if (day.hasTransactions) {
+          @if (day.expense > 0) {
+            <span class="day-amt">${{ day.expense | number: '1.0-0' }}</span>
+          } @else if (day.hasTransactions) {
             <span class="dot" aria-hidden="true"></span>
           }
         </button>

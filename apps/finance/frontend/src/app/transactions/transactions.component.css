@@ -55,6 +55,12 @@
   font-weight: 600;
 }
 
+.table-actions ui-select {
+  flex: 1 1 11rem;
+  min-width: 10rem;
+  max-width: 16rem;
+}
+
 .month-summary-row,
 .month-totals {
   display: flex;

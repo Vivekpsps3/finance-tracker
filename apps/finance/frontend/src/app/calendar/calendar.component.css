@@ -1,3 +1,105 @@
+.month-hero {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.month-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.month-total__label {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.month-total--expense strong {
+  color: var(--danger);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.month-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.chart-wrap {
+  height: var(--chart-embed-height);
+  min-height: var(--chart-embed-height);
+}
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.summary-table th,
+.summary-table td {
+  text-align: left;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.summary-table th:not(:first-child),
+.summary-table td:not(:first-child) {
+  text-align: right;
+}
+
+.top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.top-list li {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.top-desc {
+  font-weight: 600;
+}
+
+.top-amt {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.top-meta {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+.top-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--danger);
+}
+
+.day-amt {
+  font-size: 0.65rem;
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .calendar-cta {
   display: inline-flex;
   align-items: center;

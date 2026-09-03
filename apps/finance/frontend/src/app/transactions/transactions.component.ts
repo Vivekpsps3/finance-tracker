@@ -62,6 +62,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   transactions: Transaction[] = [];
   filteredTransactions: Transaction[] = [];
   searchTerm = '';
+  categoryFilter = '';
   sortColumn: 'date' | 'category' | 'amount' = 'date';
   sortDirection: 'asc' | 'desc' = 'desc';
 
@@ -95,7 +96,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   categoryMergeSaving = false;
   categoryBulkRows: { fromCategory: string; toCategory: string }[] = [this.emptyBulkRenameRow()];
 
-  readonly pageSize = 200;
+  readonly pageSize = 5000;
   loadingMore = false;
   hasMore = true;
   listLoading = false;
@@ -136,6 +137,12 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     if (search) this.searchTerm = search;
     const month = q.get('month');
     if (month && /^\d{4}-\d{2}$/.test(month)) this.summaryMonth = month;
+    const category = q.get('category');
+    if (category) this.categoryFilter = category;
+    if (this.typeFilter === 'expense') {
+      this.sortColumn = 'amount';
+      this.sortDirection = 'desc';
+    }
 
     this.financeService.isLoading$.pipe(takeUntil(this.destroy$)).subscribe(l => {
       this.loading = l;
@@ -157,6 +164,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       queryParams: {
         q: this.searchTerm.trim() || null,
         month: this.summaryMonth || null,
+        category: this.categoryFilter.trim() || null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -215,15 +223,40 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   get summaryMonthLabel(): string {
+    if (!this.summaryMonth) return 'All months';
     const [y, m] = this.summaryMonth.split('-');
     const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
     return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
   }
 
   get categoryOptions(): string[] {
+    const source = this.summaryMonth
+      ? this.transactions.filter(t => t.date.startsWith(`${this.summaryMonth}-`))
+      : this.transactions;
     return Array.from(
-      new Set(this.transactions.map(t => t.category).filter(category => !!category?.trim()))
+      new Set(source.map(t => t.category).filter(category => !!category?.trim()))
     ).sort((a, b) => a.localeCompare(b));
+  }
+
+  get sortPreset(): string {
+    return `${this.sortColumn}-${this.sortDirection}`;
+  }
+
+  get categorySelectOptions(): UiSelectOption[] {
+    return [
+      { value: '', label: 'All categories' },
+      ...this.categoryOptions.map(category => ({ value: category, label: category })),
+    ];
+  }
+
+  get sortSelectOptions(): UiSelectOption[] {
+    return [
+      { value: 'date-desc', label: 'Newest' },
+      { value: 'date-asc', label: 'Oldest' },
+      { value: 'amount-desc', label: 'Highest amount' },
+      { value: 'amount-asc', label: 'Lowest amount' },
+      { value: 'category-asc', label: 'Category A–Z' },
+    ];
   }
 
   get loadedCategoryMergeCount(): number {
@@ -258,8 +291,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   private computeMonthTotals() {
-    const prefix = `${this.summaryMonth}-`;
-    const inMonth = this.transactions.filter(t => t.date.startsWith(prefix));
+    const inMonth = this.summaryMonth
+      ? this.transactions.filter(t => t.date.startsWith(`${this.summaryMonth}-`))
+      : this.transactions;
     this.monthExpenseTotal = inMonth
       .filter(t => t.type === 'expense')
       .reduce((s, t) => s + t.amount, 0);
@@ -448,6 +482,12 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     if (this.typeFilter !== 'all') {
       result = result.filter(row => row.type === this.typeFilter);
     }
+    if (this.summaryMonth) {
+      result = result.filter(row => row.date.startsWith(`${this.summaryMonth}-`));
+    }
+    if (this.categoryFilter.trim()) {
+      result = result.filter(row => row.category === this.categoryFilter.trim());
+    }
 
     result.sort((a, b) => {
       let valA: string | number;
@@ -478,9 +518,28 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   onSummaryMonthChange() {
+    if (this.categoryFilter && !this.categoryOptions.includes(this.categoryFilter)) {
+      this.categoryFilter = '';
+    }
     this.syncQueryParams();
-    this.computeMonthTotals();
-    this.cdr.markForCheck();
+    this.applyFilterAndSort();
+  }
+
+  onCategoryFilterChange() {
+    this.syncQueryParams();
+    this.applyFilterAndSort();
+  }
+
+  onSortPresetChange(value: string) {
+    const [column, direction] = value.split('-') as ['date' | 'category' | 'amount', 'asc' | 'desc'];
+    this.sortColumn = column;
+    this.sortDirection = direction;
+    this.applyFilterAndSort();
+  }
+
+  clearMonthFilter() {
+    this.summaryMonth = '';
+    this.onSummaryMonthChange();
   }
 
   async mergeCategory(): Promise<void> {
