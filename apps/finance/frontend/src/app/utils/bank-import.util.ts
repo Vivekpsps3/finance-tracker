@@ -65,6 +65,13 @@ const IMPORTERS: BankImporter[] = [
     parse: parseCiti,
   },
   {
+    slug: 'bank_of_america',
+    name: 'Bank of America',
+    hint: 'Bank of America credit card CSV. Uses Posted Date, Payee, and Amount. Negative purchases are imported as expenses; credits and payments are skipped.',
+    file_extensions: ['.csv'],
+    parse: parseBankOfAmerica,
+  },
+  {
     slug: 'x_money',
     name: 'X Money',
     hint: 'X Money CSV. Uses Date, Account, Description, Type, Category, Amount, and Status. Only completed negative Card Purchase rows are imported as expenses.',
@@ -77,6 +84,9 @@ const IMPORTER_ALIASES: Record<string, string> = {
   'capital-one': 'capital_one',
   capitalone: 'capital_one',
   american_express: 'amex',
+  bofa: 'bank_of_america',
+  boa: 'bank_of_america',
+  bankofamerica: 'bank_of_america',
 };
 
 export function listClientBankImports(): BankImportOption[] {
@@ -300,6 +310,39 @@ async function parseCiti(content: string): Promise<ParsedBankResult> {
       const description = normalizeDescription(row[header['description']]);
       result.rows.push(
         await parsedRow('citi', accountMask, date, description, resolveCategory(description), debit)
+      );
+    } catch (error) {
+      result.errors.push({ line: lineNo, reason: errorMessage(error) });
+    }
+  }
+  return result;
+}
+
+async function parseBankOfAmerica(content: string): Promise<ParsedBankResult> {
+  const { header, rows } = readCsvWithHeader(content, ['posted date', 'payee', 'amount']);
+  const result: ParsedBankResult = { rows: [], skipped: [], errors: [] };
+  for (const { row, lineNo } of rows) {
+    const amountRaw = parseAmount(row[header['amount']]);
+    if (amountRaw >= 0) {
+      const reason =
+        amountRaw > 0
+          ? `credit of $${amountRaw.toFixed(2)} is not imported`
+          : 'zero amount is not imported';
+      result.skipped.push({ line: lineNo, reason });
+      continue;
+    }
+    try {
+      const date = parseDate(row[header['posted date']]);
+      const description = normalizeDescription(row[header['payee']]);
+      result.rows.push(
+        await parsedRow(
+          'bank_of_america',
+          'boa',
+          date,
+          description,
+          resolveCategory(description),
+          Math.abs(amountRaw)
+        )
       );
     } catch (error) {
       result.errors.push({ line: lineNo, reason: errorMessage(error) });

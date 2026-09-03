@@ -70,7 +70,7 @@ Encrypted transaction records — per-user `income` and `expense` (manual or `so
 
 The user mostly transacts by card. Rent and utilities can be modeled as fixed expenses (below) rather than only as one-off transactions; neither path directly mutates net worth.
 
-Imports: see [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md). Built-in browser-side bank slugs today: `capital_one`, `chase`, `amex`, `citi`, `x_money`. Brokerage Fidelity plaintext import is retired until moved client-side.
+Imports: see [ADDING_A_BANK_IMPORT.md](./ADDING_A_BANK_IMPORT.md). Built-in browser-side bank slugs today: `capital_one`, `chase`, `amex`, `citi`, `bank_of_america`, `x_money`. Brokerage Fidelity plaintext import is retired until moved client-side.
 
 SimpleFIN is the likely future aggregation path. Plaid placeholders may exist in env examples, but Plaid is not the intended integration for this user.
 

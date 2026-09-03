@@ -11,6 +11,7 @@ describe('bank-import util', () => {
       'chase',
       'amex',
       'citi',
+      'bank_of_america',
       'x_money',
     ]);
   });
@@ -70,6 +71,31 @@ describe('bank-import util', () => {
     expect(preview.errors).toEqual([{ line: 3, reason: 'Unrecognized date: "not-a-date"' }]);
     expect(preview.skipped).toEqual([{ line: 4, reason: 'credit of $42.12 is not imported' }]);
     expect(preview.rows.map(row => row.description)).toEqual(['COSTCO GAS']);
+  });
+
+  it('previews Bank of America Posted Date/Payee expenses and skips credits', async () => {
+    const csv = [
+      'Posted Date,Reference Number,Payee,Address,Amount',
+      '08/10/2026,24492166220100038524860,"OPENROUTER, INC OPENROUTER.AINY","OPENROUTER.AI NY ",-21.10',
+      '08/11/2026,24492166220100038524861,"ONLINE PAYMENT, THANK YOU","",25.00',
+    ].join('\n');
+
+    const preview = await buildBankImportPreview('bank_of_america', 'boa.csv', csv, new Set());
+
+    expect(preview.bank).toBe('Bank of America');
+    expect(preview.summary).toEqual({ total_parsed: 1, new: 1, duplicate: 0, skipped: 1, errors: 0 });
+    expect(preview.rows[0]).toEqual(
+      jasmine.objectContaining({
+        date: '2026-08-10',
+        account_mask: 'boa',
+        account_display: 'Bank of America ···boa',
+        description: 'OPENROUTER, INC OPENROUTER.AINY',
+        category: 'Uncategorized',
+        amount: 21.1,
+        status: 'new',
+      })
+    );
+    expect(preview.skipped).toEqual([{ line: 3, reason: 'credit of $25.00 is not imported' }]);
   });
 
   it('commits only non-duplicate preview rows as encrypted expense transactions', async () => {

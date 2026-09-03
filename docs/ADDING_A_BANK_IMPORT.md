@@ -17,6 +17,7 @@ The Transactions page calls `FinanceService.previewBankImport()` / `commitBankIm
 | `chase` | Sale rows only (credit card export). |
 | `amex` | American Express credit card export. |
 | `citi` | Citi credit card export (Status, Debit/Credit, Member Name). |
+| `bank_of_america` | Bank of America credit card export (Posted Date, Payee, Amount). |
 | `x_money` | Completed negative Card Purchase rows only. |
 
 Fidelity positions CSV is a **holdings** import (replace positions per account), not expense transactions. Parser: `apps/finance/frontend/src/app/utils/fidelity-import.util.ts`.

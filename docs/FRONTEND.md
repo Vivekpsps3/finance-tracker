@@ -114,7 +114,7 @@ Use **OnPush** on new components; feature pages must call `markForCheck()` after
 ## Bank CSV Import
 
 - Transactions page bank import runs in the browser via `utils/bank-import.util.ts`.
-- Supported slugs: `capital_one`, `chase`, `amex`, `citi`, `x_money`.
+- Supported slugs: `capital_one`, `chase`, `amex`, `citi`, `bank_of_america`, `x_money`.
 - Preview uses encrypted transaction dedupe keys and commit writes encrypted transaction records through `/api/vault/records/upsert`; bank CSV contents are not sent to legacy `/api/imports/*` routes in normal vault mode.
 
 ## Build
